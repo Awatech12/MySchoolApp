@@ -1,0 +1,129 @@
+{% load humanize %}
+{% load time %}
+<style>
+  /* ── Single comment row ── */
+  .awaClass-comment {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+  }
+
+  .awaClass-comment-avatar {
+    flex-shrink: 0;
+  }
+  .awaClass-comment-avatar img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .awaClass-comment-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .awaClass-comment-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+  }
+
+  .awaClass-comment-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--awaClass-text, #0f0f0f);
+    text-decoration: none;
+    line-height: 1.3;
+  }
+  .awaClass-comment-name:hover {
+    text-decoration: underline;
+  }
+
+  .awaClass-comment-time {
+    font-size: 12px;
+    color: var(--awaClass-text-light, #606060);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .awaClass-comment-text {
+    font-size: 14px;
+    color: var(--awaClass-text, #0f0f0f);
+    line-height: 1.5;
+    margin: 0 0 6px;
+    word-break: break-word;
+  }
+
+  .awaClass-comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .awaClass-comment-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--awaClass-text-light, #606060);
+    font-weight: 500;
+    transition: color 0.15s;
+    font-family: inherit;
+  }
+  .awaClass-comment-action-btn:hover {
+    color: var(--awaClass-text, #0f0f0f);
+  }
+  .awaClass-comment-action-btn i {
+    font-size: 13px;
+  }
+</style>
+
+<div class="awaClass-comment">
+
+  <!-- Avatar -->
+  <div class="awaClass-comment-avatar">
+    <a href="{% url 'profile' comment.commentator %}">
+      <img src="{{ comment.commentator.profile.picture.url }}"
+           alt="{{ comment.commentator }}'s profile picture">
+    </a>
+  </div>
+
+  <!-- Body -->
+  <div class="awaClass-comment-body">
+
+    <!-- Name + timestamp -->
+    <div class="awaClass-comment-header">
+      <a href="{% url 'profile' comment.commentator %}" class="awaClass-comment-name">
+        {% if comment.commentator.first_name %}
+          {{ comment.commentator.first_name }} {{ comment.commentator.last_name }}
+        {% else %}
+          {{ comment.commentator }}
+        {% endif %}
+      </a>
+      <span class="awaClass-comment-time">{{ comment.created_at|insta_timesince }}</span>
+    </div>
+
+    <!-- Comment text -->
+    <p class="awaClass-comment-text">{{ comment.comment }}</p>
+
+    <!-- Action row: like + reply count -->
+    <div class="awaClass-comment-actions">
+      <span id="comment-like-{{ comment.comment_id }}">
+        {% include 'snippet/comment_like.html' %}
+      </span>
+      <button class="awaClass-comment-action-btn" type="button">
+        <i class="fa-regular fa-comment"></i>
+        {{ total_comment }}
+      </button>
+    </div>
+
+  </div>
+</div>

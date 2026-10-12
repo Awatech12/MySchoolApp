@@ -1,0 +1,1081 @@
+{% load pwa %}
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+  {% progressive_web_app_meta %}
+<script src="{% static 'js/pwa-install.js' %}" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <title>TopMark | Home</title>
+
+  <style>
+
+    /* ══════════════════════════════════════════════════
+       BASE
+    ══════════════════════════════════════════════════ */
+    html, body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+
+    body {
+      background-color: #ffffff;
+    }
+
+    /* ══════════════════════════════════════════════════
+       PAGE LAYOUT  —  mobile: single column | desktop: main + sidebar
+    ══════════════════════════════════════════════════ */
+    .TopMark-home-wrapper {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 20px 16px 48px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    @media (min-width: 768px) {
+      .TopMark-home-wrapper {
+        padding-left: 66px; /* sidebar offset via padding, not margin */
+      }
+    }
+
+    /* desktop two-column layout */
+    @media (min-width: 960px) {
+      .TopMark-home-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 28px;
+        align-items: start;
+      }
+    }
+
+    .TopMark-home-main {
+      min-width: 0;
+      isolation: auto; /* do not create a new stacking context */
+    }
+
+    /* sidebar column — hidden on mobile, shown on desktop */
+    .TopMark-home-sidebar {
+      display: none;
+    }
+    @media (min-width: 960px) {
+      .TopMark-home-sidebar {
+        display: block;
+        position: sticky;
+        top: 80px;
+      }
+    }
+
+    /* mobile leaderboard slot — shown on mobile only */
+    .TopMark-leaderboard-mobile {
+      display: block;
+    }
+    @media (min-width: 960px) {
+      .TopMark-leaderboard-mobile {
+        display: none;
+      }
+    }
+
+    /* ── Section heading ── */
+    .TopMark-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--TopMark-text, #262626);
+      margin: 0 0 14px;
+    }
+
+    /* ── Thin divider between sections ── */
+    .TopMark-divider {
+      display: none;
+    }
+
+    /* ══════════════════════════════════════════════════
+       SUBJECTS & FEATURE GRID (unified grid system)
+    ══════════════════════════════════════════════════ */
+    .TopMark-features-grid,
+    .TopMark-subjects-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      overflow: visible;
+      min-width: 0;
+      width: 100%;
+    }
+    @media (min-width: 600px) {
+      .TopMark-features-grid,
+      .TopMark-subjects-grid { gap: 12px; }
+    }
+    @media (min-width: 1024px) {
+      .TopMark-features-grid,
+      .TopMark-subjects-grid { gap: 14px; }
+    }
+
+    /* ── Shared card base (feature + subject tiles) ── */
+    .TopMark-feature-tile,
+    .TopMark-subject-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      text-decoration: none;
+      color: var(--TopMark-text, #262626);
+      background: #ffffff;
+      border-radius: 10px;
+      transition: transform 0.15s;
+      cursor: pointer;
+    }
+    .TopMark-feature-tile:hover,
+    .TopMark-subject-tile:hover {
+      transform: translateY(-2px);
+    }
+    @media (min-width: 600px) {
+      .TopMark-feature-tile,
+      .TopMark-subject-tile { border-radius: 12px; }
+    }
+
+    /* ── Image area: overflow:hidden lives here only, not on the card ── */
+    .TopMark-feature-icon,
+    .TopMark-subject-icon {
+      width: 100%;
+      aspect-ratio: 3 / 2;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #fafafa;
+      border-radius: 9px 9px 0 0;
+    }
+    @media (min-width: 600px) {
+      .TopMark-feature-icon,
+      .TopMark-subject-icon { border-radius: 11px 11px 0 0; }
+    }
+    .TopMark-feature-icon img,
+    .TopMark-subject-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      transition: transform 0.2s ease;
+    }
+    .TopMark-feature-tile:hover .TopMark-feature-icon img,
+    .TopMark-subject-tile:hover .TopMark-subject-icon img {
+      transform: scale(1.04);
+    }
+
+    /* ── Text label ── */
+    .TopMark-feature-name,
+    .TopMark-subject-name {
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      color: var(--TopMark-text, #262626);
+      line-height: 1.3;
+      padding: 7px 6px 5px;
+    }
+    @media (min-width: 480px) {
+      .TopMark-feature-name,
+      .TopMark-subject-name { font-size: 12px; padding: 8px 8px 6px; }
+    }
+    @media (min-width: 768px) {
+      .TopMark-feature-name,
+      .TopMark-subject-name { font-size: 13px; padding: 9px 10px 7px; }
+    }
+
+    /* ── Badge strip ── */
+    .TopMark-feature-badge {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: #737373;
+      padding: 3px 6px 5px;
+      text-align: center;
+    }
+
+    .TopMark-subject-name {
+      font-size: 10px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--TopMark-text, #262626);
+      line-height: 1.3;
+    }
+    @media (min-width: 480px) { .TopMark-subject-name { font-size: 11px; } }
+    @media (min-width: 768px) { .TopMark-subject-name { font-size: 12px; } }
+    @media (min-width: 1024px) { .TopMark-subject-name { font-size: 13px; } }
+
+    /* Section spacing */
+    .section-spacing {
+      margin-bottom: 28px;
+      overflow: visible;
+    }
+
+    /* ══════════════════════════════════════════════════
+       ADMIN CTA BANNER
+    ══════════════════════════════════════════════════ */
+    .TopMark-admin-banner {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 0; flex-wrap: wrap;
+    }
+
+    .TopMark-admin-banner-icon {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--TopMark-primary-lt, #e8f4fd);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .TopMark-admin-banner-icon img { width: 28px; height: 28px; object-fit: contain; }
+
+    .TopMark-admin-banner-body { flex: 1; min-width: 0; }
+    .TopMark-admin-banner-body h3 {
+      font-size: 14px; font-weight: 600;
+      color: var(--TopMark-text, #262626); margin: 0 0 2px;
+    }
+    .TopMark-admin-banner-body p {
+      font-size: 13px; color: var(--TopMark-text-light, #737373); margin: 0; line-height: 1.4;
+    }
+
+    .TopMark-btn-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px;
+      background: var(--TopMark-primary, #0095f6); color: #fff;
+      border: none; border-radius: 100px;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      text-decoration: none; white-space: nowrap; cursor: pointer;
+      transition: background 0.15s; flex-shrink: 0;
+    }
+    .TopMark-btn-pill:hover { background: var(--TopMark-primary-dk, #0074cc); }
+
+    /* ══════════════════════════════════════════════════
+       LEADERBOARD CARD (unchanged but kept for context)
+    ══════════════════════════════════════════════════ */
+    .TopMark-leaderboard-card {
+      background: #ffffff;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .TopMark-lb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 12px;
+    }
+
+    .TopMark-lb-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .TopMark-lb-header-left h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #262626;
+      margin: 0;
+    }
+
+    .TopMark-lb-icon {
+      width: 28px; height: 28px;
+      background: #e8f4fd;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    .TopMark-lb-subtitle {
+      font-size: 11px;
+      color: #8e8e8e;
+      font-weight: 500;
+    }
+
+    .TopMark-lb-list {
+      list-style: none;
+      margin: 0;
+      padding: 4px 0;
+    }
+
+    .TopMark-lb-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      transition: background 0.12s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .TopMark-lb-item:hover {
+      background: #fafafa;
+    }
+
+    .TopMark-lb-pos {
+      width: 22px;
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #8e8e8e;
+    }
+
+    .TopMark-lb-pos.pos-1 { color: #d97706; }
+    .TopMark-lb-pos.pos-2 { color: #71717a; }
+    .TopMark-lb-pos.pos-3 { color: #737373; }
+    .TopMark-lb-pos.pos-1::before { content: "🥇"; font-size: 16px; }
+    .TopMark-lb-pos.pos-2::before { content: "🥈"; font-size: 16px; }
+    .TopMark-lb-pos.pos-3::before { content: "🥉"; font-size: 16px; }
+    .TopMark-lb-pos.pos-1,
+    .TopMark-lb-pos.pos-2,
+    .TopMark-lb-pos.pos-3 { font-size: 0; }
+
+    .TopMark-lb-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #fafafa;
+    }
+
+    .TopMark-lb-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .TopMark-lb-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #262626;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .TopMark-lb-level {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      padding: 1px 6px;
+      border-radius: 100px;
+    }
+
+    .TopMark-lb-level.lvl-1 { background: #fafafa; color: #737373; }
+    .TopMark-lb-level.lvl-2 { background: #fafafa; color: #737373; }
+    .TopMark-lb-level.lvl-3 { background: #efefef; color: #262626; }
+    .TopMark-lb-level.lvl-4 { background: #e8f4fd; color: #0074cc; }
+    .TopMark-lb-level.lvl-5 { background: #0095f6; color: #fff; }
+    .TopMark-lb-level.lvl-6 { background: #262626; color: #fff; }
+
+    .TopMark-lb-points {
+      flex-shrink: 0;
+      text-align: right;
+    }
+
+    .TopMark-lb-pts-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #262626;
+      display: block;
+    }
+
+    .TopMark-lb-pts-label {
+      font-size: 9px;
+      font-weight: 500;
+      color: #8e8e8e;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .TopMark-lb-item + .TopMark-lb-item {
+    }
+
+    .TopMark-lb-empty {
+      padding: 28px 16px;
+      text-align: center;
+      font-size: 13px;
+      color: #8e8e8e;
+    }
+
+    .TopMark-lb-footer {
+      padding: 10px 16px;
+      text-align: center;
+    }
+
+    .TopMark-lb-footer a {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--TopMark-primary, #0095f6);
+      text-decoration: none;
+    }
+    .TopMark-lb-footer a:hover { text-decoration: underline; }
+
+    /* ══════════════════════════════════════════════════
+       STUDENT SCORE MODAL
+    ══════════════════════════════════════════════════ */
+    .aw-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 9000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .aw-modal-backdrop.open { display: flex; }
+
+    .aw-modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 88vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      animation: aw-modal-in .18s ease;
+    }
+    @keyframes aw-modal-in {
+      from { opacity: 0; transform: translateY(10px) scale(.97); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .aw-modal-close {
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #fafafa;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: #737373;
+      transition: background .12s;
+      z-index: 2;
+    }
+    .aw-modal-close:hover { background: #efefef; }
+
+    .aw-modal-header {
+      padding: 22px 20px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .aw-modal-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .aw-modal-student-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #262626;
+      margin: 0 0 3px;
+    }
+    .aw-modal-student-meta {
+      font-size: 12px;
+      color: #737373;
+      margin: 0 0 6px;
+      line-height: 1.4;
+    }
+    .aw-modal-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .aw-modal-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: #fafafa;
+      color: #737373;
+    }
+    .aw-modal-badge.level-1 { background: #fafafa; color: #737373; }
+    .aw-modal-badge.level-2 { background: #fafafa; color: #737373; }
+    .aw-modal-badge.level-3 { background: #efefef; color: #262626; }
+    .aw-modal-badge.level-4 { background: #e8f4fd; color: #0074cc; }
+    .aw-modal-badge.level-5 { background: #0095f6; color: #fff; }
+    .aw-modal-badge.level-6 { background: #262626; color: #fff; }
+
+    .aw-modal-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .aw-modal-stat {
+      flex: 1 1 60px;
+      text-align: center;
+      padding: 12px 6px;
+      min-width: 0;
+    }
+    .aw-modal-stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #262626;
+      display: block;
+    }
+    .aw-modal-stat-val.accent { color: var(--TopMark-primary, #0095f6); }
+    .aw-modal-stat-lbl {
+      font-size: 10px;
+      font-weight: 500;
+      color: #8e8e8e;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-top: 2px;
+      display: block;
+    }
+
+    .aw-modal-body { padding: 18px 20px; }
+    .aw-modal-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #8e8e8e;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin: 0 0 10px;
+    }
+
+    .aw-subject-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .aw-subject-card {
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #ffffff;
+    }
+    .aw-subject-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .aw-subject-card-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #262626;
+    }
+    .aw-subject-grade-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 100px;
+      color: #fff;
+    }
+    .aw-subject-bar-wrap {
+      background: #fafafa;
+      border-radius: 100px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .aw-subject-bar {
+      height: 100%;
+      border-radius: 100px;
+      background: var(--TopMark-primary, #0095f6);
+      transition: width .6s ease;
+    }
+    .aw-subject-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .aw-subject-meta span {
+      font-size: 11px;
+      color: #737373;
+    }
+    .aw-subject-meta strong { color: #262626; }
+
+    .aw-recent-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .aw-recent-table {
+      width: 100%;
+      min-width: 420px; /* prevent columns from collapsing too tightly */
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .aw-recent-table th {
+      font-size: 10px;
+      font-weight: 700;
+      color: #8e8e8e;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 0 8px 8px 0;
+      text-align: left;
+    }
+    .aw-recent-table td {
+      padding: 9px 8px 9px 0;
+      color: #262626;
+      vertical-align: middle;
+    }
+    .aw-recent-grade {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #fafafa;
+      color: #737373;
+    }
+
+    .aw-modal-loading {
+      padding: 40px 20px;
+      text-align: center;
+      color: #8e8e8e;
+      font-size: 14px;
+    }
+    .aw-modal-spinner {
+      width: 28px; height: 28px;
+      border: 3px solid #efefef;
+      border-top-color: var(--TopMark-primary, #0095f6);
+      border-radius: 50%;
+      animation: aw-spin .7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes aw-spin { to { transform: rotate(360deg); } }
+
+    .TopMark-lb-item[data-username] {
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+
+{% include 'sidebar.html' %}
+
+<div class="TopMark-home-wrapper">
+
+  <!-- ══════════════════════════════════════════
+       MAIN CONTENT COLUMN
+  ══════════════════════════════════════════ -->
+  <main class="TopMark-home-main">
+
+    <!-- FEATURE CARDS SECTION (Live Classes + CBT Exams together) -->
+    <div class="section-spacing">
+      <h2 class="TopMark-section-title">Learning Tools</h2>
+      <div class="TopMark-features-grid">
+        <!-- Live Classes Card -->
+        <a href="{% url 'live_room_list' %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon">
+            <img src="{% static 'images/lives.png' %}" alt="Live Classes">
+          </div>
+          <p class="TopMark-feature-name">Live Classes</p>
+        </a>
+
+        <!-- CBT Exams Card -->
+        <a href="{% url 'cbt_exams' %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon">
+            <img src="{% static 'images/cbt2.png' %}" alt="CBT Exams">
+          </div>
+          <p class="TopMark-feature-name">CBT Exams</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         MOBILE LEADERBOARD  (hidden on desktop)
+    ══════════════════════════════════════════ -->
+    <hr class="TopMark-divider">
+
+    <div class="TopMark-leaderboard-mobile">
+      {% include 'snippet/leaderboard_card.html' %}
+    </div>
+
+    <hr class="TopMark-divider">
+
+
+
+  </main>
+
+  <!-- ══════════════════════════════════════════
+       DESKTOP SIDEBAR  (hidden on mobile)
+  ══════════════════════════════════════════ -->
+  <aside class="TopMark-home-sidebar">
+    {% include 'snippet/leaderboard_card.html' %}
+  </aside>
+
+</div><!-- /.TopMark-home-wrapper -->
+
+<!-- ══════════════════════════════════════════
+     STUDENT SCORES MODAL
+══════════════════════════════════════════ -->
+<div class="aw-modal-backdrop" id="awStudentModal" role="dialog" aria-modal="true" aria-labelledby="awModalName">
+  <div class="aw-modal">
+    <button class="aw-modal-close" id="awModalClose" aria-label="Close">&#x2715;</button>
+    <div class="aw-modal-loading" id="awModalLoading">
+      <div class="aw-modal-spinner"></div>
+      Loading student data…
+    </div>
+    <div id="awModalContent" style="display:none;">
+
+      <!-- Header: avatar + name + meta + badges -->
+      <div class="aw-modal-header">
+        <img src="" alt="Avatar" class="aw-modal-avatar" id="awModalAvatar">
+        <div style="min-width:0;flex:1;">
+          <p class="aw-modal-student-name" id="awModalName"></p>
+          <p class="aw-modal-student-meta" id="awModalMeta"></p>
+          <div class="aw-modal-badges" id="awModalBadges"></div>
+        </div>
+      </div>
+
+      <!-- ── OVERALL view ── -->
+      <div id="awViewOverall">
+        <div class="aw-modal-stats">
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val accent" id="awStatPoints"></span>
+            <span class="aw-modal-stat-lbl">Points</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val" id="awStatAttempts"></span>
+            <span class="aw-modal-stat-lbl">Exams Taken</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val" id="awStatBest"></span>
+            <span class="aw-modal-stat-lbl">Best Score</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val" id="awStatAccuracy"></span>
+            <span class="aw-modal-stat-lbl">Accuracy</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val accent" id="awStatRating"></span>
+            <span class="aw-modal-stat-lbl">Rating</span>
+          </div>
+        </div>
+        <div class="aw-modal-body">
+          <p class="aw-modal-section-title">Subject Performance</p>
+          <div class="aw-subject-cards" id="awSubjectCards"></div>
+          <p class="aw-modal-section-title">Recent Exams</p>
+          <div class="aw-recent-table-wrap">
+            <table class="aw-recent-table">
+              <thead>
+                <tr><th>Subject</th><th>Score</th><th>Grade</th><th>Rating</th><th>Time</th><th>Date</th></tr>
+              </thead>
+              <tbody id="awRecentBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SUBJECT view (Mathematics / Physics) ── -->
+      <div id="awViewSubject" style="display:none;">
+
+        <!-- Subject context pill -->
+        <div style="padding:10px 20px 0;">
+          <span class="aw-subject-context-pill" id="awSubjectPill"></span>
+        </div>
+
+        <!-- 4 subject-specific stats -->
+        <div class="aw-modal-stats" style="margin-top:10px;">
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val accent" id="awSubStatBest"></span>
+            <span class="aw-modal-stat-lbl">Best %</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val" id="awSubStatAvg"></span>
+            <span class="aw-modal-stat-lbl">Avg %</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val" id="awSubStatAttempts"></span>
+            <span class="aw-modal-stat-lbl">Attempts</span>
+          </div>
+          <div class="aw-modal-stat">
+            <span class="aw-modal-stat-val accent" id="awSubStatRating"></span>
+            <span class="aw-modal-stat-lbl">Rating</span>
+          </div>
+        </div>
+
+        <div class="aw-modal-body">
+          <!-- Expanded subject performance card -->
+          <p class="aw-modal-section-title" id="awSubjectCardTitle">Performance</p>
+          <div class="aw-subject-cards" id="awSubjectCardSingle"></div>
+
+          <!-- Subject-only recent exams (no Subject column) -->
+          <p class="aw-modal-section-title">Recent Exams</p>
+          <div class="aw-recent-table-wrap">
+            <table class="aw-recent-table">
+              <thead>
+                <tr><th>Score</th><th>Grade</th><th>Rating</th><th>Time</th><th>Date</th></tr>
+              </thead>
+              <tbody id="awSubRecentBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#awModalContent -->
+  </div>
+</div>
+
+<style>
+  .aw-subject-context-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #0074cc;
+    background: #e8f4fd;
+    border-radius: 100px;
+    padding: 3px 10px;
+  }
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  const backdrop = document.getElementById('awStudentModal');
+  const closeBtn = document.getElementById('awModalClose');
+  const loading  = document.getElementById('awModalLoading');
+  const content  = document.getElementById('awModalContent');
+
+  // The active leaderboard subject ('overall' | 'mathematics' | 'physics')
+  // Updated whenever the user changes the leaderboard dropdown.
+  let activeSubject = 'overall';
+
+  /* ── helpers ─────────────────────────────────────────────────── */
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  function openModal()  { backdrop.classList.add('open');    document.body.style.overflow = 'hidden'; }
+  function closeModal() { backdrop.classList.remove('open'); document.body.style.overflow = ''; }
+  function showLoading() { loading.style.display = 'block'; content.style.display = 'none'; }
+  function showContent() { loading.style.display = 'none';  content.style.display = 'block'; }
+
+  function showView(which) {
+    // which = 'overall' | 'subject'
+    document.getElementById('awViewOverall').style.display = (which === 'overall') ? 'block' : 'none';
+    document.getElementById('awViewSubject').style.display = (which === 'subject') ? 'block' : 'none';
+  }
+
+  /* ── build a subject performance card element ────────────────── */
+  function buildSubjectCard(sub) {
+    const card = document.createElement('div');
+    card.className = 'aw-subject-card';
+    card.innerHTML =
+      '<div class="aw-subject-card-top">' +
+        '<span class="aw-subject-card-name">' + sub.subject + '</span>' +
+        '<span class="aw-subject-grade-pill" style="background:' + sub.grade_color + '">' + sub.best_grade + '</span>' +
+      '</div>' +
+      '<div class="aw-subject-bar-wrap"><div class="aw-subject-bar" style="width:' + sub.best_pct + '%"></div></div>' +
+      '<div class="aw-subject-meta">' +
+        '<span>Best: <strong>' + sub.best_score + '/' + sub.best_total + ' (' + sub.best_pct + '%)</strong></span>' +
+        '<span>Avg: <strong>' + sub.avg_pct + '%</strong></span>' +
+        '<span>Rating: <strong>' + sub.subject_rating + '/100</strong></span>' +
+        '<span>Time eff: <strong>' + sub.best_time_eff + '%</strong></span>' +
+        '<span>Attempts: <strong>' + sub.attempts + '</strong></span>' +
+        '<span>Best time: <strong>' + sub.time_display + '</strong></span>' +
+        '<span>Last: <strong>' + sub.last_taken + '</strong></span>' +
+      '</div>';
+    return card;
+  }
+
+  /* ── populate modal ───────────────────────────────────────────── */
+  function populateModal(data, subject) {
+    const s = data.student;
+
+    /* --- shared header (always shown) --- */
+    document.getElementById('awModalAvatar').src = s.picture_url;
+    setText('awModalName', s.full_name || s.username);
+    const metaParts = [];
+    if (s.specialization) metaParts.push(s.specialization);
+    if (s.grade)          metaParts.push(s.grade);
+    if (s.school_type)    metaParts.push(s.school_type);
+    setText('awModalMeta', metaParts.join(' · ') || '@' + s.username);
+
+    const badgesEl = document.getElementById('awModalBadges');
+    badgesEl.innerHTML = '';
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'aw-modal-badge level-' + s.level_num;
+    levelBadge.textContent = '⭐ ' + s.level_name;
+    badgesEl.appendChild(levelBadge);
+    const uBadge = document.createElement('span');
+    uBadge.className = 'aw-modal-badge';
+    uBadge.textContent = '@' + s.username;
+    badgesEl.appendChild(uBadge);
+
+    /* ════════════════════════════════════════
+       OVERALL VIEW
+    ════════════════════════════════════════ */
+    if (subject === 'overall') {
+      showView('overall');
+
+      setText('awStatPoints',   s.points.toLocaleString());
+      setText('awStatAttempts', s.total_attempts);
+      setText('awStatBest',     s.best_score + '%');
+      const accuracy = s.total_questions > 0
+        ? Math.round((s.total_correct / s.total_questions) * 100) + '%'
+        : '—';
+      setText('awStatAccuracy', accuracy);
+      setText('awStatRating',   s.overall_rating + '/100');
+
+      /* subject cards */
+      const cardsEl = document.getElementById('awSubjectCards');
+      cardsEl.innerHTML = '';
+      if (!data.subjects.length) {
+        cardsEl.innerHTML = '<p style="font-size:13px;color:#8e8e8e;margin:0;">No exams taken yet.</p>';
+      } else {
+        data.subjects.forEach(function (sub) { cardsEl.appendChild(buildSubjectCard(sub)); });
+      }
+
+      /* recent exams table (all subjects) */
+      const tbody = document.getElementById('awRecentBody');
+      tbody.innerHTML = '';
+      if (!data.recent_exams.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#8e8e8e;padding:12px 0;text-align:center;">No recent exams.</td></tr>';
+      } else {
+        data.recent_exams.forEach(function (ex) {
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + ex.subject + '</td>' +
+            '<td><strong>' + ex.score + '</strong>/' + ex.total +
+              ' <span style="color:#aaa">(' + ex.percentage + '%)</span></td>' +
+            '<td><span class="aw-recent-grade">' + ex.grade + '</span></td>' +
+            '<td><strong>' + ex.rating + '</strong><span style="color:#aaa">/100</span></td>' +
+            '<td>' + ex.time_display + '</td>' +
+            '<td style="color:#8e8e8e">' + ex.taken_at + '</td>';
+          tbody.appendChild(tr);
+        });
+      }
+
+    /* ════════════════════════════════════════
+       SUBJECT VIEW  (mathematics | physics)
+    ════════════════════════════════════════ */
+    } else {
+      showView('subject');
+
+      const label = subject.charAt(0).toUpperCase() + subject.slice(1);
+
+      /* subject context pill */
+      setText('awSubjectPill', '📚 ' + label + ' · Subject View');
+
+      /* find this subject's data */
+      const sub = data.subjects.find(function (x) {
+        return x.subject.toLowerCase() === subject.toLowerCase();
+      });
+
+      if (!sub) {
+        /* student has never taken this subject */
+        setText('awSubStatBest',     '—');
+        setText('awSubStatAvg',      '—');
+        setText('awSubStatAttempts', '0');
+        setText('awSubStatRating',   '—');
+        document.getElementById('awSubjectCardSingle').innerHTML =
+          '<p style="font-size:13px;color:#8e8e8e;margin:0;">No ' + label + ' exams taken yet.</p>';
+        document.getElementById('awSubRecentBody').innerHTML =
+          '<tr><td colspan="5" style="color:#8e8e8e;padding:12px 0;text-align:center;">No ' + label + ' exams yet.</td></tr>';
+      } else {
+        setText('awSubStatBest',     sub.best_pct + '%');
+        setText('awSubStatAvg',      sub.avg_pct + '%');
+        setText('awSubStatAttempts', sub.attempts);
+        setText('awSubStatRating',   sub.subject_rating + '/100');
+
+        /* single subject card */
+        const cardWrap = document.getElementById('awSubjectCardSingle');
+        cardWrap.innerHTML = '';
+        cardWrap.appendChild(buildSubjectCard(sub));
+
+        /* recent exams filtered to this subject only */
+        const filtered = data.recent_exams.filter(function (ex) {
+          return ex.subject.toLowerCase() === subject.toLowerCase();
+        });
+        const tbody = document.getElementById('awSubRecentBody');
+        tbody.innerHTML = '';
+        if (!filtered.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" style="color:#8e8e8e;padding:12px 0;text-align:center;">No recent ' + label + ' exams.</td></tr>';
+        } else {
+          filtered.forEach(function (ex) {
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+              '<td><strong>' + ex.score + '</strong>/' + ex.total +
+                ' <span style="color:#aaa">(' + ex.percentage + '%)</span></td>' +
+              '<td><span class="aw-recent-grade">' + ex.grade + '</span></td>' +
+              '<td><strong>' + ex.rating + '</strong><span style="color:#aaa">/100</span></td>' +
+              '<td>' + ex.time_display + '</td>' +
+              '<td style="color:#8e8e8e">' + ex.taken_at + '</td>';
+            tbody.appendChild(tr);
+          });
+        }
+      }
+    }
+
+    showContent();
+  }
+
+  /* ── fetch & open ─────────────────────────────────────────────── */
+  function loadStudentModal(username, subject) {
+    openModal();
+    showLoading();
+    fetch('/student-scores/' + username + '/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.ok) populateModal(data, subject);
+        else loading.innerHTML = '<p style="color:#dc2626;padding:20px;text-align:center;">Failed to load data.</p>';
+      })
+      .catch(function (err) {
+        loading.innerHTML = '<p style="color:#dc2626;padding:20px;text-align:center;">Error: ' + err.message + '</p>';
+      });
+  }
+
+  /* ── leaderboard dropdown — track active subject ──────────────── */
+  document.querySelectorAll('.TopMark-leaderboard-card').forEach(function (card) {
+    var select = card.querySelector('[data-lb-select]');
+    if (!select) return;
+    select.addEventListener('change', function () {
+      activeSubject = this.value;                          // keep global in sync
+      card.querySelectorAll('.TopMark-lb-panel').forEach(function (p) { p.classList.remove('active'); });
+      var panel = card.querySelector('[data-lb-panel="' + activeSubject + '"]');
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  /* ── click on any leaderboard row ────────────────────────────── */
+  document.addEventListener('click', function (e) {
+    const item = e.target.closest('.TopMark-lb-item[data-username]');
+    if (!item) return;
+    e.preventDefault();
+    const username = (item.dataset.username || '').trim();
+    if (!username) return;
+
+    /* find which leaderboard card this row belongs to, read its dropdown */
+    const card   = item.closest('.TopMark-leaderboard-card');
+    const select = card ? card.querySelector('[data-lb-select]') : null;
+    const subject = select ? select.value : activeSubject;
+
+    loadStudentModal(username, subject);
+  });
+
+  /* ── close handlers ──────────────────────────────────────────── */
+  closeBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+})();
+</script>
+
+{% include "footer.html" %}
+</body>
+</html>

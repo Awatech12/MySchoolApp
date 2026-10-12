@@ -1,0 +1,177 @@
+{% load static %}
+{% load pwa %}
+<html lang="en">  
+<head>  
+  <meta charset="utf-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1" />  
+  {% progressive_web_app_meta %}
+  <script src="{% static 'js/pwa-install.js' %}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <style>  
+    :root {
+      --ac-white: #ffffff;
+      --ac-border: #dbdbdb;
+      --ac-text-light: #737373;
+      --ac-primary: #0095f6;
+      --ac-primary-dk: #0074cc;
+      --ac-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --nav-bg: #ffffff;
+      --nav-icon-color: #737373;
+      --nav-icon-active: #0095f6;
+      --badge-color: #0095f6;
+    }
+
+    body { 
+      font-family: var(--ac-font); 
+      margin: 0; 
+      padding-bottom: 70px;
+    }  
+    
+    /* === FLOATING PILL NAVIGATION === */
+    .bottom-nav { 
+      position: fixed; 
+      bottom: 20px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      width: 92%; 
+      max-width: 420px; 
+      height: 65px; 
+      
+      background: var(--nav-bg); 
+      backdrop-filter: blur(20px); 
+      -webkit-backdrop-filter: blur(20px);
+      
+      border-radius: 35px; 
+      
+      display: flex; 
+      align-items: center; 
+      justify-content: space-evenly;
+      padding: 0 5px;
+      z-index: 1000; 
+    }
+    
+    /* === NAV ITEMS (all icons including center) === */
+    .nav-item { 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 58px;
+      height: 54px;
+      color: var(--nav-icon-color); 
+      font-size: 20px; 
+      text-decoration: none;
+      position: relative;
+      transition: color 0.2s, transform 0.1s;
+      border-radius: 16px;
+    }
+    
+    .nav-item .nav-label {
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      color: inherit;
+    }
+
+    .nav-item.active { 
+      color: var(--nav-icon-active); 
+    }
+    
+    .nav-item:active {
+      transform: scale(0.9);
+    }
+
+    /* Hide bottom nav on desktop */
+    @media (min-width: 768px) {
+      .bottom-nav { display: none !important; }
+    }
+
+    /* === BADGES === */
+    .nav-badge-count {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      background: var(--badge-color);
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      min-width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    
+    .hidden-badge { display: none !important; }
+
+    @media (max-width: 360px) {
+      .bottom-nav { width: 96%; height: 60px; }
+      .nav-item { font-size: 18px; width: 50px; }
+      .nav-item .nav-label { font-size: 8px; }
+    }
+  </style>  
+</head>  
+<body>  
+
+<!-- Navigation Bar -->
+<nav class="bottom-nav" id="bottomNav">
+    
+    <!-- 1. Home -->
+    <a href="{% url 'home' %}" 
+       class="nav-item {% if request.path == '/' or 'home' in request.path %}active{% endif %}" 
+       title="Home">
+        <i class="fas fa-home"></i>
+        <span class="nav-label">Home</span>
+    </a>
+    
+    <!-- 2. Live Class -->
+    <a href="{% url 'live_room_list' %}" 
+       class="nav-item {% if '/live' in request.path %}active{% endif %}" 
+       title="Live Class">
+        <i class="fas fa-video"></i>
+        <span class="nav-label">Live</span>
+    </a>
+    
+    <!-- 3. CBT Exam -->
+    <a href="{% url 'cbt_exams' %}" 
+       class="nav-item {% if '/cbt' in request.path %}active{% endif %}" 
+       title="CBT Exam">
+        <i class="fas fa-file-alt"></i>
+        <span class="nav-label">CBT</span>
+    </a>
+    
+    <!-- 4. Discussion Room -->
+    <a href="{% url 'chat_room' %}" 
+       class="nav-item {% if '/chat' in request.path %}active{% endif %}" 
+       title="Discussion Room">
+        <i class="fas fa-comments"></i>
+        <span class="nav-label">Discuss</span>
+    </a>
+
+</nav>  
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Tap animation only - no scroll hide/show
+    var navItems = document.querySelectorAll('.nav-item');
+    
+    navItems.forEach(function(item) {
+      item.addEventListener('click', function(e) {
+        // Allow the click to go through, just add a small visual feedback
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          this.style.transform = '';
+        }, 150);
+      });
+    });
+  });
+</script>
+
+</body>  
+</html>

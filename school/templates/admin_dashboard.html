@@ -1,0 +1,503 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <title>awaClass | Admin Dashboard</title>
+  <style>
+    :root{
+      --ad-bg:#fafafa; --ad-surface:#efefef; --ad-text:#262626; --ad-muted:#737373;
+      --ad-primary:#0095f6; --ad-primary-dk:#0074cc; --ad-primary-lt:#e8f4fd;
+      --ad-ok:#16a34a; --ad-ok-bg:#f0fdf4; --ad-bad:#dc2626; --ad-bad-bg:#fef2f2; --ad-warn:#d97706; --ad-warn-bg:#fffbeb;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:var(--ad-text);line-height:1.5;overflow-x:hidden}
+    button,input,select,textarea{font:inherit;color:inherit;border:0}
+    .ad-wrap{max-width:1180px;margin:0 auto;padding:20px 16px 90px}
+    @media(min-width:768px){.ad-wrap{padding-left:66px}}
+
+    .ad-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .ad-head h1{font-size:22px;font-weight:800;letter-spacing:-.3px}
+    .ad-head p{font-size:13px;color:var(--ad-muted)}
+    .ad-head-actions{display:flex;flex-wrap:wrap;gap:8px}
+
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 15px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;background:var(--ad-surface);transition:background .15s}
+    .btn:hover{background:#e4e4e4}
+    .btn-primary{background:var(--ad-primary);color:#fff}.btn-primary:hover{background:var(--ad-primary-dk)}
+    .btn-danger{background:var(--ad-bad-bg);color:var(--ad-bad)}.btn-danger:hover{background:#fee2e2}
+    .btn-sm{min-height:32px;padding:0 10px;font-size:12px;border-radius:8px}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+    @media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
+    .stat{background:var(--ad-bg);border-radius:12px;padding:14px}
+    .stat b{display:block;font-size:24px;font-weight:800;line-height:1.1}
+    .stat span{font-size:12px;color:var(--ad-muted);font-weight:600}
+
+    .tabs{display:flex;gap:4px;background:var(--ad-surface);border-radius:12px;padding:4px;margin-bottom:14px;overflow-x:auto}
+    .tab{flex:1 0 auto;min-height:40px;padding:0 16px;border-radius:9px;background:transparent;color:var(--ad-muted);font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+    .tab[aria-selected=true]{background:#fff;color:var(--ad-primary-dk)}
+    .panel[hidden]{display:none}
+
+    .card{background:var(--ad-bg);border-radius:14px;padding:16px;margin-bottom:14px}
+    .card h2{font-size:15px;font-weight:800;margin-bottom:12px}
+    .grid2{display:grid;gap:14px}
+    @media(min-width:900px){.grid2{grid-template-columns:1fr 1fr}}
+
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+    .input,.select,.textarea{background:var(--ad-surface);border-radius:10px;padding:9px 12px;font-size:14px;min-height:40px;width:100%}
+    .input:focus,.select:focus,.textarea:focus{outline:2px solid var(--ad-primary)}
+    .toolbar .input{flex:1 1 220px;width:auto}
+    .toolbar .select{flex:0 1 150px;width:auto}
+    .bulk{display:none;align-items:center;gap:8px;flex-wrap:wrap;background:var(--ad-primary-lt);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px;font-weight:700}
+    .bulk.show{display:flex}
+
+    .tbl-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ad-muted);padding:8px 10px;white-space:nowrap}
+    td{padding:10px;vertical-align:middle;background:#fff}
+    tbody tr{border-bottom:6px solid var(--ad-bg)}
+    td:first-child{border-radius:10px 0 0 10px}td:last-child{border-radius:0 10px 10px 0}
+    .who{display:flex;align-items:center;gap:10px;min-width:190px}
+    .who img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--ad-surface);flex:none}
+    .who b{display:block;font-size:13px}.who small{color:var(--ad-muted);font-size:12px}
+    .pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
+    .pill.ok{background:var(--ad-ok-bg);color:var(--ad-ok)}.pill.off{background:var(--ad-bad-bg);color:var(--ad-bad)}
+    .row-actions{display:flex;gap:4px;flex-wrap:nowrap}
+    .icon-btn{width:32px;height:32px;border-radius:8px;background:var(--ad-surface);cursor:pointer;color:var(--ad-text);display:grid;place-items:center;font-size:13px}
+    .icon-btn:hover{background:var(--ad-primary-lt);color:var(--ad-primary-dk)}
+    .icon-btn.del:hover{background:var(--ad-bad-bg);color:var(--ad-bad)}
+    a.icon-btn{text-decoration:none}
+    .who a{color:inherit;text-decoration:none}.who a:hover{color:var(--ad-primary-dk);text-decoration:underline}
+    input[type=checkbox]{width:16px;height:16px;accent-color:var(--ad-primary)}
+    .empty{text-align:center;padding:30px;color:var(--ad-muted);font-size:14px}
+    .pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:13px;color:var(--ad-muted)}
+
+    .bar-row{margin-bottom:10px}
+    .bar-top{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:4px}
+    .bar{height:8px;background:var(--ad-surface);border-radius:99px;overflow:hidden}
+    .bar span{display:block;height:100%;background:var(--ad-primary);border-radius:99px}
+    .mini{display:flex;align-items:center;gap:10px;padding:8px 0}
+    .mini img{width:34px;height:34px;border-radius:50%;object-fit:cover}
+    .mini div{flex:1;min-width:0;font-size:13px;font-weight:700}.mini small{display:block;color:var(--ad-muted);font-weight:500}
+
+    .modal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center}
+    .modal.open{display:flex}
+    @media(min-width:640px){.modal{align-items:center;padding:20px}}
+    .sheet{background:#fff;width:100%;max-width:640px;max-height:92vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;overflow:hidden}
+    @media(min-width:640px){.sheet{border-radius:18px}}
+    .sheet-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px}
+    .sheet-h h2{font-size:17px}
+    .sheet-b{padding:4px 18px 16px;overflow-y:auto;flex:1}
+    .sheet-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;background:var(--ad-bg)}
+    .x{width:36px;height:36px;border-radius:50%;background:var(--ad-surface);cursor:pointer}
+    .alert{border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:10px}
+    .alert:empty{display:none}.alert.err{background:var(--ad-bad-bg);color:var(--ad-bad)}.alert.ok{background:var(--ad-ok-bg);color:var(--ad-ok)}
+    .form{display:grid;gap:12px}
+    .two{display:grid;gap:12px}@media(min-width:520px){.two{grid-template-columns:1fr 1fr}}
+    .field label{display:block;font-size:12px;font-weight:700;margin-bottom:4px}
+    .hint{font-size:11px;color:var(--ad-muted);margin-top:3px}
+    .sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ad-muted);margin-top:6px}
+    .checks{display:grid;gap:6px;grid-template-columns:1fr}
+    @media(min-width:480px){.checks{grid-template-columns:1fr 1fr}}
+    .check{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;background:var(--ad-surface);font-size:13px;font-weight:600;cursor:pointer}
+    .check:has(input:checked){background:var(--ad-primary-lt);color:var(--ad-primary-dk)}
+    .photo{display:flex;align-items:center;gap:12px}.photo img{width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--ad-surface)}
+    .cred{background:var(--ad-bg);border-radius:10px;padding:12px;font-family:ui-monospace,Menlo,monospace;font-size:14px;margin:8px 0;overflow-wrap:anywhere}
+    .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#262626;color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:3000;opacity:0;pointer-events:none;transition:opacity .2s}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+{% include 'sidebar.html' %}
+
+<div class="ad-wrap">
+  <div class="ad-head">
+    <div><h1>Admin Dashboard</h1><p>Manage students, results and content</p></div>
+    <div class="ad-head-actions">
+      <button class="btn btn-primary" id="btnAdd"><i class="fa-solid fa-user-plus"></i> Add student</button>
+      <button class="btn" id="btnImport"><i class="fa-solid fa-file-import"></i> Import CSV</button>
+      <a class="btn" href="/dashboard/api/students/export/"><i class="fa-solid fa-file-export"></i> Export CSV</a>
+      {% if user.is_superuser %}<a class="btn" href="/admin/"><i class="fa-solid fa-gear"></i> Django admin</a>{% endif %}
+    </div>
+  </div>
+
+  <section class="stats" aria-label="Summary">
+    <div class="stat"><b>{{ stats.total }}</b><span>Students</span></div>
+    <div class="stat"><b>{{ stats.active }}</b><span>Active · {{ stats.inactive }} inactive</span></div>
+    <div class="stat"><b>{{ stats.week }}</b><span>Joined this week</span></div>
+    <div class="stat"><b>{{ stats.exams }}</b><span>CBT exams · avg {{ stats.avg }}%</span></div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="students">Students</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="overview">Overview</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="content">Content</button>
+  </div>
+
+  <!-- ══ STUDENTS ══ -->
+  <section class="panel" id="panel-students">
+    <div class="card">
+      <div class="toolbar">
+        <input class="input" id="fQ" type="search" placeholder="Search name, username, email, school, phone…">
+        <select class="select" id="fClass"><option value="">All classes</option>{% for c in class_levels %}<option>{{ c }}</option>{% endfor %}</select>
+        <select class="select" id="fStatus"><option value="">All status</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        <select class="select" id="fSort"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="name">Name A–Z</option><option value="points">Top points</option></select>
+      </div>
+      <div class="bulk" id="bulk">
+        <span id="bulkCount">0 selected</span>
+        <button class="btn btn-sm" data-bulk="activate">Activate</button>
+        <button class="btn btn-sm" data-bulk="deactivate">Deactivate</button>
+        <button class="btn btn-sm btn-danger" data-bulk="delete">Delete</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:30px"><input type="checkbox" id="chkAll" aria-label="Select all"></th>
+            <th>Student</th><th>Admission No.</th><th>Class</th><th>School</th><th>Points</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager"><span id="pagerInfo"></span><div style="display:flex;gap:6px"><button class="btn btn-sm" id="prev">← Prev</button><button class="btn btn-sm" id="next">Next →</button></div></div>
+    </div>
+  </section>
+
+  <!-- ══ OVERVIEW ══ -->
+  <section class="panel" id="panel-overview" hidden>
+    <div class="grid2">
+      <div class="card"><h2>Students per class</h2>
+        {% for c in class_dist %}<div class="bar-row"><div class="bar-top"><span>{{ c.label }}</span><span>{{ c.n }}</span></div><div class="bar"><span style="width:{{ c.pct }}%"></span></div></div>
+        {% empty %}<p class="empty">No students yet.</p>{% endfor %}
+      </div>
+      <div class="card"><h2>Platform</h2>
+        <div class="mini"><div>{{ stats.questions }}<small>Discussion questions</small></div></div>
+        <div class="mini"><div>{{ stats.live }}<small>Live classes running now</small></div></div>
+      </div>
+      <div class="card"><h2>Top students</h2>
+        {% for s in top_students %}<div class="mini"><img src="{{ s.picture }}" alt=""><div>{{ s.name }}<small>@{{ s.username }}</small></div><b>{{ s.points }} pts</b></div>
+        {% empty %}<p class="empty">No exam activity yet.</p>{% endfor %}
+      </div>
+      <div class="card"><h2>Recent registrations</h2>
+        {% for s in recent_students %}<div class="mini"><img src="{{ s.picture }}" alt=""><div>{{ s.name }}<small>@{{ s.username }}</small></div><small>{{ s.joined }}</small></div>
+        {% empty %}<p class="empty">No students yet.</p>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CONTENT ══ -->
+  <section class="panel" id="panel-content" hidden>
+    <div class="card">
+      <div class="toolbar">
+        <input type="hidden" id="cType" value="questions">
+        <input class="input" id="cQ" type="search" placeholder="Search discussion questions…">
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>Title</th><th>Subject</th><th>Author</th><th>Activity</th><th>Date</th><th></th></tr></thead><tbody id="cRows"></tbody></table></div>
+    </div>
+  </section>
+</div>
+
+<!-- ══ ADD / EDIT STUDENT ══ -->
+<div class="modal" id="mForm"><div class="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-h"><h2 id="fTitle">Add student</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-b">
+    <div class="alert" id="fMsg"></div>
+    <form id="sForm" class="form" enctype="multipart/form-data" novalidate>
+      <input type="hidden" id="sId">
+      <input type="hidden" name="subjects_sent" value="1">
+      <div class="photo"><img id="sPhotoPrev" src="" alt=""><div><input type="file" name="image" id="sPhoto" accept="image/jpeg,image/png,image/webp,image/gif"><p class="hint">JPG, PNG, WEBP or GIF · max 5 MB</p></div></div>
+      <div class="sec">Account</div>
+      <div class="two">
+        <div class="field"><label>Username <span style="font-weight:400;color:#8e8e8e">(optional)</span></label><input class="input" name="username" id="sUsername" autocomplete="off"><p class="hint">Leave blank — the student's Admission No is used as the username.</p></div>
+        <div class="field"><label>Email *</label><input class="input" type="email" name="email" id="sEmail" autocomplete="off"></div>
+        <div class="field"><label>First name *</label><input class="input" name="fname" id="sFname"></div>
+        <div class="field"><label>Last name *</label><input class="input" name="lname" id="sLname"></div>
+        <div class="field"><label id="pwLabel">Password</label><input class="input" type="text" name="password" id="sPassword" autocomplete="new-password"><p class="hint" id="pwHint">Leave blank to auto-generate.</p></div>
+        <div class="field"><label>Account status</label><select class="select" name="is_active" id="sActive"><option value="1">Active</option><option value="0">Inactive (cannot log in)</option></select></div>
+      </div>
+      <div class="sec">Academic</div>
+      <div class="two">
+        <div class="field"><label>Class</label><select class="select" name="class_level" id="sClass"><option value="">Select</option>{% for c in class_levels %}<option>{{ c }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Specialization</label><select class="select" name="specialization" id="sSpec"><option value="">Select</option>{% for s in specializations %}<option>{{ s }}</option>{% endfor %}</select></div>
+        <div class="field"><label>School</label><input class="input" name="school" id="sSchool"></div>
+        <div class="field"><label>Future career</label><input class="input" name="career_goal" id="sCareer"></div>
+      </div>
+      <div class="sec">Subjects <span id="subjCount" class="hint"></span></div>
+      <div class="checks" id="subjBox">{% for s in subjects %}<label class="check"><input type="checkbox" name="subjects" value="{{ s }}"><span>{{ s }}</span></label>{% endfor %}</div>
+      <div class="sec">Personal</div>
+      <div class="two">
+        <div class="field"><label>Gender</label><select class="select" name="gender" id="sGender"><option value="">Select</option>{% for g in gender_choices %}<option>{{ g }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Date of birth</label><input class="input" type="date" name="date_of_birth" id="sDob"></div>
+        <div class="field"><label>Phone</label><input class="input" type="tel" name="phone" id="sPhone"></div>
+        <div class="field"><label>Location</label><input class="input" name="location" id="sLocation" placeholder="City, State"></div>
+      </div>
+      <div class="field"><label>Address</label><input class="input" name="address" id="sAddress"></div>
+      <div class="field"><label>About</label><textarea class="textarea" name="bio" id="sBio" maxlength="300" rows="2"></textarea></div>
+    </form>
+  </div>
+  <div class="sheet-f"><button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="fSave">Save student</button></div>
+</div></div>
+
+<!-- ══ RESULTS ══ -->
+<div class="modal" id="mResults"><div class="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-h"><h2 id="rTitle">Exam results</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-b"><div class="tbl-wrap"><table><thead><tr><th>Subject</th><th>Score</th><th>Grade</th><th>Time</th><th>Date</th><th></th></tr></thead><tbody id="rRows"></tbody></table></div></div>
+  <div class="sheet-f"><button class="btn btn-danger" id="rClear">Clear all results</button><button class="btn" data-close>Close</button></div>
+</div></div>
+
+<!-- ══ IMPORT ══ -->
+<div class="modal" id="mImport"><div class="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-h"><h2>Import students from CSV</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-b">
+    <div class="alert" id="iMsg"></div>
+    <p class="hint" style="margin-bottom:10px">Required columns: <b>email, first_name, last_name</b>.<br>Optional: username (blank = Admission No), class_level, school, gender, phone, specialization, career_goal, subjects (separate with ;), password (blank = auto-generated). Max 500 rows.</p>
+    <input type="file" id="iFile" accept=".csv,text/csv">
+    <div id="iResult" style="margin-top:12px"></div>
+  </div>
+  <div class="sheet-f"><button class="btn" data-close>Close</button><button class="btn btn-primary" id="iGo">Import</button></div>
+</div></div>
+
+<!-- ══ CHANGE PASSWORD ══ -->
+<div class="modal" id="mPass"><div class="sheet" style="max-width:440px" role="dialog" aria-modal="true">
+  <div class="sheet-h"><h2 id="pTitle">Change password</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-b">
+    <div class="alert" id="pMsg"></div>
+    <div class="field"><label for="pNew">New password</label>
+      <input class="input" type="text" id="pNew" autocomplete="new-password" minlength="6" maxlength="128" placeholder="At least 6 characters">
+      <p class="hint">Leave blank to generate a random password. The student's current password stops working immediately.</p>
+    </div>
+    <button type="button" class="btn" id="pGen" style="margin-top:10px"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate random</button>
+  </div>
+  <div class="sheet-f"><button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="pSave">Set password</button></div>
+</div></div>
+
+<!-- ══ CREDENTIALS ══ -->
+<div class="modal" id="mCred"><div class="sheet" style="max-width:440px" role="dialog" aria-modal="true">
+  <div class="sheet-h"><h2 id="cTitle">Login details</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-b"><p class="hint">Copy these now — the password is not stored in readable form and won't be shown again.</p><div class="cred" id="cBody"></div></div>
+  <div class="sheet-f"><button class="btn" id="cCopy">Copy</button><button class="btn btn-primary" data-close>Done</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var $=function(s,c){return(c||document).querySelector(s)}, $$=function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))};
+  var CSRF=$('meta[name=csrf-token]').content, API='/dashboard/api/';
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function toast(t){var el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){el.classList.remove('show')},2400)}
+  function call(path,opts){
+    opts=opts||{};var o={method:opts.method||'GET',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':CSRF}};
+    if(opts.body)o.body=opts.body;
+    return fetch(API+path,o).then(function(r){return r.json().catch(function(){return{ok:false,error:'Unexpected server response.'}})}).catch(function(){return{ok:false,error:'Network problem. Try again.'}});
+  }
+  function post(path,obj){var fd=new FormData();Object.keys(obj||{}).forEach(function(k){[].concat(obj[k]).forEach(function(v){fd.append(k,v)})});return call(path,{method:'POST',body:fd})}
+  function open(id){$(id).classList.add('open')} function closeAll(){$$('.modal.open').forEach(function(m){m.classList.remove('open')})}
+  document.addEventListener('click',function(e){if(e.target.closest('[data-close]')||e.target.classList.contains('modal'))closeAll()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAll()});
+
+  /* tabs */
+  $$('.tab').forEach(function(t){t.addEventListener('click',function(){
+    $$('.tab').forEach(function(x){x.setAttribute('aria-selected',x===t)});
+    $$('.panel').forEach(function(p){p.hidden=p.id!=='panel-'+t.dataset.tab});
+    if(t.dataset.tab==='content')loadContent();
+  })});
+
+  /* ── students list ── */
+  var PROFILE_URL="{% url 'profile' 'USERNAME' %}";
+  function profileUrl(u){return PROFILE_URL.replace('USERNAME',encodeURIComponent(u))}
+  var st={page:1,pages:1},rows={},selected={},debounce;
+  function params(){return new URLSearchParams({q:$('#fQ').value,class:$('#fClass').value,status:$('#fStatus').value,sort:$('#fSort').value,page:st.page}).toString()}
+  function load(){
+    call('students/?'+params()).then(function(d){
+      var body=$('#rows');
+      if(!d.ok){body.innerHTML='<tr><td colspan="8" class="empty">'+esc(d.error)+'</td></tr>';return}
+      st.pages=d.pages;rows={};
+      if(!d.students.length){body.innerHTML='<tr><td colspan="8" class="empty">No students found.</td></tr>'}
+      else body.innerHTML=d.students.map(function(s){rows[s.id]=s;return(
+        '<tr data-id="'+s.id+'"><td><input type="checkbox" class="chk" '+(selected[s.id]?'checked':'')+'></td>'+
+        '<td><div class="who"><img src="'+esc(s.picture)+'" alt=""><div><b><a href="'+profileUrl(s.username)+'" target="_blank" rel="noopener">'+esc(s.full_name)+'</a></b><small>@'+esc(s.username)+' · '+esc(s.email)+'</small></div></div></td>'+
+        '<td>'+esc(s.admission_number)+'</td><td>'+esc(s.class_level||'—')+'</td><td>'+esc(s.school||'—')+'</td>'+
+        '<td><b>'+s.points+'</b> <small style="color:#737373">· '+s.exams+' exam'+(s.exams===1?'':'s')+'</small></td>'+
+        '<td><span class="pill '+(s.is_active?'ok':'off')+'">'+(s.is_active?'Active':'Inactive')+'</span></td>'+
+        '<td><div class="row-actions">'+
+          '<a class="icon-btn" href="'+profileUrl(s.username)+'" target="_blank" rel="noopener" title="View profile"><i class="fa-solid fa-user"></i></a>'+
+          '<button class="icon-btn" data-act="edit" title="Edit"><i class="fa-solid fa-pen"></i></button>'+
+          '<button class="icon-btn" data-act="results" title="Results"><i class="fa-solid fa-chart-line"></i></button>'+
+          '<button class="icon-btn" data-act="reset" title="Change password"><i class="fa-solid fa-key"></i></button>'+
+          '<button class="icon-btn" data-act="toggle" title="'+(s.is_active?'Deactivate':'Activate')+'"><i class="fa-solid '+(s.is_active?'fa-user-slash':'fa-user-check')+'"></i></button>'+
+          '<button class="icon-btn del" data-act="delete" title="Delete"><i class="fa-solid fa-trash"></i></button>'+
+        '</div></td></tr>')}).join('');
+      $('#pagerInfo').textContent=d.count+' student'+(d.count===1?'':'s')+' · page '+d.page+' of '+d.pages;
+      $('#prev').disabled=d.page<=1;$('#next').disabled=d.page>=d.pages;
+      $('#chkAll').checked=false;updateBulk();
+    });
+  }
+  function reload(resetPage){if(resetPage)st.page=1;load()}
+  ['fClass','fStatus','fSort'].forEach(function(id){$('#'+id).addEventListener('change',function(){reload(true)})});
+  $('#fQ').addEventListener('input',function(){clearTimeout(debounce);debounce=setTimeout(function(){reload(true)},300)});
+  $('#prev').addEventListener('click',function(){if(st.page>1){st.page--;load()}});
+  $('#next').addEventListener('click',function(){if(st.page<st.pages){st.page++;load()}});
+
+  /* selection + bulk */
+  function updateBulk(){var n=Object.keys(selected).filter(function(k){return selected[k]}).length;$('#bulk').classList.toggle('show',n>0);$('#bulkCount').textContent=n+' selected'}
+  $('#chkAll').addEventListener('change',function(e){$$('.chk').forEach(function(c){c.checked=e.target.checked;selected[c.closest('tr').dataset.id]=e.target.checked});updateBulk()});
+  $('#rows').addEventListener('change',function(e){if(e.target.classList.contains('chk')){selected[e.target.closest('tr').dataset.id]=e.target.checked;updateBulk()}});
+  $('#bulk').addEventListener('click',function(e){
+    var b=e.target.closest('[data-bulk]');if(!b)return;
+    var ids=Object.keys(selected).filter(function(k){return selected[k]});
+    if(b.dataset.bulk==='delete'&&!confirm('Permanently delete '+ids.length+' student(s) and all their data?'))return;
+    post('students/bulk/',{action:b.dataset.bulk,ids:ids}).then(function(d){
+      if(!d.ok)return toast(d.error);
+      selected={};toast(d.done+' updated'+(d.skipped?', '+d.skipped+' skipped':''));reload();
+    });
+  });
+
+  /* row actions */
+  $('#rows').addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]');if(!b)return;
+    var id=b.closest('tr').dataset.id,s=rows[id];
+    switch(b.dataset.act){
+      case'edit':openForm(s);break;
+      case'results':openResults(s);break;
+      case'reset':openPass(id,s);break;
+      case'toggle':post('students/'+id+'/toggle/').then(function(d){d.ok?(toast(d.is_active?'Account activated':'Account deactivated'),load()):toast(d.error)});break;
+      case'delete':if(confirm('Permanently delete '+s.full_name+' (@'+s.username+') and all their results? This cannot be undone.'))post('students/'+id+'/delete/').then(function(d){d.ok?(toast('Student deleted'),load()):toast(d.error)});break;
+    }
+  });
+
+  /* ── change password ── */
+  var passId=null;
+  function openPass(id,s){
+    passId=id;$('#pTitle').textContent='Change password — '+s.full_name;
+    $('#pNew').value='';$('#pMsg').textContent='';$('#pMsg').className='alert';
+    open('#mPass');setTimeout(function(){$('#pNew').focus()},50);
+  }
+  function randomPass(){
+    var a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',o='',b=new Uint32Array(10);
+    (window.crypto||window.msCrypto).getRandomValues(b);
+    for(var i=0;i<b.length;i++)o+=a[b[i]%a.length];
+    return o;
+  }
+  $('#pGen').addEventListener('click',function(){$('#pNew').value=randomPass()});
+  $('#pSave').addEventListener('click',function(){
+    var pw=$('#pNew').value,msg=$('#pMsg');
+    if(pw&&pw.length<6){msg.textContent='Password must be at least 6 characters.';msg.className='alert err';return}
+    var btn=this;btn.disabled=true;
+    post('students/'+passId+'/reset-password/',pw?{password:pw}:{}).then(function(d){
+      btn.disabled=false;
+      if(!d.ok){msg.textContent=d.error;msg.className='alert err';return}
+      closeAll();showCred('Password changed',d.username,d.password);
+    });
+  });
+  $('#pNew').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('#pSave').click()}});
+
+  /* ── add / edit form ── */
+  var form=$('#sForm'),DEFAULT_PIC='';
+  function setVal(id,v){$(id).value=v||''}
+  function openForm(s){
+    form.reset();$('#fMsg').textContent='';$('#fMsg').className='alert';
+    $('#sId').value=s?s.id:'';$('#fTitle').textContent=s?'Edit '+s.full_name:'Add student';
+    $('#pwLabel').textContent=s?'New password':'Password';$('#pwHint').textContent=s?'Leave blank to keep the current password.':'Leave blank to auto-generate.';
+    $('#sPhotoPrev').src=s?s.picture:'';$('#sPhotoPrev').style.visibility=s?'visible':'hidden';
+    if(s){
+      setVal('#sUsername',s.username);setVal('#sEmail',s.email);setVal('#sFname',s.first_name);setVal('#sLname',s.last_name);
+      setVal('#sClass',(s.class_level||'').slice(0,3));setVal('#sSpec',s.specialization);setVal('#sSchool',s.school);setVal('#sCareer',s.career_goal);
+      setVal('#sGender',s.gender);setVal('#sDob',s.date_of_birth);setVal('#sPhone',s.phone);setVal('#sLocation',s.location);setVal('#sAddress',s.address);setVal('#sBio',s.bio);
+      $('#sActive').value=s.is_active?'1':'0';
+      $$('input[name=subjects]').forEach(function(c){c.checked=s.subjects.indexOf(c.value)>-1});
+    }
+    countSubj();open('#mForm');$('#sUsername').focus();
+  }
+  function countSubj(){var n=$$('input[name=subjects]:checked').length;$('#subjCount').textContent='· '+n+' selected'}
+  $('#subjBox').addEventListener('change',countSubj);
+  $('#btnAdd').addEventListener('click',function(){openForm(null)});
+  $('#sPhoto').addEventListener('change',function(){var f=this.files[0];if(f){$('#sPhotoPrev').src=URL.createObjectURL(f);$('#sPhotoPrev').style.visibility='visible'}});
+  $('#fSave').addEventListener('click',function(){
+    var btn=this,id=$('#sId').value,msg=$('#fMsg');
+    btn.disabled=true;
+    call(id?'students/'+id+'/update/':'students/create/',{method:'POST',body:new FormData(form)}).then(function(d){
+      btn.disabled=false;
+      if(!d.ok){msg.textContent=d.error;msg.className='alert err';$('#mForm .sheet-b').scrollTop=0;return}
+      closeAll();load();
+      if(!id&&(d.generated||d.username_generated))showCred('Student created',d.username,d.password,d.admission_number);else toast(id?'Student updated':'Student created');
+    });
+  });
+
+  /* credentials */
+  var credText='';
+  function showCred(title,u,p,adm){credText=(adm?'Admission No: '+adm+'\n':'')+'Username: '+u+'\nPassword: '+p;$('#cTitle').textContent=title;$('#cBody').innerHTML=(adm?'Admission No: <b>'+esc(adm)+'</b><br>':'')+'Username: <b>'+esc(u)+'</b><br>Password: <b>'+esc(p)+'</b>';open('#mCred')}
+  $('#cCopy').addEventListener('click',function(){navigator.clipboard&&navigator.clipboard.writeText(credText).then(function(){toast('Copied')})});
+
+  /* ── results ── */
+  var resultsFor=null;
+  function openResults(s){
+    resultsFor=s;$('#rTitle').textContent=s.full_name+' — exam results';$('#rRows').innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';open('#mResults');loadResults();
+  }
+  function loadResults(){
+    call('students/'+resultsFor.id+'/results/').then(function(d){
+      if(!d.ok){$('#rRows').innerHTML='<tr><td colspan="6" class="empty">'+esc(d.error)+'</td></tr>';return}
+      $('#rRows').innerHTML=d.exams.length?d.exams.map(function(x){return'<tr data-id="'+x.id+'"><td>'+esc(x.subject)+'</td><td><b>'+x.score+'</b>/'+x.total+' ('+x.percentage+'%)</td><td>'+esc(x.grade)+'</td><td>'+esc(x.time)+'</td><td>'+esc(x.date)+'</td><td><button class="icon-btn del" data-exam title="Delete result"><i class="fa-solid fa-trash"></i></button></td></tr>'}).join(''):'<tr><td colspan="6" class="empty">No exams taken.</td></tr>';
+    });
+  }
+  $('#rRows').addEventListener('click',function(e){
+    var b=e.target.closest('[data-exam]');if(!b)return;
+    if(!confirm('Delete this result? Points will be recalculated.'))return;
+    post('exams/'+b.closest('tr').dataset.id+'/delete/').then(function(d){d.ok?(toast('Result deleted'),loadResults(),load()):toast(d.error)});
+  });
+  $('#rClear').addEventListener('click',function(){
+    if(!confirm('Delete ALL exam results for '+resultsFor.full_name+'?'))return;
+    post('students/'+resultsFor.id+'/clear-results/').then(function(d){d.ok?(toast(d.deleted+' results removed'),loadResults(),load()):toast(d.error)});
+  });
+
+  /* ── import ── */
+  $('#btnImport').addEventListener('click',function(){$('#iMsg').textContent='';$('#iMsg').className='alert';$('#iResult').innerHTML='';$('#iFile').value='';open('#mImport')});
+  $('#iGo').addEventListener('click',function(){
+    var f=$('#iFile').files[0],msg=$('#iMsg');
+    if(!f){msg.textContent='Choose a CSV file first.';msg.className='alert err';return}
+    var fd=new FormData();fd.append('file',f);this.disabled=true;var btn=this;
+    call('students/import/',{method:'POST',body:fd}).then(function(d){
+      btn.disabled=false;
+      if(!d.ok){msg.textContent=d.error;msg.className='alert err';return}
+      msg.textContent=d.created.length+' student(s) imported'+(d.errors.length?', '+d.errors.length+' problem(s).':'.');msg.className='alert '+(d.created.length?'ok':'err');
+      var h='';
+      if(d.errors.length)h+='<p class="sec">Problems</p><ul style="font-size:12px;color:#dc2626;padding-left:18px;margin-top:6px">'+d.errors.map(function(x){return'<li>'+esc(x)+'</li>'}).join('')+'</ul>';
+      if(d.created.length)h+='<p style="margin-top:10px"><button class="btn btn-sm" id="dlCreds"><i class="fa-solid fa-download"></i> Download login details (CSV)</button></p>';
+      $('#iResult').innerHTML=h;
+      if(d.created.length){
+        $('#dlCreds').addEventListener('click',function(){
+          var csv='username,password\n'+d.created.map(function(c){return c.username+','+c.password}).join('\n');
+          var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='new-student-logins.csv';a.click();
+        });
+        load();
+      }
+    });
+  });
+
+  /* ── content ── */
+  function loadContent(){
+    var type=$('#cType').value;
+    call('content/?type='+type+'&q='+encodeURIComponent($('#cQ').value)).then(function(d){
+      $('#cRows').innerHTML=d.ok&&d.items.length?d.items.map(function(i){return'<tr data-id="'+esc(i.id)+'"><td><b>'+esc(i.title)+'</b></td><td>'+esc(i.subject||'—')+'</td><td>@'+esc(i.author)+'</td><td>'+esc(i.meta)+'</td><td>'+esc(i.date)+'</td><td><button class="icon-btn del" data-del title="Delete"><i class="fa-solid fa-trash"></i></button></td></tr>'}).join(''):'<tr><td colspan="6" class="empty">Nothing found.</td></tr>';
+    });
+  }
+  $('#cType').addEventListener('change',loadContent);
+  var cDeb;$('#cQ').addEventListener('input',function(){clearTimeout(cDeb);cDeb=setTimeout(loadContent,300)});
+  $('#cRows').addEventListener('click',function(e){
+    var b=e.target.closest('[data-del]');if(!b)return;
+    if(!confirm('Delete this item permanently?'))return;
+    post('content/delete/',{type:$('#cType').value,id:b.closest('tr').dataset.id}).then(function(d){d.ok?(toast('Deleted'),loadContent()):toast(d.error)});
+  });
+
+  load();
+})();
+</script>
+{% include 'footer.html' %}
+</body>
+</html>

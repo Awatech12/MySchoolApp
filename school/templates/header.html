@@ -1,0 +1,152 @@
+{% load static %}
+{% load pwa %}
+{% progressive_web_app_meta %}
+<script src="{% static 'js/pwa-install.js' %}" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+<style>
+  /* ===== TopMark Design Tokens ===== */
+  :root {
+    --ac-bg:        #fafafa;
+    --ac-white:      #ffffff;
+    --ac-text:       #262626;
+    --ac-text-light: #737373;
+    --ac-primary:    #0095f6;
+    --ac-primary-dk: #0074cc;
+    --ac-primary-lt: #e8f4fd;
+    --ac-border:     #dbdbdb;
+    --ac-shadow:     none;
+    --ac-font:       'Plus Jakarta Sans', -apple-system, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    font-family: var(--ac-font);
+    background-color: var(--ac-bg);
+    margin: 0;
+    padding-bottom: 64px;
+    color: var(--ac-text);
+    min-height: 100vh;
+  }
+
+  /* ===== Top Header ===== */
+  .ac-header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 58px;
+    background: var(--ac-white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    z-index: 1000;
+  }
+
+  /* Header spacer — pushes every page's content below the fixed header */
+  .ac-header-spacer {
+    height: 58px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  /* Logo wordmark */
+  .ac-header-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+  .ac-header-logo-mark {
+    width: 32px; height: 32px;
+    background: var(--ac-primary);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; color: #fff;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+  .ac-header-logo-text {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--ac-text);
+    letter-spacing: -0.5px;
+  }
+  .ac-header-logo-text span {
+    color: var(--ac-primary);
+  }
+
+  /* Icon group */
+  .ac-header-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ac-header-icon-btn {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--ac-text);
+    font-size: 18px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .ac-header-icon-btn:hover {
+    background: var(--ac-primary-lt);
+    color: var(--ac-primary);
+  }
+  .ac-header-icon-btn i {
+    line-height: 1;
+  }
+
+  /* Notification badge */
+  .ac-notif-badge {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: var(--ac-primary);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    min-width: 16px; height: 16px;
+    border-radius: 100px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+  }
+  .ac-notif-badge:empty { display: none; }
+
+  /* Profile avatar */
+  .ac-header-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+  }
+</style>
+
+<header class="ac-header">
+  <a href="{% url 'home' %}" class="ac-header-logo">
+    <div class="ac-header-logo-mark">T</div>
+    <span class="ac-header-logo-text">Top<span>Mark</span></span>
+  </a>
+
+  <div class="ac-header-icons">
+    <a href="{% url 'notifications' %}" class="ac-header-icon-btn" title="Notifications">
+      <i class="fa-regular fa-bell"></i>
+      {% if unread_count %}
+      <span class="ac-notif-badge">{{ unread_count }}</span>
+      {% endif %}
+    </a>
+    <a href="{% url 'profile' user.username %}" class="ac-header-icon-btn" title="Profile">
+      <img src="{{ user.profile.picture.url }}" alt="Profile" class="ac-header-avatar">
+    </a>
+  </div>
+</header>
+
+<!-- Spacer so page content always starts below the fixed header -->
+<div class="ac-header-spacer"></div>

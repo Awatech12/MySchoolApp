@@ -1,0 +1,1069 @@
+{% load humanize %}
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <title>awaClass | Discussion Room</title>
+    <style>
+        /* ============================================
+           CLEAN DESIGN — NO SHADOWS, NO LEFT BORDERS
+        ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            color: #262626;
+        }
+
+        .awaClass-chat-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px 100px;
+        }
+
+        @media (min-width: 768px) {
+            .awaClass-chat-container {
+                margin-left: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .awaClass-chat-container {
+                padding: 20px 16px;
+            }
+        }
+
+        /* Header */
+        .awaClass-chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #efefef;
+        }
+
+        .awaClass-chat-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 4px;
+            color: #262626;
+        }
+
+        .awaClass-chat-title p {
+            font-size: 14px;
+            color: #737373;
+            margin: 0;
+        }
+
+        .awaClass-new-post-btn {
+            background: #0095f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .awaClass-new-post-btn:hover {
+            background: #0074cc;
+        }
+
+        /* New Posts Banner */
+        .awa-new-posts-banner {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #0095f6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            border: none;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .awa-new-posts-banner.visible {
+            display: flex;
+        }
+
+        /* Search + Sort Bar */
+        .awa-control-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+
+        .awa-search-wrap {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .awa-search-wrap i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8e8e8e;
+            font-size: 13px;
+        }
+
+        .awa-search-input {
+            width: 100%;
+            padding: 9px 12px 9px 34px;
+            border: 1px solid #dbdbdb;
+            border-radius: 30px;
+            font-size: 13px;
+            background: white;
+        }
+
+        .awa-search-input:focus {
+            outline: none;
+            border-color: #0095f6;
+        }
+
+        .awa-sort-tabs {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .awa-sort-tab {
+            padding: 7px 14px;
+            border: 1px solid #dbdbdb;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: white;
+            color: #737373;
+        }
+
+        .awa-sort-tab.active,
+        .awa-sort-tab:hover {
+            background: #0095f6;
+            border-color: #0095f6;
+            color: white;
+        }
+
+        /* Filter Bar */
+        .awaClass-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px 14px;
+            background: #fafafa;
+            border: 1px solid #efefef;
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        .awaClass-filter-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #737373;
+            text-transform: uppercase;
+        }
+
+        .awa-subject-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .awa-chip {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #dbdbdb;
+            background: white;
+            color: #737373;
+        }
+
+        .awa-chip:hover {
+            border-color: #0095f6;
+            color: #0095f6;
+        }
+
+        .awa-chip.active {
+            background: #0095f6;
+            border-color: #0095f6;
+            color: white;
+        }
+
+        .awaClass-filter-select {
+            padding: 6px 12px;
+            border: 1px solid #dbdbdb;
+            border-radius: 20px;
+            background: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .awaClass-filter-clear {
+            color: #0095f6;
+            text-decoration: none;
+            font-size: 13px;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        /* Posts Grid */
+        .awaClass-posts-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Post Card — NO left border stripe */
+        .awaClass-post-card {
+            background: white;
+            border: 1px solid #efefef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .awaClass-post-resolved-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+
+        .badge-resolved {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-unresolved {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .awaClass-post-header {
+            padding: 14px 16px 8px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .awaClass-post-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #dbdbdb;
+            flex-shrink: 0;
+        }
+
+        .awaClass-post-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .awaClass-post-author {
+            font-weight: 600;
+            font-size: 14px;
+            color: #262626;
+            margin: 0 0 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .awaClass-post-time {
+            font-size: 12px;
+            color: #737373;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .awaClass-post-subject {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+
+        .subj-color-Mathematics { background: #dbeafe; color: #1d4ed8; }
+        .subj-color-Physics     { background: #ede9fe; color: #6d28d9; }
+        .subj-color-General     { background: #f3f4f6; color: #374151; }
+
+        .awaClass-post-title {
+            padding: 0 16px 0 20px;
+            margin: 0 0 6px;
+            font-size: 17px;
+            font-weight: 700;
+            color: #262626;
+            line-height: 1.35;
+        }
+
+        .awaClass-post-title a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .awaClass-post-title a:hover {
+            color: #0095f6;
+        }
+
+        .awaClass-post-content {
+            padding: 0 16px 10px 20px;
+            font-size: 14px;
+            color: #737373;
+            line-height: 1.55;
+        }
+
+        .awa-content-clamp {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .awa-content-clamp.expanded {
+            -webkit-line-clamp: unset;
+        }
+
+        .awa-expand-btn {
+            background: none;
+            border: none;
+            color: #0095f6;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0 0 8px 20px;
+            display: block;
+        }
+
+        .awaClass-post-image {
+            max-width: calc(100% - 36px);
+            max-height: 260px;
+            border-radius: 10px;
+            margin: 6px 0 6px 20px;
+            cursor: pointer;
+            border: 1px solid #efefef;
+        }
+
+        .awaClass-post-stats {
+            padding: 10px 16px 10px 20px;
+            display: flex;
+            gap: 18px;
+            font-size: 12px;
+            color: #737373;
+            align-items: center;
+            border-top: 1px solid #efefef;
+            border-bottom: 1px solid #efefef;
+            background: #fafafa;
+        }
+
+        .awaClass-post-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Actions Row */
+        .awaClass-post-actions {
+            padding: 8px 12px 8px 16px;
+            display: flex;
+            gap: 6px;
+            background: #ffffff;
+            flex-wrap: wrap;
+        }
+
+        .awaClass-action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            color: #737373;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            text-decoration: none;
+        }
+
+        .awaClass-action-btn:hover {
+            background: #fafafa;
+            color: #262626;
+        }
+
+        .awaClass-action-btn.liked {
+            color: #0095f6;
+        }
+
+        /* Lightbox */
+        .awa-lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .awa-lightbox.active {
+            display: flex;
+        }
+
+        .awa-lightbox img {
+            max-width: 92vw;
+            max-height: 90vh;
+            border-radius: 10px;
+        }
+
+        .awa-lightbox-close {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            font-size: 22px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Empty State */
+        .awaClass-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #737373;
+            border: 1px solid #efefef;
+            border-radius: 12px;
+            background: #ffffff;
+        }
+
+        .awaClass-empty i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        /* Modal */
+        .awaClass-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .awaClass-modal.active {
+            display: flex;
+        }
+
+        .awaClass-modal-content {
+            background: white;
+            border: 1px solid #efefef;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .awaClass-modal-header {
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #efefef;
+        }
+
+        .awaClass-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .awaClass-modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #8e8e8e;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .awaClass-modal-close:hover {
+            background: #efefef;
+        }
+
+        .awaClass-modal-body {
+            padding: 20px;
+        }
+
+        .awa-tips-box {
+            background: #e8f4fd;
+            border: 1px solid #cfe7fa;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #0074cc;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .awa-tips-box strong {
+            color: #0095f6;
+        }
+
+        .awaClass-form-group {
+            margin-bottom: 16px;
+        }
+
+        .awaClass-form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #737373;
+        }
+
+        .awaClass-form-group input,
+        .awaClass-form-group textarea,
+        .awaClass-form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dbdbdb;
+            border-radius: 10px;
+            font-size: 14px;
+            background: white;
+            font-family: inherit;
+        }
+
+        .awaClass-form-group input:focus,
+        .awaClass-form-group textarea:focus,
+        .awaClass-form-group select:focus {
+            outline: none;
+            border-color: #0095f6;
+        }
+
+        .awaClass-form-group textarea {
+            resize: vertical;
+            min-height: 110px;
+        }
+
+        .awa-char-counter {
+            font-size: 11px;
+            color: #8e8e8e;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .awa-char-counter.warn {
+            color: #ef4444;
+        }
+
+        .awaClass-image-preview {
+            max-width: 100%;
+            max-height: 180px;
+            margin-top: 8px;
+            border-radius: 8px;
+            display: none;
+            border: 1px solid #efefef;
+        }
+
+        .awaClass-modal-footer {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            border-top: 1px solid #efefef;
+        }
+
+        .awaClass-btn-primary {
+            background: #0095f6;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .awaClass-btn-primary:hover {
+            background: #0074cc;
+        }
+
+        .awaClass-btn-primary:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .awaClass-btn-secondary {
+            background: #efefef;
+            color: #737373;
+            border: 1px solid #dbdbdb;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* No results */
+        .awa-no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #737373;
+            display: none;
+        }
+
+        .awa-no-results i {
+            font-size: 36px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .awaClass-chat-container {
+                padding: 20px 16px;
+            }
+            .awaClass-chat-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .awaClass-new-post-btn {
+                justify-content: center;
+            }
+            .awa-sort-tabs {
+                overflow-x: auto;
+                padding-bottom: 4px;
+            }
+            .awaClass-post-title {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+{% include 'sidebar.html' %}
+
+<div class="awaClass-chat-container">
+
+    <!-- Page Header (Stats bar removed) -->
+    <div class="awaClass-chat-header">
+        <div class="awaClass-chat-title">
+            <h1><i class="fa-regular fa-comments"></i> Discussion Room</h1>
+            <p>Ask questions, help others, and learn together</p>
+        </div>
+        <button class="awaClass-new-post-btn" onclick="openNewPostModal()">
+            <i class="fa-solid fa-pen"></i> Ask a Question
+        </button>
+    </div>
+
+    <!-- New Posts Banner -->
+    <button class="awa-new-posts-banner" id="newPostsBanner" onclick="refreshPosts()">
+        <i class="fa-solid fa-arrow-up"></i>
+        <span id="newPostsBannerText">New posts available — tap to refresh</span>
+    </button>
+
+    <!-- Search + Sort -->
+    <div class="awa-control-bar">
+        <div class="awa-search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="awa-search-input" id="liveSearch" placeholder="Search questions…" autocomplete="off" oninput="liveSearchPosts(this.value)">
+        </div>
+        <div class="awa-sort-tabs">
+            <button class="awa-sort-tab {% if not current_sort or current_sort == 'latest' %}active{% endif %}" onclick="setSort('latest')">
+                <i class="fa-regular fa-clock"></i> Latest
+            </button>
+            <button class="awa-sort-tab {% if current_sort == 'popular' %}active{% endif %}" onclick="setSort('popular')">
+                <i class="fa-solid fa-fire"></i> Popular
+            </button>
+            <button class="awa-sort-tab {% if current_sort == 'unanswered' %}active{% endif %}" onclick="setSort('unanswered')">
+                <i class="fa-regular fa-question-circle"></i> Unanswered
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="awaClass-filter-bar">
+        <span class="awaClass-filter-label">Subject:</span>
+        <div class="awa-subject-chips">
+            <button class="awa-chip {% if not current_subject %}active{% endif %}" onclick="setSubject('')">All</button>
+            <button class="awa-chip {% if current_subject == 'Mathematics' %}active{% endif %}" onclick="setSubject('Mathematics')">Mathematics</button>
+            <button class="awa-chip {% if current_subject == 'Physics' %}active{% endif %}" onclick="setSubject('Physics')">Physics</button>
+        </div>
+        <select class="awaClass-filter-select" id="statusFilter" onchange="applyFilters()">
+            <option value="">All Status</option>
+            <option value="unresolved" {% if current_status == 'unresolved' %}selected{% endif %}>Unresolved</option>
+            <option value="resolved"   {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+        </select>
+        {% if current_subject or current_status %}
+        <a href="{% url 'chat_room' %}" class="awaClass-filter-clear">
+            Clear <i class="fa-solid fa-times"></i>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Posts Grid -->
+    <div class="awaClass-posts-grid" id="postsGrid">
+        {% for post in posts %}
+        <div class="awaClass-post-card"
+             data-subject="{{ post.subject|default:'General' }}"
+             data-title="{{ post.title|lower }}"
+             data-content="{{ post.content|lower|truncatewords:30 }}"
+             data-replies="{{ post.total_comments }}"
+             data-post-id="{{ post.post_id }}">
+
+            <div class="awaClass-post-header">
+                <img src="{{ post.author.profile.get_picture_url }}" alt="{{ post.author.username }}" class="awaClass-post-avatar">
+                <div class="awaClass-post-meta">
+                    <div class="awaClass-post-author">
+                        {{ post.author.get_full_name|default:post.author.username }}
+                        {% if post.is_resolved %}
+                        <span class="awaClass-post-resolved-badge badge-resolved"><i class="fa-solid fa-check"></i> Resolved</span>
+                        {% else %}
+                        <span class="awaClass-post-resolved-badge badge-unresolved"><i class="fa-solid fa-circle-question"></i> Open</span>
+                        {% endif %}
+                    </div>
+                    <div class="awaClass-post-time">
+                        <i class="fa-regular fa-clock"></i> {{ post.created_at|timesince }} ago
+                        {% if post.subject %}
+                        <span class="awaClass-post-subject subj-color-{{ post.subject }}">
+                            {{ post.subject }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="awaClass-post-title">
+                <a href="{% url 'chat_post_detail' post.post_id %}">{{ post.title }}</a>
+            </div>
+
+            <div class="awaClass-post-content">
+                <div class="awa-content-clamp" id="content-{{ post.post_id }}">{{ post.content }}</div>
+            </div>
+            <button class="awa-expand-btn" id="expand-btn-{{ post.post_id }}" onclick="toggleExpand('{{ post.post_id }}')">
+                Show more <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+            </button>
+
+            {% if post.image %}
+            <div>
+                <img src="{{ post.get_image_url }}" alt="Question image" class="awaClass-post-image" onclick="openLightbox(this.src)">
+            </div>
+            {% endif %}
+
+            <div class="awaClass-post-stats">
+                <span><i class="fa-regular fa-heart"></i> <b class="like-count-{{ post.post_id }}">{{ post.total_likes }}</b></span>
+                <span><i class="fa-regular fa-comment"></i> {{ post.total_comments }} repl{{ post.total_comments|pluralize:"y,ies" }}</span>
+                <span><i class="fa-regular fa-eye"></i> {{ post.view }}</span>
+                {% if post.last_activity != post.created_at %}
+                <span style="margin-left:auto; font-size:11px; color:#8e8e8e;">
+                    last reply {{ post.last_activity|timesince }} ago
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="awaClass-post-actions">
+                <a href="{% url 'chat_post_detail' post.post_id %}" class="awaClass-action-btn">
+                    <i class="fa-regular fa-comment-dots"></i> View Thread
+                </a>
+                <button class="awaClass-action-btn {% if request.user in post.like.all %}liked{% endif %} like-btn-{{ post.post_id }}"
+                        onclick="likePost('{{ post.post_id }}', this)">
+                    <i class="{% if request.user in post.like.all %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                    <span class="like-count-{{ post.post_id }}">{{ post.total_likes }}</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="awaClass-empty">
+            <i class="fa-regular fa-message"></i>
+            <p>No questions yet. Be the first to ask!</p>
+            <button class="awaClass-new-post-btn" onclick="openNewPostModal()" style="margin-top:20px;">
+                <i class="fa-solid fa-pen"></i> Ask a Question
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="awa-no-results" id="noResults">
+        <i class="fa-regular fa-face-frown-open"></i>
+        <p>No questions match your search.</p>
+        <button class="awaClass-new-post-btn" onclick="openNewPostModal()" style="margin-top:12px;">
+            <i class="fa-solid fa-pen"></i> Ask this Question
+        </button>
+    </div>
+</div>
+
+<!-- New Post Modal -->
+<div id="newPostModal" class="awaClass-modal">
+    <div class="awaClass-modal-content">
+        <div class="awaClass-modal-header">
+            <h3><i class="fa-solid fa-pen-to-square"></i> Ask a Question</h3>
+            <button class="awaClass-modal-close" onclick="closeNewPostModal()">&times;</button>
+        </div>
+        <form id="newPostForm" method="POST" action="{% url 'create_class_post' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="awaClass-modal-body">
+                <div class="awa-tips-box">
+                    <strong>💡 Tips for a great question:</strong><br>
+                    Be specific about what you don't understand. Include the subject & topic.
+                    Mention the year if it's a past TopMark question. Add an image of the question if helpful.
+                </div>
+                <div class="awaClass-form-group">
+                    <label>Question Title <span style="color:red;">*</span></label>
+                    <input type="text" name="title" id="postTitle" maxlength="300" placeholder="e.g. How do I solve quadratic equations using the formula?" required oninput="updateCounter('titleCounter', this.value.length, 300)">
+                    <div class="awa-char-counter" id="titleCounter">0 / 300</div>
+                </div>
+                <div class="awaClass-form-group">
+                    <label>Subject</label>
+                    <select name="subject" id="postSubject">
+                        <option value="">General</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Physics">Physics</option>
+                    </select>
+                </div>
+                <div class="awaClass-form-group">
+                    <label>Question Details <span style="color:red;">*</span></label>
+                    <textarea name="content" id="postContent" maxlength="5000" placeholder="Describe what you're struggling with, what you've tried so far, and any relevant context…" required oninput="updateCounter('contentCounter', this.value.length, 5000)"></textarea>
+                    <div class="awa-char-counter" id="contentCounter">0 / 5000</div>
+                </div>
+                <div class="awaClass-form-group">
+                    <label>Attach an Image <span style="color:#8e8e8e;">(optional)</span></label>
+                    <input type="file" id="postImage" name="image" accept="image/*" onchange="previewImage(this)">
+                    <img id="imagePreview" class="awaClass-image-preview" alt="Preview">
+                </div>
+            </div>
+            <div class="awaClass-modal-footer">
+                <button type="button" class="awaClass-btn-secondary" onclick="closeNewPostModal()">Cancel</button>
+                <button type="submit" class="awaClass-btn-primary" id="postSubmitBtn">
+                    <i class="fa-solid fa-paper-plane"></i> Post Question
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="awa-lightbox" onclick="closeLightbox()">
+    <button class="awa-lightbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button>
+    <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+    const CSRF = getCookie('csrftoken');
+
+    function getCookie(name) {
+        let v = null;
+        if (document.cookie) {
+            document.cookie.split(';').forEach(c => {
+                c = c.trim();
+                if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+            });
+        }
+        return v;
+    }
+
+    function openNewPostModal() {
+        document.getElementById('newPostModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => document.getElementById('postTitle').focus(), 100);
+    }
+
+    function closeNewPostModal() {
+        document.getElementById('newPostModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('newPostModal').addEventListener('click', function(e) {
+        if (e.target === this) closeNewPostModal();
+    });
+
+    function previewImage(input) {
+        const preview = document.getElementById('imagePreview');
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    function updateCounter(id, len, max) {
+        const el = document.getElementById(id);
+        el.textContent = `${len} / ${max}`;
+        el.classList.toggle('warn', len > max * 0.9);
+    }
+
+    function setSort(sort) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort', sort);
+        window.location.href = url.toString();
+    }
+
+    function setSubject(subject) {
+        const url = new URL(window.location.href);
+        if (subject) url.searchParams.set('subject', subject);
+        else url.searchParams.delete('subject');
+        window.location.href = url.toString();
+    }
+
+    function applyFilters() {
+        const status = document.getElementById('statusFilter').value;
+        const url = new URL(window.location.href);
+        if (status) url.searchParams.set('status', status);
+        else url.searchParams.delete('status');
+        window.location.href = url.toString();
+    }
+
+    function liveSearchPosts(query) {
+        const q = query.trim().toLowerCase();
+        const cards = document.querySelectorAll('.awaClass-post-card');
+        let visible = 0;
+
+        cards.forEach(card => {
+            const title = card.dataset.title || '';
+            const content = card.dataset.content || '';
+            const subject = card.dataset.subject || '';
+            const match = !q || title.includes(q) || content.includes(q) || subject.toLowerCase().includes(q);
+            card.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+
+        document.getElementById('noResults').style.display = (visible === 0 && q) ? 'block' : 'none';
+    }
+
+    function toggleExpand(postId) {
+        const clamp = document.getElementById(`content-${postId}`);
+        const btn = document.getElementById(`expand-btn-${postId}`);
+        if (!clamp) return;
+        const expanded = clamp.classList.toggle('expanded');
+        btn.innerHTML = expanded
+            ? 'Show less <i class="fa-solid fa-chevron-up" style="font-size:10px;"></i>'
+            : 'Show more <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>';
+    }
+
+    document.querySelectorAll('.awa-content-clamp').forEach(el => {
+        if (el.scrollHeight <= el.clientHeight + 4) {
+            const postId = el.id.replace('content-', '');
+            const btn = document.getElementById(`expand-btn-${postId}`);
+            if (btn) btn.style.display = 'none';
+        }
+    });
+
+    function likePost(postId, btn) {
+        fetch(`/chat/post/${postId}/like/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const icon = btn.querySelector('i');
+            if (data.liked) {
+                icon.className = 'fa-solid fa-heart';
+                btn.classList.add('liked');
+            } else {
+                icon.className = 'fa-regular fa-heart';
+                btn.classList.remove('liked');
+            }
+            document.querySelectorAll(`.like-count-${postId}`).forEach(el => {
+                el.textContent = data.total_likes;
+            });
+        })
+        .catch(console.error);
+    }
+
+    function openLightbox(src) {
+        document.getElementById('lightboxImg').src = src;
+        document.getElementById('lightbox').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightbox').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeLightbox();
+            closeNewPostModal();
+        }
+    });
+
+    document.getElementById('newPostForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('postSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Posting…';
+
+        fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                window.location.href = this.action;
+            }
+        })
+        .catch(() => this.submit());
+    });
+
+    let knownCount = {{ posts.count }};
+
+    function refreshPosts() { window.location.reload(); }
+</script>
+
+{% include 'footer.html' %}
+</body>
+</html>

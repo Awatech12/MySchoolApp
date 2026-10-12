@@ -1,0 +1,1267 @@
+{% load humanize %}
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>awaClass | {{ post.title|truncatechars:50 }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* ============================================
+           CLEAN DESIGN – NO SHADOWS, MINIMAL COLOR
+        ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            color: #1a1a1a;
+        }
+
+        .detail-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 32px 20px 56px;
+        }
+
+        @media (min-width: 768px) {
+            .detail-container {
+                margin-left: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .detail-container {
+                padding: 20px 16px;
+            }
+        }
+
+        /* back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: 1px solid #dce3ec;
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 40px;
+            text-decoration: none;
+            margin-bottom: 24px;
+            transition: background 0.2s;
+        }
+
+        .back-link:hover {
+            background: #f4f6f9;
+            border-color: #c0cbd8;
+        }
+
+        /* main post card */
+        .post-card {
+            background: #fff;
+            border: 1px solid #e6edf4;
+            margin-bottom: 28px;
+        }
+
+        .post-header {
+            padding: 20px 24px 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid #eef2f6;
+            flex-wrap: wrap;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #f0f2f5;
+            border: 1px solid #e2e8f0;
+        }
+
+        .author-info {
+            flex: 1;
+        }
+
+        .author-name {
+            font-weight: 700;
+            font-size: 16px;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .post-meta {
+            font-size: 13px;
+            color: #5b6e8c;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #2c3e50;
+        }
+
+        .badge-resolved {
+            background: #e3f7ec;
+            color: #1e7b48;
+        }
+
+        .badge-open {
+            background: #fee8e7;
+            color: #b91c1c;
+        }
+
+        .post-title {
+            font-size: 26px;
+            font-weight: 700;
+            padding: 20px 24px 12px 24px;
+            color: #0a0c10;
+            line-height: 1.3;
+        }
+
+        .post-content {
+            padding: 0 24px 20px 24px;
+            font-size: 16px;
+            color: #2c3e50;
+            line-height: 1.65;
+        }
+
+        .post-image {
+            max-width: 100%;
+            max-height: 380px;
+            border-radius: 12px;
+            margin-top: 16px;
+            cursor: pointer;
+            border: 1px solid #e9edf2;
+        }
+
+        .post-stats {
+            padding: 12px 24px;
+            border-top: 1px solid #eef2f6;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            gap: 28px;
+            font-size: 14px;
+            color: #5b6e8c;
+            background: #fafcff;
+        }
+
+        .post-stats span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-buttons {
+            padding: 14px 24px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a5b7a;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 32px;
+            transition: all 0.15s;
+        }
+
+        .action-btn:hover {
+            background: #f0f4f9;
+            color: #e85d04;
+        }
+
+        .action-btn.liked {
+            color: #e85d04;
+        }
+
+        .resolve-post-btn {
+            background: #eef2f9;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #2c3e50;
+            transition: background 0.2s;
+        }
+
+        .resolve-post-btn.resolved {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        /* comments section */
+        .comments-wrapper {
+            background: #fff;
+            border: 1px solid #e6edf4;
+        }
+
+        .comments-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid #eef2f6;
+            font-weight: 700;
+            font-size: 18px;
+            background: #fefefe;
+            color: #1e293b;
+        }
+
+        .comments-header i {
+            margin-right: 8px;
+            color: #e85d04;
+        }
+
+        .comment-form-row {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            gap: 16px;
+            background: #fff;
+            flex-wrap: wrap;
+        }
+
+        .comment-avatar-sm {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+        }
+
+        .comment-input-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .comment-textarea {
+            width: 100%;
+            padding: 12px 18px;
+            border: 1px solid #d4dce6;
+            border-radius: 24px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .comment-textarea:focus {
+            outline: none;
+            border-color: #e85d04;
+        }
+
+        .media-toolbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .media-btn {
+            background: #f8fafc;
+            border: 1px solid #dce3ec;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #415a77;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .media-btn:hover {
+            background: #eef2f8;
+        }
+
+        .media-btn.recording {
+            background: #fee2e2;
+            color: #b91c1c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .recording-timer {
+            font-size: 13px;
+            font-weight: 500;
+            color: #dc2626;
+        }
+
+        .preview-container {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .media-preview {
+            position: relative;
+            display: inline-block;
+        }
+
+        .preview-img {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid #dee4ec;
+        }
+
+        .remove-media {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .submit-comment {
+            background: #e85d04;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            align-self: flex-start;
+        }
+
+        .submit-comment:disabled {
+            background: #bac8d9;
+            cursor: not-allowed;
+        }
+
+        .comments-list {
+            max-height: 580px;
+            overflow-y: auto;
+        }
+
+        .comment-item {
+            padding: 18px 24px;
+            border-bottom: 1px solid #f0f3f8;
+            display: flex;
+            gap: 14px;
+        }
+
+        .comment-item:hover {
+            background: #fefcf9;
+        }
+
+        .comment-avatar-mini {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+        }
+
+        .comment-body {
+            flex: 1;
+        }
+
+        .comment-author-name {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+
+        .comment-text {
+            font-size: 14px;
+            color: #2d3a48;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .comment-media {
+            margin: 10px 0 6px;
+        }
+
+        .comment-image {
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+        }
+
+        .audio-mini {
+            background: #f8fafd;
+            border-radius: 60px;
+            padding: 6px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid #e2e8f0;
+            max-width: 320px;
+        }
+
+        .play-audio-btn {
+            background: #e85d04;
+            border: none;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .waveform-bars {
+            flex: 1;
+            display: flex;
+            gap: 3px;
+            align-items: center;
+            height: 30px;
+        }
+
+        .wave-bar {
+            width: 3px;
+            background: #e85d04;
+            border-radius: 2px;
+        }
+
+        .audio-time {
+            font-size: 12px;
+            color: #4a5b7a;
+            font-family: monospace;
+            min-width: 42px;
+        }
+
+        .comment-meta-row {
+            display: flex;
+            gap: 18px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6f7e95;
+            align-items: center;
+        }
+
+        .comment-like-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #6f7e95;
+            padding: 2px 6px;
+            border-radius: 30px;
+        }
+
+        .comment-like-btn.liked {
+            color: #e85d04;
+        }
+
+        .empty-comments {
+            text-align: center;
+            padding: 48px 20px;
+            color: #6c7e9b;
+        }
+
+        .empty-comments i {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 1100;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-modal.active {
+            display: flex;
+        }
+
+        .modal-img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            font-size: 32px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 640px) {
+            .post-title { font-size: 22px; padding: 16px 20px; }
+            .comment-form-row { flex-direction: column; }
+            .comment-avatar-sm { display: none; }
+            .submit-comment { width: 100%; }
+            .audio-mini { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+{% include 'sidebar.html' %}
+
+<div class="detail-container">
+    <!-- Back Button -->
+    <a href="{% url 'chat_room' %}" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i> Back to Discussion
+    </a>
+
+    <!-- Main Post -->
+    <div class="post-card">
+        <div class="post-header">
+            <img src="{{ post.author.profile.get_picture_url }}" alt="{{ post.author.username }}" class="avatar">
+            <div class="author-info">
+                <div class="author-name">
+                    {{ post.author.get_full_name|default:post.author.username }}
+                    {% if post.is_resolved %}
+                    <span class="status-badge badge-resolved"><i class="fa-solid fa-check-circle"></i> Resolved</span>
+                    {% else %}
+                    <span class="status-badge badge-open"><i class="fa-regular fa-circle-question"></i> Open</span>
+                    {% endif %}
+                </div>
+                <div class="post-meta">
+                    <i class="fa-regular fa-clock"></i> {{ post.created_at|date:"F j, Y, g:i a" }}
+                    {% if post.subject %}
+                    • <i class="fa-regular fa-folder-open"></i> {{ post.subject }}
+                    {% endif %}
+                </div>
+            </div>
+            {% if request.user == post.author %}
+            <button class="resolve-post-btn {% if post.is_resolved %}resolved{% endif %}" onclick="toggleResolved('{{ post.post_id }}')">
+                {% if post.is_resolved %}<i class="fa-solid fa-check-circle"></i> Resolved{% else %}<i class="fa-regular fa-check-circle"></i> Mark Resolved{% endif %}
+            </button>
+            {% endif %}
+        </div>
+        
+        <h1 class="post-title">{{ post.title }}</h1>
+        
+        <div class="post-content">
+            {{ post.content|linebreaks }}
+            {% if post.image %}
+            <div>
+                <img src="{{ post.get_image_url }}" alt="Question image" class="post-image" onclick="openImageModal(this.src)">
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="post-stats">
+            <span><i class="fa-regular fa-heart"></i> <span id="likeCount">{{ post.total_likes }}</span> likes</span>
+            <span><i class="fa-regular fa-comments"></i> <span id="replyCount">{{ total_comments }}</span> replies</span>
+            <span><i class="fa-regular fa-eye"></i> {{ post.view }} views</span>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="action-btn like-btn" onclick="likePost('{{ post.post_id }}')">
+                <i class="{% if request.user in post.like.all %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                Like
+            </button>
+            <button class="action-btn" onclick="scrollToCommentForm()">
+                <i class="fa-regular fa-comment"></i> Reply
+            </button>
+        </div>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="comments-wrapper">
+        <div class="comments-header">
+            <i class="fa-regular fa-comments"></i> <span id="commentCountHeader">{{ total_comments }}</span> Discussion Replies
+        </div>
+        
+        <!-- Comment Form -->
+        <form id="commentForm" method="POST" action="{% url 'chat_post_comment' post.post_id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="comment-form-row">
+                <img src="{{ request.user.profile.get_picture_url }}" alt="{{ request.user.username }}" class="comment-avatar-sm">
+                <div class="comment-input-area">
+                    <textarea name="comment" class="comment-textarea" placeholder="Write your reply... You can also add an image or record audio" rows="3"></textarea>
+                    
+                    <div class="media-toolbar">
+                        <label class="media-btn">
+                            <i class="fa-solid fa-image"></i> Add Image
+                            <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;" onchange="previewMedia(this, 'image')">
+                        </label>
+                        <button type="button" class="media-btn" id="recordAudioBtn">
+                            <i class="fa-solid fa-microphone"></i> Record Audio
+                        </button>
+                        <span id="recordingTimer" class="recording-timer" style="display: none;">0:00</span>
+                    </div>
+                    
+                    <div id="media-preview" class="preview-container"></div>
+                </div>
+                <button type="submit" class="submit-comment" id="submitCommentBtn">
+                    <i class="fa-regular fa-paper-plane"></i> Post Reply
+                </button>
+            </div>
+        </form>
+        
+        <!-- Comments List -->
+        <div class="comments-list" id="commentsList">
+            {% for comment in comments %}
+            <div class="comment-item" id="comment-{{ comment.comment_id }}">
+                <img src="{{ comment.commentator.profile.get_picture_url }}" alt="{{ comment.commentator.username }}" class="comment-avatar-mini">
+                <div class="comment-body">
+                    <div class="comment-author-name">{{ comment.commentator.get_full_name|default:comment.commentator.username }}</div>
+                    
+                    {% if comment.comment %}
+                    <div class="comment-text">{{ comment.comment|linebreaksbr }}</div>
+                    {% endif %}
+                    
+                    {% if comment.get_image_url %}
+                    <div class="comment-media">
+                        <img src="{{ comment.get_image_url }}" alt="Comment image" class="comment-image" onclick="openImageModal(this.src)">
+                    </div>
+                    {% endif %}
+                    
+                    {% if comment.get_audio_url %}
+                    <div class="comment-media">
+                        <div class="audio-mini" data-audio-url="{{ comment.get_audio_url }}">
+                            <button class="play-audio-btn">
+                                <i class="fa-solid fa-play"></i>
+                            </button>
+                            <div class="waveform-bars"></div>
+                            <span class="audio-time">0:00</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="comment-meta-row">
+                        <span><i class="fa-regular fa-clock"></i> {{ comment.created_at|timesince }} ago</span>
+                        <button class="comment-like-btn comment-like-btn-{{ comment.comment_id }}" onclick="likeComment('{{ comment.comment_id }}')">
+                            <i class="{% if request.user in comment.like.all %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                            <span class="comment-like-count-{{ comment.comment_id }}">{{ comment.total_likes }}</span> Likes
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-comments" id="emptyComments">
+                <i class="fa-regular fa-message"></i>
+                <p>No replies yet. Be the first to answer!</p>
+                <p style="font-size: 13px; margin-top: 10px;">💬 Add text, 📷 image, or 🎙️ audio to your reply</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // CSRF Token helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // ============================================
+    // CUSTOM AUDIO PLAYER WITH WAVEFORM
+    // ============================================
+    
+    class CustomAudioPlayer {
+        constructor(container) {
+            this.container = container;
+            this.audioUrl = container.dataset.audioUrl;
+            this.audio = null;
+            this.isPlaying = false;
+            this.animationId = null;
+            this.waveBars = [];
+            this.waveformContainer = container.querySelector('.waveform-bars');
+            this.playBtn = container.querySelector('.play-audio-btn');
+            this.timeDisplay = container.querySelector('.audio-time');
+            this.init();
+        }
+        
+        init() {
+            this.audio = new Audio(this.audioUrl);
+            this.generateWaveBars();
+            
+            this.playBtn.addEventListener('click', () => this.togglePlay());
+            this.audio.addEventListener('timeupdate', () => this.updateTimeDisplay());
+            this.audio.addEventListener('ended', () => this.stopPlayback());
+        }
+        
+        generateWaveBars() {
+            this.waveformContainer.innerHTML = '';
+            this.waveBars = [];
+            for (let i = 0; i < 20; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'wave-bar';
+                bar.style.height = '4px';
+                this.waveformContainer.appendChild(bar);
+                this.waveBars.push(bar);
+            }
+        }
+        
+        animateWaveform() {
+            if (!this.isPlaying) {
+                this.waveBars.forEach(bar => {
+                    bar.style.height = Math.floor(Math.random() * 12) + 3 + 'px';
+                });
+                return;
+            }
+            if (this.animationId) cancelAnimationFrame(this.animationId);
+            
+            const tick = () => {
+                if (!this.isPlaying) return;
+                this.waveBars.forEach((bar, index) => {
+                    const height = Math.sin(Date.now() / 200 + index * 0.3) * 10 + 14;
+                    bar.style.height = Math.max(4, Math.min(28, height)) + 'px';
+                });
+                this.animationId = requestAnimationFrame(tick);
+            };
+            this.animationId = requestAnimationFrame(tick);
+        }
+        
+        togglePlay() {
+            if (this.isPlaying) this.pause();
+            else this.play();
+        }
+        
+        play() {
+            this.audio.play();
+            this.isPlaying = true;
+            this.playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+            this.animateWaveform();
+        }
+        
+        pause() {
+            this.audio.pause();
+            this.isPlaying = false;
+            this.playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            if (this.animationId) cancelAnimationFrame(this.animationId);
+        }
+        
+        stopPlayback() {
+            this.isPlaying = false;
+            this.playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            if (this.animationId) cancelAnimationFrame(this.animationId);
+        }
+        
+        updateTimeDisplay() {
+            const minutes = Math.floor(this.audio.currentTime / 60);
+            const seconds = Math.floor(this.audio.currentTime % 60);
+            this.timeDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }
+    
+    function initAudioPlayers() {
+        document.querySelectorAll('.audio-mini').forEach(container => {
+            if (!container.dataset.initialized) {
+                container.dataset.initialized = 'true';
+                new CustomAudioPlayer(container);
+            }
+        });
+    }
+    
+    // ============================================
+    // AUDIO RECORDING
+    // ============================================
+    
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    let recordingStartTime = null;
+    let recordingTimer = null;
+    let recordedAudioBlob = null;
+    
+    const recordBtn = document.getElementById('recordAudioBtn');
+    const timerSpan = document.getElementById('recordingTimer');
+    
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    function updateTimer() {
+        if (recordingStartTime) {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            timerSpan.textContent = formatTime(elapsed);
+        }
+    }
+    
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(track => track.stop());
+                recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                createAudioPreview(audioUrl, recordedAudioBlob);
+                if (recordingTimer) clearInterval(recordingTimer);
+                timerSpan.style.display = 'none';
+                recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Record Audio';
+                recordBtn.classList.remove('recording');
+            };
+            
+            mediaRecorder.start();
+            isRecording = true;
+            recordingStartTime = Date.now();
+            timerSpan.style.display = 'inline-block';
+            timerSpan.textContent = '0:00';
+            recordingTimer = setInterval(updateTimer, 1000);
+            recordBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Recording';
+            recordBtn.classList.add('recording');
+        } catch (error) {
+            alert('Unable to access microphone. Please check permissions.');
+        }
+    }
+    
+    function stopRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+        }
+    }
+    
+    function toggleRecording() {
+        if (isRecording) stopRecording();
+        else startRecording();
+    }
+    
+    if (recordBtn) recordBtn.addEventListener('click', toggleRecording);
+    
+    function createAudioPreview(audioUrl, blob) {
+        const previewDiv = document.getElementById('media-preview');
+        const existing = document.getElementById('preview-audio');
+        if (existing) existing.remove();
+        
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'media-preview';
+        previewContainer.id = 'preview-audio';
+        
+        const playerContainer = document.createElement('div');
+        playerContainer.className = 'audio-mini';
+        
+        const playBtn = document.createElement('button');
+        playBtn.className = 'play-audio-btn';
+        playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        
+        const waveformDiv = document.createElement('div');
+        waveformDiv.className = 'waveform-bars';
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'audio-time';
+        timeSpan.textContent = '0:00';
+        
+        playerContainer.appendChild(playBtn);
+        playerContainer.appendChild(waveformDiv);
+        playerContainer.appendChild(timeSpan);
+        previewContainer.appendChild(playerContainer);
+        
+        for (let i = 0; i < 20; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'wave-bar';
+            bar.style.height = '4px';
+            waveformDiv.appendChild(bar);
+        }
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.innerHTML = '×';
+        removeBtn.className = 'remove-media';
+        removeBtn.onclick = () => {
+            if (previewAudio) previewAudio.pause();
+            URL.revokeObjectURL(audioUrl);
+            previewContainer.remove();
+            recordedAudioBlob = null;
+            const audioInput = document.querySelector('input[name="audio"]');
+            if (audioInput) audioInput.value = '';
+        };
+        previewContainer.appendChild(removeBtn);
+        previewDiv.appendChild(previewContainer);
+        
+        const previewAudio = new Audio(audioUrl);
+        let isPreviewPlaying = false;
+        let previewAnimationId = null;
+        const previewWaveBars = waveformDiv.querySelectorAll('.wave-bar');
+        
+        function animatePreview() {
+            if (isPreviewPlaying) {
+                previewWaveBars.forEach((bar, idx) => {
+                    const height = Math.sin(Date.now() / 200 + idx * 0.3) * 10 + 14;
+                    bar.style.height = Math.max(4, Math.min(28, height)) + 'px';
+                });
+                previewAnimationId = requestAnimationFrame(animatePreview);
+            }
+        }
+        
+        playBtn.addEventListener('click', () => {
+            if (isPreviewPlaying) {
+                previewAudio.pause();
+                isPreviewPlaying = false;
+                playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                if (previewAnimationId) cancelAnimationFrame(previewAnimationId);
+            } else {
+                previewAudio.play();
+                isPreviewPlaying = true;
+                playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                animatePreview();
+            }
+        });
+        
+        previewAudio.addEventListener('timeupdate', () => {
+            const minutes = Math.floor(previewAudio.currentTime / 60);
+            const seconds = Math.floor(previewAudio.currentTime % 60);
+            timeSpan.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        });
+        
+        previewAudio.addEventListener('ended', () => {
+            isPreviewPlaying = false;
+            playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            if (previewAnimationId) cancelAnimationFrame(previewAnimationId);
+        });
+        
+        const audioFile = new File([blob], `audio_${Date.now()}.webm`, { type: blob.type || 'audio/webm' });
+        let audioInput = document.querySelector('input[name="audio"]');
+        if (!audioInput) {
+            audioInput = document.createElement('input');
+            audioInput.type = 'file';
+            audioInput.name = 'audio';
+            audioInput.style.display = 'none';
+            document.getElementById('commentForm').appendChild(audioInput);
+        }
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(audioFile);
+        audioInput.files = dataTransfer.files;
+    }
+    
+    // ============================================
+    // IMAGE PREVIEW
+    // ============================================
+    
+    function previewMedia(input, type) {
+        const previewDiv = document.getElementById('media-preview');
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const existing = document.getElementById(`preview-${type}`);
+                if (existing) existing.remove();
+                
+                const previewContainer = document.createElement('div');
+                previewContainer.className = 'media-preview';
+                previewContainer.id = `preview-${type}`;
+                
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'preview-img';
+                previewContainer.appendChild(img);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.innerHTML = '×';
+                removeBtn.className = 'remove-media';
+                removeBtn.onclick = () => {
+                    input.value = '';
+                    previewContainer.remove();
+                    const imageInput = document.querySelector('input[name="image"]');
+                    if (imageInput) imageInput.value = '';
+                };
+                previewContainer.appendChild(removeBtn);
+                previewDiv.appendChild(previewContainer);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    
+    // ============================================
+    // IMAGE MODAL
+    // ============================================
+    
+    function openImageModal(imageSrc) {
+        let modal = document.getElementById('imageModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'imageModal';
+            modal.className = 'image-modal';
+            modal.innerHTML = `<span class="modal-close">&times;</span><img class="modal-img" src="">`;
+            document.body.appendChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal || e.target.classList.contains('modal-close')) {
+                    modal.classList.remove('active');
+                }
+            };
+        }
+        modal.querySelector('img').src = imageSrc;
+        modal.classList.add('active');
+    }
+    
+    // ============================================
+    // LIKE & RESOLVE FUNCTIONS
+    // ============================================
+    
+    function likePost(postId) {
+        fetch(`/chat/post/${postId}/like/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const likeBtn = document.querySelector('.like-btn');
+                const icon = likeBtn.querySelector('i');
+                const likeCount = document.getElementById('likeCount');
+                if (data.liked) {
+                    icon.className = 'fa-solid fa-heart';
+                    likeBtn.classList.add('liked');
+                } else {
+                    icon.className = 'fa-regular fa-heart';
+                    likeBtn.classList.remove('liked');
+                }
+                likeCount.textContent = data.total_likes;
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function likeComment(commentId) {
+        fetch(`/chat/comment/${commentId}/like/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const likeBtn = document.querySelector(`.comment-like-btn-${commentId}`);
+                const icon = likeBtn.querySelector('i');
+                const likeCountSpan = document.querySelector(`.comment-like-count-${commentId}`);
+                if (data.liked) {
+                    icon.className = 'fa-solid fa-heart';
+                    likeBtn.classList.add('liked');
+                } else {
+                    icon.className = 'fa-regular fa-heart';
+                    likeBtn.classList.remove('liked');
+                }
+                likeCountSpan.textContent = data.total_likes;
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function toggleResolved(postId) {
+        fetch(`/chat/post/${postId}/resolve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    function scrollToCommentForm() {
+        document.querySelector('.comment-textarea').focus();
+        document.querySelector('.comment-textarea').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // ============================================
+    // FORM SUBMISSION (AJAX)
+    // ============================================
+    
+    document.getElementById('commentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (isRecording) {
+            stopRecording();
+            setTimeout(() => submitForm(), 500);
+        } else {
+            submitForm();
+        }
+    });
+    
+    function submitForm() {
+        const submitBtn = document.getElementById('submitCommentBtn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Posting...';
+        submitBtn.disabled = true;
+        
+        const formData = new FormData(document.getElementById('commentForm'));
+        
+        fetch(document.getElementById('commentForm').action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            if (data.success) {
+                const commentsList = document.getElementById('commentsList');
+                const emptyDiv = commentsList.querySelector('#emptyComments');
+                if (emptyDiv) emptyDiv.remove();
+                
+                let mediaHtml = '';
+                if (data.image_url) {
+                    mediaHtml += `<div class="comment-media"><img src="${data.image_url}" alt="Comment image" class="comment-image" onclick="openImageModal(this.src)"></div>`;
+                }
+                if (data.audio_url) {
+                    mediaHtml += `<div class="comment-media"><div class="audio-mini" data-audio-url="${data.audio_url}"><button class="play-audio-btn"><i class="fa-solid fa-play"></i></button><div class="waveform-bars"></div><span class="audio-time">0:00</span></div></div>`;
+                }
+                
+                const newComment = `
+                    <div class="comment-item" id="comment-${data.comment_id}">
+                        <img src="${data.avatar_url}" alt="${data.username}" class="comment-avatar-mini">
+                        <div class="comment-body">
+                            <div class="comment-author-name">${escapeHtml(data.username)}</div>
+                            ${data.comment ? `<div class="comment-text">${escapeHtml(data.comment).replace(/\n/g, '<br>')}</div>` : ''}
+                            ${mediaHtml}
+                            <div class="comment-meta-row">
+                                <span><i class="fa-regular fa-clock"></i> ${data.created_at}</span>
+                                <button class="comment-like-btn comment-like-btn-${data.comment_id}" onclick="likeComment('${data.comment_id}')">
+                                    <i class="fa-regular fa-heart"></i>
+                                    <span class="comment-like-count-${data.comment_id}">0</span> Likes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                if (commentsList.firstChild) {
+                    commentsList.insertAdjacentHTML('afterbegin', newComment);
+                } else {
+                    commentsList.innerHTML = newComment;
+                }
+                
+                const newAudioPlayer = commentsList.querySelector('.audio-mini');
+                if (newAudioPlayer) new CustomAudioPlayer(newAudioPlayer);
+                
+                document.querySelector('.comment-textarea').value = '';
+                document.getElementById('media-preview').innerHTML = '';
+                const imageInput = document.querySelector('input[name="image"]');
+                const audioInput = document.querySelector('input[name="audio"]');
+                if (imageInput) imageInput.value = '';
+                if (audioInput) audioInput.value = '';
+                recordedAudioBlob = null;
+                
+                const commentCountHeader = document.getElementById('commentCountHeader');
+                const replyCountSpan = document.getElementById('replyCount');
+                let currentCount = parseInt(commentCountHeader.textContent) || 0;
+                let newCount = currentCount + 1;
+                commentCountHeader.textContent = newCount;
+                if (replyCountSpan) replyCountSpan.textContent = newCount;
+            } else if (data.error) {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            alert('An error occurred. Please try again.');
+        });
+    }
+    
+    // Initialize audio players on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initAudioPlayers();
+    });
+</script>
+
+{% include 'footer.html' %}
+</body>
+</html>

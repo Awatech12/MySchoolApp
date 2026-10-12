@@ -1,0 +1,642 @@
+{% load static %}
+{% load pwa %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% firstof user.get_full_name user.username %} · Student Profile · TopMark Tutorial Center</title>
+    <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+    <script src="{% static 'js/pwa-install.js' %}"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+:root{
+  --tm-navy:#1f3a68; --tm-navy-dk:#162b4e; --tm-navy-50:#f1f4f9; --tm-navy-100:#d9e1ee;
+  --tm-ink:#1f2937; --tm-muted:#6b7280; --tm-line:#d9dde3; --tm-bg:#ffffff; --tm-white:#fff;
+  --tm-radius:4px;
+
+  /* Compatibility for shared partials (sidebar / footer) that read these names. */
+  --tm-orange:#1f3a68; --tm-orange-dk:#162b4e;
+  --awaClass-bg:#fafafa; --awaClass-white:#fff; --awaClass-border:#dbdbdb; --awaClass-border-light:#efefef;
+  --awaClass-text:#262626; --awaClass-text-muted:#8e8e8e; --awaClass-text-light:#8e8e8e;
+  --awaClass-gray:#8e8e8e; --awaClass-gray-light:#c7c7c7; --awaClass-primary:#0095f6;
+  --awaClass-primary-dk:#0074cc; --awaClass-primary-hover:#0074cc; --awaClass-primary-lt:#e8f4fd;
+  --awaClass-accent:#0095f6; --awaClass-danger:#111827; --awaClass-modal-overlay:rgba(0,0,0,.5);
+  --awaClass-btn-bg:#0095f6; --awaClass-btn-color:#fff;
+  --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;background:var(--tm-bg);color:var(--tm-ink);line-height:1.5;overflow-x:hidden}
+body.tm-lock{overflow:hidden}
+img{max-width:100%;display:block}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--tm-navy);outline-offset:2px}
+.tm-skip{position:absolute;left:-9999px;top:8px;background:var(--tm-navy);color:#fff;padding:10px 14px;border-radius:4px;z-index:3000}
+.tm-skip:focus{left:8px}
+.tm-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ── page shell ── */
+.tm-page{max-width:1000px;margin:0 auto;padding:16px 14px 96px}
+@media(min-width:768px){.tm-page{padding:28px 24px 48px 84px}}
+.tm-pagehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--tm-navy)}
+.tm-pagehead h1{font-size:20px;font-weight:700;color:var(--tm-navy);letter-spacing:.01em}
+.tm-back{background:#fff;color:var(--tm-ink);border:1px solid var(--tm-line);border-radius:var(--tm-radius);padding:5px 10px;font-size:13px;cursor:pointer}
+.tm-back:hover{background:var(--tm-navy-50)}
+
+/* ── student header ── */
+.tm-student{display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:16px;border:1px solid var(--tm-line);border-radius:var(--tm-radius);margin-bottom:18px}
+.tm-avatar{width:84px;height:104px;border-radius:var(--tm-radius);object-fit:cover;background:var(--tm-navy-50);border:1px solid var(--tm-line);flex:none}
+.tm-id{min-width:0;flex:1 1 200px}
+.tm-id h2{font-size:20px;line-height:1.25;font-weight:700;color:var(--tm-ink);overflow-wrap:anywhere;margin-bottom:6px}
+.tm-meta{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:14px}
+.tm-meta dt{color:var(--tm-muted)}
+.tm-meta dd{font-weight:600;overflow-wrap:anywhere}
+.tm-meta dd.is-empty{color:#9ca3af;font-weight:400}
+.tm-student-actions{margin-left:auto}
+@media(max-width:560px){.tm-student-actions{margin-left:0;flex:1 1 100%}}
+
+/* ── buttons ── */
+.tm-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:var(--tm-radius);font-weight:600;font-size:14px;cursor:pointer;text-decoration:none;border:1px solid transparent}
+.tm-btn-primary,.tm-btn-navy{background:var(--tm-navy);color:#fff;border-color:var(--tm-navy)}
+.tm-btn-primary:hover,.tm-btn-navy:hover{background:var(--tm-navy-dk)}
+.tm-btn-outline,.tm-btn-light{background:#fff;color:var(--tm-navy);border-color:var(--tm-navy-100)}
+.tm-btn-outline:hover,.tm-btn-light:hover{background:var(--tm-navy-50)}
+.tm-btn-sm{min-height:36px;padding:0 12px;font-size:13px}
+.tm-btn[disabled]{opacity:.55;cursor:not-allowed}
+
+/* ── tabs ── */
+.tm-tabs{display:flex;gap:0;border-bottom:1px solid var(--tm-line);margin-bottom:18px;overflow-x:auto;scrollbar-width:none}
+.tm-tabs::-webkit-scrollbar{display:none}
+.tm-tab{flex:0 0 auto;min-height:44px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--tm-muted);font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.tm-tab:hover{color:var(--tm-navy)}
+.tm-tab[aria-selected="true"]{color:var(--tm-navy);border-bottom-color:var(--tm-navy)}
+
+/* ── sections ── */
+.tm-panel[hidden]{display:none}
+.tm-panel:focus{outline:none}
+.tm-section{margin-bottom:26px}
+.tm-section:last-child{margin-bottom:0}
+.tm-section-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid var(--tm-line)}
+.tm-section-h h2{font-size:16px;font-weight:700;color:var(--tm-navy)}
+.tm-sub{font-size:13px;color:var(--tm-muted)}
+.tm-link{color:var(--tm-navy);font-weight:600;font-size:13px;text-decoration:underline}
+
+/* overview figures */
+.tm-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:1px solid var(--tm-line);border-radius:var(--tm-radius)}
+@media(min-width:640px){.tm-stats{grid-template-columns:repeat(4,1fr)}}
+.tm-stat{padding:12px 14px;border-right:1px solid var(--tm-line);border-bottom:1px solid var(--tm-line);margin:0 -1px -1px 0}
+.tm-stat-v{font-size:22px;font-weight:700;line-height:1.2;color:var(--tm-navy)}
+.tm-stat-l{font-size:12px;color:var(--tm-muted)}
+
+/* details list */
+.tm-dl div{display:grid;grid-template-columns:180px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #eceef2}
+.tm-dl div:last-child{border-bottom:0}
+.tm-dl dt{font-size:14px;color:var(--tm-muted)}
+.tm-dl dd{font-weight:600;overflow-wrap:anywhere}
+.tm-dl dd.is-empty{color:#9ca3af;font-weight:400}
+@media(max-width:480px){.tm-dl div{grid-template-columns:1fr;gap:0}}
+
+/* subject performance */
+.tm-bar-row{padding:10px 0;border-bottom:1px solid #eceef2}
+.tm-bar-row:last-child{border-bottom:0}
+.tm-bar-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:600;margin-bottom:5px}
+.tm-bar-top small{font-weight:400;color:var(--tm-muted);font-size:12px}
+.tm-bar{height:8px;background:var(--tm-navy-50);border:1px solid var(--tm-navy-100);border-radius:99px;overflow:hidden}
+.tm-bar>span{display:block;height:100%;background:var(--tm-navy)}
+
+/* grade tag */
+.tm-pill{display:inline-block;border:1px solid var(--tm-navy-100);background:var(--tm-navy-50);color:var(--tm-navy);border-radius:3px;padding:1px 8px;font-size:12px;font-weight:600}
+
+/* notices & empty */
+.tm-note{display:flex;gap:10px;align-items:flex-start;background:var(--tm-navy-50);border:1px solid var(--tm-navy-100);color:var(--tm-navy-dk);border-radius:var(--tm-radius);padding:10px 12px;font-size:13px;margin-bottom:12px}
+.tm-empty{text-align:center;padding:24px 12px;color:var(--tm-muted);border:1px dashed var(--tm-line);border-radius:var(--tm-radius)}
+.tm-empty h3{color:var(--tm-ink);font-size:15px;margin-bottom:4px}
+.tm-empty .tm-btn{margin-top:12px}
+
+/* results table */
+.tm-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tm-select,.tm-input{width:100%;min-height:44px;border-radius:var(--tm-radius);padding:9px 12px;background:#fff;border:1px solid #b9c0cc;font-size:15px}
+.tm-select:focus,.tm-input:focus{outline:2px solid var(--tm-navy);outline-offset:0;border-color:var(--tm-navy)}
+.tm-toolbar .tm-select{width:auto;min-width:180px}
+.tm-tablewrap{overflow-x:auto}
+.tm-table{width:100%;border-collapse:collapse;font-size:14px}
+.tm-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--tm-navy);padding:9px 10px;white-space:nowrap}
+.tm-table td{padding:10px;vertical-align:top;border-bottom:1px solid var(--tm-line)}
+.tm-table .t-name{font-weight:600}
+.tm-table tr[hidden]{display:none!important}
+.tm-fb{font-size:13px;color:var(--tm-muted);max-width:240px}
+.tm-fb b{color:var(--tm-ink)}
+@media(max-width:719px){
+  .tm-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .tm-table,.tm-table tbody{display:block}
+  .tm-table tr{display:block;border:1px solid var(--tm-line);border-radius:var(--tm-radius);padding:8px 12px;margin-bottom:10px}
+  .tm-table td{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border:0;text-align:right}
+  .tm-table td::before{content:attr(data-label);font-weight:600;color:var(--tm-muted);font-size:12px;text-transform:uppercase;text-align:left;flex:none;padding-top:2px}
+  .tm-fb{max-width:none}
+}
+
+/* ── modals ── */
+.tm-modal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+.tm-modal[hidden]{display:none}
+.tm-sheet{background:#fff;width:100%;max-width:560px;max-height:94vh;max-height:94dvh;display:flex;flex-direction:column;border-radius:8px 8px 0 0;overflow:hidden}
+@media(min-width:640px){.tm-modal{align-items:center;padding:20px}.tm-sheet{border-radius:6px;max-height:90vh}}
+.tm-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--tm-navy);color:#fff}
+.tm-sheet-h h2{font-size:17px}
+.tm-x{width:44px;height:44px;margin:-8px -8px -8px 0;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}
+.tm-sheet-b{padding:16px;overflow-y:auto;flex:1}
+.tm-sheet-f{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--tm-line);padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+.tm-alert{border-radius:var(--tm-radius);padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:12px;border:1px solid transparent}
+.tm-alert:empty{display:none}
+.tm-alert.ok{background:#f0f9f4;color:#166534;border-color:#bbe5cb}
+.tm-alert.err{background:#fdf2f2;color:#991b1b;border-color:#f3c4c4}
+.tm-form{display:grid;gap:14px}
+.tm-two{display:grid;gap:14px}
+@media(min-width:520px){.tm-two{grid-template-columns:1fr 1fr}}
+.tm-field label,.tm-field legend{display:block;font-size:13px;font-weight:600;color:var(--tm-navy);margin-bottom:5px}
+.tm-hint{font-size:12px;color:var(--tm-muted);margin-top:4px}
+.tm-fieldset{border:0}
+.tm-photo{display:flex;align-items:center;gap:14px}
+.tm-photo img{width:64px;height:80px;border-radius:var(--tm-radius);object-fit:cover;border:1px solid var(--tm-line)}
+.tm-photo input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+.tm-photo input[type=file]:focus-visible+label{outline:3px solid var(--tm-navy);outline-offset:2px}
+.tm-group{margin-bottom:16px}
+.tm-group h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--tm-muted);margin-bottom:8px}
+.tm-checks{display:grid;gap:8px;grid-template-columns:1fr}
+@media(min-width:480px){.tm-checks{grid-template-columns:1fr 1fr}}
+.tm-check{position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid var(--tm-line);border-radius:var(--tm-radius);cursor:pointer;font-size:14px;background:#fff}
+.tm-check input{width:18px;height:18px;accent-color:var(--tm-navy);flex:none}
+.tm-check:has(input:checked){background:var(--tm-navy-50);border-color:var(--tm-navy)}
+.tm-check:has(input:focus-visible){outline:3px solid var(--tm-navy);outline-offset:2px}
+.tm-counter{font-size:13px;font-weight:600;color:var(--tm-navy)}
+
+/* ── print preview + A4 form ── */
+.tm-print{position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.6);overflow:auto;padding:12px}
+.tm-print[hidden]{display:none}
+.tm-print-bar{max-width:210mm;margin:0 auto 10px;display:flex;gap:8px;align-items:center;justify-content:space-between;color:#fff;flex-wrap:wrap}
+.tm-print-bar strong{font-size:15px}
+.tm-print-bar div{display:flex;gap:8px}
+.tm-a4{width:min(210mm,100%);min-height:297mm;margin:0 auto;background:#fff;color:#111827;display:flex;flex-direction:column;font-size:11pt}
+.f-head{background:#fff;color:var(--tm-ink);display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:2px solid var(--tm-navy)}
+.f-mark{width:52px;height:52px;border-radius:6px;background:var(--tm-navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none}
+.f-head h2{font-size:18pt;line-height:1.1}
+.f-head p{font-size:10pt;color:#4B5563;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.f-meta{margin-left:auto;text-align:right;font-size:9pt;line-height:1.5}
+.f-body{padding:16px 18px;flex:1}
+.f-top{display:flex;gap:16px;margin-bottom:12px}
+.f-photo{width:34mm;flex:none}
+.f-photo img{width:34mm;height:42mm;object-fit:cover;background:#fff;border:1px solid #9ca3af}
+.f-photo span{display:block;text-align:center;font-size:8pt;color:#475569;margin-top:2px}
+.f-name{flex:1}
+.f-name h3{font-size:16pt;color:var(--tm-navy);line-height:1.2}
+.f-sec{background:var(--tm-navy-50);color:var(--tm-navy);font-weight:800;font-size:9.5pt;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;margin:12px 0 6px;border-left:3px solid var(--tm-navy)}
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.f-row{display:flex;gap:8px;align-items:baseline;padding:6px 0;min-height:7.5mm;break-inside:avoid;border-bottom:1px solid #eceef2}
+.f-row.wide{grid-column:1/-1}
+.f-row b{font-size:8.5pt;color:#475569;text-transform:uppercase;letter-spacing:.03em;flex:none;min-width:30mm}
+.f-row span{font-weight:600;overflow-wrap:anywhere}
+.f-subj{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 12px;margin-top:4px}
+.f-subj li{list-style:none;font-size:10pt;font-weight:600}
+.f-subj li::before{content:"\2611  ";color:var(--tm-navy)}
+.f-decl{font-size:9.5pt;color:#334155;margin-top:12px}
+.f-sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:26px}
+.f-sign div{border-top:1.5px solid #111827;padding-top:4px;font-size:9pt;text-align:center;color:#334155}
+.f-office{display:grid;grid-template-columns:1fr 1fr 28mm;gap:12px;margin-top:14px;border:1.5px dashed #94A3B8;padding:8px 10px;font-size:9pt;color:#475569;align-items:end}
+.f-office .stamp{height:20mm;border:1.5px dashed #94A3B8;display:grid;place-items:center;text-align:center;font-size:8pt}
+.f-foot{background:#fff;color:#4B5563;text-align:center;font-size:8pt;padding:6px 10px}
+
+@media print{
+  @page{size:A4;margin:0}
+  html,body{background:#fff!important;overflow:visible!important}
+  body>*:not(#tm-print){display:none!important}
+  #tm-print{display:block!important;position:static!important;background:none!important;padding:0!important;overflow:visible!important}
+  .tm-print-bar{display:none!important}
+  .tm-a4{width:210mm;height:297mm;min-height:0;margin:0;overflow:hidden;font-size:10.5pt}
+  .f-head,.f-sec,.f-foot,.f-mark{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+    </style>
+</head>
+<body>
+<a class="tm-skip" href="#tm-main">Skip to main content</a>
+
+{% include 'sidebar.html' %}
+
+<main class="tm-page" id="tm-main">
+
+    <!-- ══ PAGE HEADING ══ -->
+    <div class="tm-pagehead">
+        <h1>Student Profile</h1>
+        <button type="button" class="tm-back" onclick="history.back()"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back</button>
+    </div>
+
+    <!-- ══ STUDENT HEADER ══ -->
+    <header class="tm-student">
+        <img class="tm-avatar" src="{{ profile.get_picture_url }}" width="84" height="104"
+             alt="Photo of {% firstof user.get_full_name user.username %}" id="tm-main-photo">
+        <div class="tm-id">
+            <h2>{% firstof user.get_full_name user.username %}</h2>
+            <dl class="tm-meta">
+                {% if can_view_private %}<dt>Admission No.</dt><dd>{{ admission_number }}</dd>{% endif %}
+                <dt>Class</dt><dd{% if not profile.class_level %} class="is-empty"{% endif %}>{{ profile.class_level|default:"Not set" }}</dd>
+                <dt>School</dt><dd{% if not profile.school %} class="is-empty"{% endif %}>{{ profile.school|default:"Not set" }}</dd>
+            </dl>
+        </div>
+        {% if is_owner %}
+        <div class="tm-student-actions">
+            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-edit-modal"><i class="fas fa-pen" aria-hidden="true"></i> Edit Profile</button>
+        </div>
+        {% endif %}
+    </header>
+
+    <!-- ══ TABS ══ -->
+    <div class="tm-tabs" role="tablist" aria-label="Student profile sections">
+        <button type="button" role="tab" class="tm-tab" id="tab-info" aria-controls="panel-info" aria-selected="true" data-tab="info">Student Information</button>
+        <button type="button" role="tab" class="tm-tab" id="tab-performance" aria-controls="panel-performance" aria-selected="false" tabindex="-1" data-tab="performance">Academic Performance</button>
+        <button type="button" role="tab" class="tm-tab" id="tab-results" aria-controls="panel-results" aria-selected="false" tabindex="-1" data-tab="results">Examination Results</button>
+    </div>
+
+    <!-- ── A. Student Information ── -->
+    <section class="tm-panel" id="panel-info" role="tabpanel" aria-labelledby="tab-info" tabindex="0">
+        <div class="tm-section">
+            <div class="tm-section-h">
+                <h2>Student Information</h2>
+                {% if can_view_private %}<button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-print"><i class="fas fa-print" aria-hidden="true"></i> Registration form</button>{% endif %}
+            </div>
+            <dl class="tm-dl">
+                <div><dt>Full name</dt><dd>{% firstof user.get_full_name user.username %}</dd></div>
+                {% if can_view_private %}<div><dt>Admission number</dt><dd>{{ admission_number }}</dd></div>{% endif %}
+                <div><dt>Class / Level</dt><dd{% if not profile.class_level %} class="is-empty"{% endif %}>{{ profile.class_level|default:"Not set" }}</dd></div>
+                <div><dt>School</dt><dd{% if not profile.school %} class="is-empty"{% endif %}>{{ profile.school|default:"Not set" }}</dd></div>
+                {% if can_view_private %}
+                <div><dt>Gender</dt><dd{% if not profile.gender %} class="is-empty"{% endif %}>{{ profile.gender|default:"Not set" }}</dd></div>
+                <div><dt>Date of birth</dt><dd{% if not profile.date_of_birth %} class="is-empty"{% endif %}>{% if profile.date_of_birth %}{{ profile.date_of_birth|date:"j F Y" }}{% else %}Not set{% endif %}</dd></div>
+                {% endif %}
+            </dl>
+            {% if not can_view_private %}
+            <p class="tm-sub" style="margin-top:10px"><i class="fas fa-lock" aria-hidden="true"></i> Personal details and examination records are visible only to the student and authorised staff.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ── B. Academic Overview + D. Subject Performance ── -->
+    <section class="tm-panel" id="panel-performance" role="tabpanel" aria-labelledby="tab-performance" tabindex="0" hidden>
+        <div class="tm-section">
+            <div class="tm-section-h"><h2>Academic Overview</h2></div>
+            <div class="tm-stats">
+                <div class="tm-stat"><div class="tm-stat-v">{{ registered_subject_count }}</div><div class="tm-stat-l">Subjects registered</div></div>
+                <div class="tm-stat"><div class="tm-stat-v">{{ total_exams_taken }}</div><div class="tm-stat-l">Examinations taken</div></div>
+                <div class="tm-stat"><div class="tm-stat-v">{% if total_exams_taken %}{{ avg_score }}%{% else %}—{% endif %}</div><div class="tm-stat-l">Average score</div></div>
+                <div class="tm-stat"><div class="tm-stat-v">{% if total_exams_taken %}{{ highest_score }}%{% else %}—{% endif %}</div><div class="tm-stat-l">Best score</div></div>
+            </div>
+        </div>
+
+        <div class="tm-section">
+            <div class="tm-section-h">
+                <h2>Subject Performance</h2>
+                {% if is_owner and registered_subject_cards %}<button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-subj-modal"><i class="fas fa-pen" aria-hidden="true"></i> Edit subjects</button>{% endif %}
+            </div>
+            {% if is_owner and class_level_legacy %}
+            <div class="tm-note" role="note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>Your saved class (“{{ profile.class_level }}”) is not a Senior Secondary class. Open <strong>Edit Profile</strong> and choose SS1, SS2 or SS3 so your subjects match your class level.</div></div>
+            {% endif %}
+            {% if registered_subject_cards %}
+                {% for c in registered_subject_cards %}
+                <div class="tm-bar-row">
+                    {% if c.exams_taken %}
+                    <div class="tm-bar-top"><span>{{ c.name }}</span><span>{{ c.avg_pct }}% <small>average · {{ c.exams_taken }} exam{{ c.exams_taken|pluralize }} · best {{ c.best_pct }}%</small></span></div>
+                    <div class="tm-bar" role="progressbar" aria-label="{{ c.name }} average score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ c.avg_pct }}"><span style="width:{{ c.avg_pct }}%"></span></div>
+                    {% else %}
+                    <div class="tm-bar-top"><span>{{ c.name }}</span><small class="tm-sub">{% if c.has_cbt %}No exams yet{% if is_owner %} · <a class="tm-link" href="{% url 'cbt_exams' %}">Practise</a>{% endif %}{% else %}Practice not available yet{% endif %}</small></div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="tm-empty"><h3>No subjects registered yet</h3>
+                    <p>{% if is_owner %}Choose the Senior Secondary subjects you are studying.{% else %}This student has not registered any subjects.{% endif %}</p>
+                    {% if is_owner %}<button type="button" class="tm-btn tm-btn-navy" data-open="tm-subj-modal">Register subjects</button>{% endif %}</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ── C. Examination Results ── -->
+    <section class="tm-panel" id="panel-results" role="tabpanel" aria-labelledby="tab-results" tabindex="0" hidden>
+        <div class="tm-section">
+            <div class="tm-section-h"><h2>Examination Results</h2></div>
+            {% if not can_view_private %}
+            <div class="tm-note" role="note"><i class="fas fa-lock" aria-hidden="true"></i><div>Examination results are private. Only the student and TopMark staff can see them.</div></div>
+            {% elif exam_history %}
+            <div class="tm-toolbar">
+                <div><label for="tm-filter" class="tm-sr">Filter results by subject</label>
+                    <select id="tm-filter" class="tm-select"><option value="">All subjects</option>{% for s in subject_summaries %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}</select></div>
+                <p class="tm-sub" id="tm-count" aria-live="polite">{{ exam_history|length }} result{{ exam_history|length|pluralize }}</p>
+            </div>
+            <div class="tm-tablewrap">
+            <table class="tm-table" id="tm-results">
+                <caption class="tm-sr">Examination results, newest first</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">Examination</th><th scope="col">Subject</th><th scope="col">Score</th><th scope="col">Percentage</th><th scope="col">Grade</th><th scope="col">Teacher's feedback</th></tr></thead>
+                <tbody>
+                {% for ex in exam_history %}
+                    <tr data-subject="{{ ex.subject }}">
+                        <td data-label="Date">{{ ex.date|date:"j M Y" }}</td>
+                        <td class="t-name" data-label="Examination">{{ ex.test_name }}</td>
+                        <td data-label="Subject">{{ ex.subject }}</td>
+                        <td data-label="Score">{{ ex.score }}/{{ ex.total }}</td>
+                        <td data-label="Percentage">{{ ex.percentage }}%</td>
+                        <td data-label="Grade"><span class="tm-pill">{{ ex.grade_display }}</span></td>
+                        <td data-label="Feedback" class="tm-fb">{% if ex.teacher_feedback %}{{ ex.teacher_feedback }}{% elif ex.remark %}{{ ex.remark }}{% else %}—{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% if exam_history|length >= 50 %}<p class="tm-sub" style="margin-top:10px">Showing the latest 50 results.</p>{% endif %}
+            {% else %}
+            <div class="tm-empty"><h3>No examinations yet</h3><p>Results will appear here after the first examination.</p>
+                {% if is_owner %}<a class="tm-btn tm-btn-navy" href="{% url 'cbt_exams' %}">Take an exam</a>{% endif %}</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <noscript><style>.tm-panel[hidden]{display:block}</style></noscript>
+</main>
+
+{% if can_view_private %}
+<!-- ══ PRINTABLE STUDENT REGISTRATION FORM (A4) ══ -->
+<div class="tm-print" id="tm-print" role="dialog" aria-modal="true" aria-labelledby="tm-print-title" hidden>
+    <div class="tm-print-bar">
+        <strong id="tm-print-title"><i class="fas fa-print" aria-hidden="true"></i> Student registration form — preview</strong>
+        <div>
+            <button type="button" class="tm-btn tm-btn-light tm-btn-sm" data-close>Close</button>
+            <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" id="tm-do-print"><i class="fas fa-print" aria-hidden="true"></i> Print / Save PDF</button>
+        </div>
+    </div>
+
+    <article class="tm-a4">
+        <div class="f-head">
+            <div class="f-mark" aria-hidden="true">TM</div>
+            <div><h2>TopMark Tutorial Center</h2><p>Student Registration Form</p></div>
+            <div class="f-meta">Admission No: {{ admission_number }}<br>Date: {% now "j F Y" %}</div>
+        </div>
+
+        <div class="f-body">
+            <div class="f-top">
+                <div class="f-photo"><img src="{{ profile.get_picture_url }}" alt="Passport photograph"><span>Passport photo</span></div>
+                <div class="f-name">
+                    <h3>{% firstof user.get_full_name user.username %}</h3>
+                    <div class="f-row"><b>Admission No.</b><span>{{ admission_number }}</span></div>
+                    <div class="f-row"><b>Class</b><span>{{ profile.class_level|default:"—" }}</span></div>
+                </div>
+            </div>
+
+            <div class="f-sec">Personal information</div>
+            <div class="f-grid">
+                <div class="f-row"><b>Gender</b><span>{{ profile.gender|default:"—" }}</span></div>
+                <div class="f-row"><b>Date of birth</b><span>{% if profile.date_of_birth %}{{ profile.date_of_birth|date:"j F Y" }}{% else %}—{% endif %}</span></div>
+                <div class="f-row"><b>Phone</b><span>{{ profile.phone|default:"—" }}</span></div>
+                <div class="f-row"><b>Location</b><span>{{ profile.location|default:"—" }}</span></div>
+                <div class="f-row wide"><b>Address</b><span>{{ profile.address|default:"—" }}</span></div>
+            </div>
+
+            <div class="f-sec">Academic information</div>
+            <div class="f-grid">
+                <div class="f-row wide"><b>School</b><span>{{ profile.school|default:"—" }}</span></div>
+                <div class="f-row"><b>Category</b><span>{{ student_category_display|default:"—" }}</span></div>
+                <div class="f-row"><b>Specialization</b><span>{{ profile.specialization|default:"—" }}</span></div>
+                <div class="f-row"><b>Future career</b><span>{{ profile.career_goal|default:"—" }}</span></div>
+                <div class="f-row"><b>Member since</b><span>{{ profile.created_at|date:"F Y" }}</span></div>
+            </div>
+
+            <div class="f-sec">Registered subjects ({{ registered_subject_count }})</div>
+            {% if registered_subjects %}
+            <ul class="f-subj">{% for rs in registered_subjects %}<li>{{ rs.subject_name }}</li>{% endfor %}</ul>
+            {% else %}<p class="f-decl">No subjects registered.</p>{% endif %}
+
+            <p class="f-decl">I declare that the information given on this form is true and complete to the best of my knowledge, and I agree to abide by the rules of TopMark Tutorial Center.</p>
+            <div class="f-sign"><div>Student's signature &amp; date</div><div>Parent / Guardian's signature</div><div>Tutor / Registrar</div></div>
+            <div class="f-office"><div>For office use — Received by: ____________________</div><div>Date: ____ / ____ / ________</div><div class="stamp">Official<br>stamp</div></div>
+        </div>
+        <div class="f-foot">TopMark Tutorial Center · Student Registration Form · Printed {% now "j F Y" %}</div>
+    </article>
+</div>
+{% endif %}
+
+{% if is_owner %}
+<!-- ══ EDIT PROFILE ══ -->
+<div class="tm-modal" id="tm-edit-modal" hidden>
+  <div class="tm-sheet" role="dialog" aria-modal="true" aria-labelledby="tm-edit-title">
+    <div class="tm-sheet-h"><h2 id="tm-edit-title">Edit Profile</h2><button type="button" class="tm-x" data-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+    <div class="tm-sheet-b">
+      <div class="tm-alert" id="tm-edit-msg" role="alert"></div>
+      <form id="tm-edit-form" class="tm-form" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="tm-photo">
+            <img src="{{ profile.get_picture_url }}" alt="Current profile photo" id="tm-photo-preview">
+            <div>
+                <input type="file" id="tm-photo" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+                <label for="tm-photo" class="tm-btn tm-btn-outline tm-btn-sm"><i class="fas fa-camera" aria-hidden="true"></i> Change photo</label>
+                <p class="tm-hint">JPG, PNG, WEBP or GIF · max 5 MB</p>
+            </div>
+        </div>
+
+        <div class="tm-two">
+            <div class="tm-field"><label for="tm-fname">First name</label><input class="tm-input" id="tm-fname" name="fname" value="{{ user.first_name }}" maxlength="50" autocomplete="given-name" required></div>
+            <div class="tm-field"><label for="tm-lname">Last name</label><input class="tm-input" id="tm-lname" name="lname" value="{{ user.last_name }}" maxlength="50" autocomplete="family-name" required></div>
+        </div>
+        <div class="tm-two">
+            <div class="tm-field"><label for="tm-gender">Gender</label>
+                <select class="tm-select" id="tm-gender" name="gender"><option value="">Select</option>{% for g in gender_choices %}<option value="{{ g }}"{% if profile.gender == g %} selected{% endif %}>{{ g }}</option>{% endfor %}</select></div>
+            <div class="tm-field"><label for="tm-dob">Date of birth</label><input class="tm-input" type="date" id="tm-dob" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d' }}" max="{% now 'Y-m-d' %}" autocomplete="bday"></div>
+        </div>
+        <div class="tm-field"><label for="tm-phone">Phone number</label><input class="tm-input" type="tel" inputmode="tel" id="tm-phone" name="phone" value="{{ profile.phone }}" maxlength="20" placeholder="e.g. 08012345678" autocomplete="tel"></div>
+
+        <div class="tm-field"><label for="tm-class">Class / Level</label>
+            <select class="tm-select" id="tm-class" name="class_level"><option value="">Select class</option>{% for c in class_level_options %}<option value="{{ c }}"{% if c == current_class_level %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+            {% if class_level_legacy %}<p class="tm-hint" style="color:#991b1b">Saved class “{{ profile.class_level }}” is not Senior Secondary. Please choose SS1–SS3.</p>{% else %}<p class="tm-hint">Senior Secondary classes only.</p>{% endif %}</div>
+        <div class="tm-field"><label for="tm-school">School</label><input class="tm-input" id="tm-school" name="school" value="{{ profile.school }}" maxlength="200" autocomplete="organization"></div>
+        <div class="tm-two">
+            <div class="tm-field"><label for="tm-location">Location</label><input class="tm-input" id="tm-location" name="location" value="{{ profile.location }}" maxlength="300" placeholder="City, State"></div>
+            <div class="tm-field"><label for="tm-address">Address</label><input class="tm-input" id="tm-address" name="address" value="{{ profile.address }}" maxlength="200" autocomplete="street-address"></div>
+        </div>
+      </form>
+    </div>
+    <div class="tm-sheet-f"><button type="button" class="tm-btn tm-btn-outline" data-close>Cancel</button><button type="submit" form="tm-edit-form" class="tm-btn tm-btn-primary" id="tm-edit-save">Save changes</button></div>
+  </div>
+</div>
+
+<!-- ══ EDIT SUBJECTS ══ -->
+<div class="tm-modal" id="tm-subj-modal" hidden>
+  <div class="tm-sheet" role="dialog" aria-modal="true" aria-labelledby="tm-subj-title">
+    <div class="tm-sheet-h"><h2 id="tm-subj-title">Edit Subjects</h2><button type="button" class="tm-x" data-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+    <div class="tm-sheet-b">
+      <div class="tm-alert" id="tm-subj-msg" role="alert"></div>
+      <p class="tm-sub" style="margin-bottom:12px">Subjects for <strong>Senior Secondary{% if current_class_level %} · {{ current_class_level }}{% endif %}</strong>. Tick every subject you are studying.</p>
+      {% if class_level_legacy %}<div class="tm-note" role="note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>Please set your class to SS1, SS2 or SS3 in <strong>Edit Profile</strong> before saving subjects.</div></div>{% endif %}
+      <form id="tm-subj-form" novalidate>
+        {% csrf_token %}
+        {% for g in subject_groups %}
+        <fieldset class="tm-group tm-fieldset"><legend><h3>{{ g.title }}</h3></legend>
+            <div class="tm-checks">
+            {% for name in g.subjects %}<label class="tm-check"><input type="checkbox" name="subjects" value="{{ name }}"{% if name in selected_subject_names %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}
+            </div>
+        </fieldset>
+        {% endfor %}
+      </form>
+    </div>
+    <div class="tm-sheet-f"><span class="tm-counter" id="tm-subj-count" aria-live="polite" style="margin-right:auto;align-self:center">0 selected</span><button type="button" class="tm-btn tm-btn-outline" data-close>Cancel</button><button type="submit" form="tm-subj-form" class="tm-btn tm-btn-primary" id="tm-subj-save">Save subjects</button></div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+    'use strict';
+    var $  = function (s, c) { return (c || document).querySelector(s); };
+    var $$ = function (s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
+
+    /* ── Tabs (WAI-ARIA tabs pattern, arrow-key navigation, #hash deep links) ── */
+    var tabs = $$('.tm-tab');
+    var legacyHash = { overview: 'performance', subjects: 'performance', details: 'info' };
+    function showTab(name, focus) {
+        if (legacyHash[name]) name = legacyHash[name];
+        if (!tabs.some(function (t) { return t.dataset.tab === name; })) return false;
+        tabs.forEach(function (t) {
+            var on = t.dataset.tab === name;
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.tabIndex = on ? 0 : -1;
+            $('#panel-' + t.dataset.tab).hidden = !on;
+            if (on && focus) t.focus();
+        });
+        if (history.replaceState) history.replaceState(null, '', '#' + name);
+        return true;
+    }
+    tabs.forEach(function (t, i) {
+        t.addEventListener('click', function () { showTab(t.dataset.tab); });
+        t.addEventListener('keydown', function (e) {
+            var n = null;
+            if (e.key === 'ArrowRight') n = (i + 1) % tabs.length;
+            else if (e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+            else if (e.key === 'Home') n = 0;
+            else if (e.key === 'End') n = tabs.length - 1;
+            if (n !== null) { e.preventDefault(); showTab(tabs[n].dataset.tab, true); }
+        });
+    });
+    var initial = location.hash.replace('#', '');
+    if (initial) showTab(initial);
+
+    /* ── Modals: focus trap, Esc to close, return focus ── */
+    var active = null, lastFocus = null;
+    var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    function openModal(id) {
+        var m = document.getElementById(id);
+        if (!m) return;
+        lastFocus = document.activeElement;
+        m.hidden = false; active = m;
+        document.body.classList.add('tm-lock');
+        var f = $$(FOCUSABLE, m).filter(function (el) { return el.offsetParent !== null || el.type === 'file'; });
+        var first = $('.tm-input,.tm-select,input[type=checkbox]', m) || f[0];
+        if (first) first.focus();
+    }
+    function closeModal() {
+        if (!active) return;
+        active.hidden = true; active = null;
+        document.body.classList.remove('tm-lock');
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    document.addEventListener('click', function (e) {
+        var o = e.target.closest('[data-open]');
+        if (o) { e.preventDefault(); openModal(o.dataset.open); return; }
+        var g = e.target.closest('[data-goto]');
+        if (g) { showTab(g.dataset.goto, true); return; }
+        if (e.target.closest('[data-close]') || (active && e.target === active)) closeModal();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (!active) return;
+        if (e.key === 'Escape') { closeModal(); return; }
+        if (e.key !== 'Tab') return;
+        var f = $$(FOCUSABLE, active).filter(function (el) { return el.offsetParent !== null; });
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    /* ── Results filter ── */
+    var filter = $('#tm-filter');
+    if (filter) filter.addEventListener('change', function () {
+        var shown = 0;
+        $$('#tm-results tbody tr').forEach(function (tr) {
+            var ok = !filter.value || tr.dataset.subject === filter.value;
+            tr.hidden = !ok; if (ok) shown++;
+        });
+        $('#tm-count').textContent = shown + ' result' + (shown === 1 ? '' : 's');
+    });
+
+    /* ── Print ── */
+    var doPrint = $('#tm-do-print');
+    if (doPrint) doPrint.addEventListener('click', function () { window.print(); });
+
+    /* ── Shared AJAX helper (CSRF token comes from the form's own hidden input) ── */
+    function send(form, url, msgEl, btn, okText, onOk) {
+        var tokenEl = $('[name=csrfmiddlewaretoken]', form);
+        function msg(text, kind) { msgEl.textContent = text; msgEl.className = 'tm-alert ' + kind; }
+        btn.disabled = true;
+        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin',
+                     headers: { 'X-CSRFToken': tokenEl ? tokenEl.value : '' } })
+            .then(function (r) { return r.json().catch(function () { return { success: false, error: 'Unexpected server response.' }; }); })
+            .then(function (d) {
+                if (d.success) { msg(okText, 'ok'); setTimeout(onOk, 700); }
+                else { btn.disabled = false; msg(d.error || 'Could not save. Please try again.', 'err'); }
+            })
+            .catch(function () { btn.disabled = false; msg('Network problem. Please try again.', 'err'); });
+    }
+
+    /* ── Edit profile ── */
+    var editForm = $('#tm-edit-form');
+    if (editForm) {
+        var photo = $('#tm-photo');
+        photo.addEventListener('change', function () {
+            var f = photo.files[0], msg = $('#tm-edit-msg');
+            if (!f) return;
+            if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type) || f.size > 5 * 1024 * 1024) {
+                photo.value = ''; msg.textContent = 'Choose a JPG, PNG, WEBP or GIF image up to 5 MB.'; msg.className = 'tm-alert err'; return;
+            }
+            msg.textContent = ''; msg.className = 'tm-alert';
+            $('#tm-photo-preview').src = URL.createObjectURL(f);
+        });
+        editForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var msg = $('#tm-edit-msg'), problem = '';
+            if (!$('#tm-fname').value.trim() || !$('#tm-lname').value.trim()) problem = 'First name and last name are required.';
+            else if ($('#tm-phone').value && !/^\+?[0-9][0-9\s\-()]{6,18}[0-9]$/.test($('#tm-phone').value.trim())) problem = 'Please enter a valid phone number.';
+            else if ($('#tm-dob').value && $('#tm-dob').value >= new Date().toISOString().slice(0, 10)) problem = 'Date of birth must be in the past.';
+            if (problem) { msg.textContent = problem; msg.className = 'tm-alert err'; return; }
+            send(editForm, '{% url "awa_edit_profile" %}', msg, $('#tm-edit-save'), 'Profile updated.', function () { location.reload(); });
+        });
+    }
+
+    /* ── Edit subjects ── */
+    var subjForm = $('#tm-subj-form');
+    if (subjForm) {
+        var saveBtn = $('#tm-subj-save'), counter = $('#tm-subj-count');
+        function refresh() {
+            var n = $$('input[name=subjects]:checked', subjForm).length;
+            counter.textContent = n + ' selected'; saveBtn.disabled = n === 0;
+        }
+        subjForm.addEventListener('change', refresh); refresh();
+        subjForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var msg = $('#tm-subj-msg');
+            if (!$$('input[name=subjects]:checked', subjForm).length) { msg.textContent = 'Please select at least one subject.'; msg.className = 'tm-alert err'; return; }
+            send(subjForm, '{% url "update_subjects" %}', msg, saveBtn, 'Subjects updated.', function () { location.hash = 'performance'; location.reload(); });
+        });
+    }
+})();
+</script>
+
+{% include 'footer.html' %}
+</body>
+</html>

@@ -1,0 +1,993 @@
+{% load static %}
+{% load pwa %}
+{% progressive_web_app_meta %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="{% static 'js/pwa-install.js' %}" defer></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>TopMark | Learn Maths & Physics the Right Way</title>
+
+  <style>
+    :root {
+      --ac-bg:         #fafafa;
+      --ac-surface:    #efefef;
+      --ac-text:       #262626;
+      --ac-text-light: #737373;
+      --ac-primary:    #0095f6;
+      --ac-primary-dk: #0074cc;
+      --ac-primary-lt: #e8f4fd;
+      --ac-border:     #dbdbdb;
+      --ac-error:      #dc2626;
+      --ac-success:    #16a34a;
+      --ac-purple:     #0095f6;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      background: var(--ac-bg);
+      color: var(--ac-text);
+      line-height: 1.5;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════
+       DESKTOP: TWO-PANEL LAYOUT
+    ═══════════════════════════════════════════ */
+    .ac-page {
+      display: none;
+    }
+    @media (min-width: 860px) {
+      .ac-page { display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
+    }
+
+    /* ─── Desktop hero panel ─── */
+    .ac-hero-panel {
+      display: none;
+      flex: 1;
+      background: var(--ac-primary-lt);
+      padding: 60px 56px;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .ac-hero-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      
+      pointer-events: none;
+    }
+    @media (min-width: 860px) {
+      .ac-hero-panel { display: flex; }
+    }
+
+    .ac-hero-inner { position: relative; z-index: 1; max-width: 420px; }
+
+    .ac-hero-logo-box {
+      width: 72px; height: 72px;
+      border-radius: 18px;
+      background: var(--ac-primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; font-weight: 800; color: white;
+      margin-bottom: 32px;
+    }
+
+    .ac-hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,149,246,0.12);
+      color: var(--ac-primary);
+      font-size: 12px; font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 100px;
+      margin-bottom: 16px;
+      letter-spacing: 0.03em;
+    }
+
+    .ac-hero-title {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -1.2px;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .ac-hero-title em { font-style: normal; color: var(--ac-primary); }
+
+    .ac-hero-sub {
+      font-size: 15px;
+      color: var(--ac-text-light);
+      line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    .ac-hero-features { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .ac-hero-features li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; font-weight: 500;
+    }
+    .ac-feature-dot {
+      width: 22px; height: 22px; min-width: 22px;
+      background: var(--ac-primary);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ac-feature-dot svg { width: 12px; height: 12px; fill: #fff; }
+
+    /* ─── Desktop form panel ─── */
+    .ac-form-panel {
+      display: none;
+      width: 460px;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 48px;
+      background: var(--ac-bg);
+      
+    }
+    @media (min-width: 860px) {
+      .ac-form-panel { display: flex; }
+    }
+
+    .ac-form-wrap { width: 100%; max-width: 380px; }
+    .ac-form-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; text-align: center; }
+    .ac-form-subtitle { font-size: 14px; color: var(--ac-text-light); margin-bottom: 32px; text-align: center; }
+
+    /* ═══════════════════════════════════════════
+       MOBILE ONBOARDING SCREEN
+    ═══════════════════════════════════════════ */
+    .ac-mobile-screen {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--ac-bg);
+      overflow: hidden;
+      position: relative;
+    }
+    @media (min-width: 860px) {
+      .ac-mobile-screen { display: none; }
+    }
+
+    /* Slides container — takes all space above dots+CTA */
+    .ac-slides {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ac-slide {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      animation: acFadeIn 0.45s ease;
+    }
+    .ac-slide.active { display: flex; }
+
+    @keyframes acFadeIn {
+      from { opacity: 0; transform: translateX(30px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Image area */
+    .ac-slide-img-wrap {
+      margin: 16px 20px 0;
+      border-radius: 24px;
+      overflow: hidden;
+      flex: 0 0 clamp(180px, 40vh, 290px);
+      position: relative;
+      background: #ddd;
+    }
+    .ac-slide-img-wrap::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: transparent;
+    }
+
+    .ac-slide-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 24px;
+      display: block;
+    }
+
+    /* Text content — no flex:1 so it doesn't push buttons off */
+    .ac-slide-body {
+      padding: 16px 28px 0;
+      flex-shrink: 0;
+    }
+
+    .ac-slide-title {
+      font-size: clamp(17px, 4.5vw, 22px);
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: -0.4px;
+      margin-bottom: 8px;
+      color: var(--ac-text);
+    }
+    .ac-slide-title em { font-style: normal; color: var(--ac-primary); }
+
+    .ac-slide-sub {
+      font-size: 14px;
+      color: var(--ac-text-light);
+      line-height: 1.6;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    /* Dots */
+    .ac-dots {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      flex-shrink: 0;
+    }
+    .ac-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ccc;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .ac-dot.active {
+      background: var(--ac-text);
+      width: 22px;
+      border-radius: 4px;
+    }
+
+    /* CTA button area — always anchored at bottom */
+    .ac-cta-area {
+      flex-shrink: 0;
+      padding: 8px 20px max(16px, env(safe-area-inset-bottom));
+    }
+
+    .ac-btn-get-started {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 58px;
+      background: var(--ac-purple);
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      overflow: hidden;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .ac-btn-get-started:active { transform: scale(0.98); }
+
+    /* Colourful corner blobs */
+    .ac-btn-blob {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 88px;
+      display: flex;
+      flex-direction: column;
+    }
+    .ac-blob-top {
+      flex: 1;
+      background: #0074cc;
+      border-bottom-left-radius: 40px;
+    }
+    .ac-blob-bottom {
+      flex: 1;
+      background: var(--ac-primary);
+      border-top-left-radius: 40px;
+    }
+    .ac-blob-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px; height: 36px;
+      background: var(--ac-primary);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ac-blob-icon svg { width: 16px; height: 16px; fill: #fff; margin-left: 2px; }
+
+    /* ═══════════════════════════════════════════
+       LOGIN MODAL
+    ═══════════════════════════════════════════ */
+    .ac-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .ac-modal-overlay.open {
+      display: flex;
+      animation: acOverlayIn 0.25s ease;
+    }
+    @keyframes acOverlayIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .ac-modal {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 24px;
+      padding: 32px 28px 36px;
+      animation: acPopIn 0.25s cubic-bezier(0.34, 1.3, 0.64, 1);
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    @keyframes acPopIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    .ac-modal-handle { display: none; }
+
+    .ac-modal-logo {
+      width: 48px; height: 48px;
+      border-radius: 13px;
+      background: var(--ac-primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800; color: white;
+      margin: 0 auto 16px;
+    }
+
+    .ac-modal-title {
+      font-size: 22px; font-weight: 800;
+      letter-spacing: -0.4px;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .ac-modal-subtitle {
+      font-size: 13px;
+      color: var(--ac-text-light);
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .ac-modal-close {
+      position: absolute;
+      top: 20px; right: 20px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #efefef;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    /* ─── Messages ─── */
+    .ac-messages { margin-bottom: 16px; }
+    .ac-message {
+      padding: 10px 14px;
+      font-size: 13px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: #efefef;
+    }
+    .ac-message-error   { background: #fef2f2; color: var(--ac-error); }
+    .ac-message-success { background: #f0fdf4; color: var(--ac-success); }
+
+    /* ─── Fields ─── */
+    .ac-field { margin-bottom: 14px; }
+    .ac-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+    .ac-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 14px; font-family: inherit; font-weight: 500;
+      background: var(--ac-surface);
+      
+      border-radius: 10px;
+      color: var(--ac-text);
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .ac-input:focus {
+      
+      
+    }
+
+    .ac-pw-wrap { position: relative; }
+    .ac-pw-toggle {
+      position: absolute; right: 12px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 16px; line-height: 1;
+    }
+
+    .ac-forgot { text-align: right; margin-top: -6px; margin-bottom: 14px; }
+    .ac-forgot-link {
+      background: none; border: none;
+      font-size: 12px; font-family: inherit;
+      color: var(--ac-primary); cursor: pointer; font-weight: 600;
+    }
+
+    .ac-btn-primary {
+      display: block; width: 100%;
+      padding: 13px;
+      background: var(--ac-primary); color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; font-family: inherit;
+      cursor: pointer; margin-top: 4px;
+      transition: background 0.18s, transform 0.12s;
+    }
+    .ac-btn-primary:hover  { background: var(--ac-primary-dk); transform: translateY(-1px); }
+    .ac-btn-primary:active { transform: translateY(0); }
+    .ac-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .ac-divider {
+      display: flex; align-items: center;
+      margin: 20px 0;
+      color: var(--ac-text-light);
+      font-size: 12px; font-weight: 500;
+    }
+    .ac-divider::before, .ac-divider::after { content: ''; flex: 1; height: 1px; background: transparent; }
+    .ac-divider span { padding: 0 12px; }
+
+    .ac-alt-text { font-size: 13px; color: var(--ac-text-light); text-align: center; margin-bottom: 10px; }
+    .ac-btn-outline {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; padding: 12px;
+      background: transparent; color: var(--ac-primary);
+      
+      border-radius: 10px; text-decoration: none;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      transition: background 0.18s;
+    }
+    .ac-btn-outline:hover { background: var(--ac-primary-lt); }
+
+    /* ─── Skeleton ─── */
+    .ac-skeleton {
+      background: linear-gradient(90deg, #efefef 25%, #e4e4e4 50%, #efefef 75%);
+      background-size: 200% 100%;
+      animation: acShimmer 1.3s ease-in-out infinite;
+      border-radius: 10px;
+    }
+    @keyframes acShimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .ac-sk-logo  { width: 48px; height: 48px; border-radius: 13px; margin: 0 auto 16px; }
+    .ac-sk-title { width: 55%; height: 22px; margin: 0 auto 8px; }
+    .ac-sk-sub   { width: 70%; height: 14px; margin: 0 auto 28px; }
+    .ac-sk-field { height: 44px; margin-bottom: 14px; }
+    .ac-sk-btn   { height: 46px; margin-top: 4px; }
+
+    /* ═══════════════════════════════════════════
+       DESKTOP HERO SLIDESHOW
+    ═══════════════════════════════════════════ */
+    .ac-hero-panel {
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .ac-dslide {
+      display: none;
+      position: absolute;
+      inset: 0;
+      animation: acDFadeIn 0.6s ease;
+    }
+    .ac-dslide.active { display: block; }
+
+    @keyframes acDFadeIn {
+      from { opacity: 0; transform: scale(1.03); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .ac-dslide-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Dark gradient overlay so text is always readable */
+    .ac-dslide-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.72) 0%,
+        rgba(0,0,0,0.35) 50%,
+        rgba(0,0,0,0.10) 100%
+      );
+    }
+
+    .ac-dslide-content {
+      position: absolute;
+      bottom: 64px;
+      left: 48px;
+      right: 48px;
+      z-index: 2;
+    }
+
+    .ac-dslide-title {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.18;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .ac-dslide-title em { font-style: normal; color: #8fd0fd; }
+
+    .ac-dslide-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.82);
+      line-height: 1.65;
+      max-width: 380px;
+    }
+
+    /* Dots for desktop */
+    .ac-ddots {
+      position: absolute;
+      bottom: 28px;
+      left: 48px;
+      display: flex;
+      gap: 8px;
+      z-index: 3;
+    }
+    .ac-ddot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.45);
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+    }
+    .ac-ddot.active {
+      background: #fff;
+      width: 24px;
+      border-radius: 4px;
+    }
+
+    /* Override hero-tag colour for dark background */
+    .ac-dslide-content .ac-hero-tag {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      margin-bottom: 14px;
+      backdrop-filter: blur(4px);
+    }
+  
+    /* flat style: no borders, lines or shadows — soft fills separate things instead */
+    button, input:not([type=checkbox]):not([type=radio]), select, textarea { border: 0; }
+    .ac-input:focus { outline: 2px solid var(--ac-primary); outline-offset: 0; }
+    .ac-input.ac-error   { background: #fef2f2; }
+    .ac-input.ac-success { background: #f0fdf4; }
+    .ac-btn-outline { background: var(--ac-primary-lt); }
+    .ac-btn-outline:hover { background: #d3eafb; }
+    .ac-pp-btn-skip { background: var(--ac-surface); }
+    .ac-pp-btn-skip:hover { background: #e4e4e4; }
+    .ac-pp-upload-zone { background: var(--ac-surface); }
+    .ac-pp-avatar { background: var(--ac-surface); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     DESKTOP: TWO-PANEL LAYOUT
+═══════════════════════════════════════════ -->
+<div class="ac-page">
+
+  <!-- Left: Desktop Slideshow -->
+  <div class="ac-hero-panel">
+
+    <div class="ac-dslide active" data-dindex="0">
+      <img src="{% static 'images/slide1.png' %}" alt="Learn it Properly" class="ac-dslide-img">
+      <div class="ac-dslide-overlay"></div>
+      <div class="ac-dslide-content">
+        <div class="ac-hero-tag">🎓 Mathematics · Physics · Science</div>
+        <h1 class="ac-dslide-title">Learn it Properly.<br>Use it <em>Confidently.</em></h1>
+        <p class="ac-dslide-sub">TopMark breaks Maths and Physics into clear, step-by-step lessons — from the fundamentals to SSS advanced topics.</p>
+      </div>
+    </div>
+
+    <div class="ac-dslide" data-dindex="1">
+      <img src="{% static 'images/slide2.png' %}" alt="Watch lessons or join live classes" class="ac-dslide-img">
+      <div class="ac-dslide-overlay"></div>
+      <div class="ac-dslide-content">
+        <div class="ac-hero-tag">🎬 Video Lessons · Live Classes</div>
+        <h1 class="ac-dslide-title">Watch lessons or join <em>live classes</em></h1>
+        <p class="ac-dslide-sub">Easy-to-follow video explanations and live classroom sessions — learn at your own pace, from anywhere.</p>
+      </div>
+    </div>
+
+    <div class="ac-dslide" data-dindex="2">
+      <img src="{% static 'images/slide3.png' %}" alt="Ace your exams" class="ac-dslide-img">
+      <div class="ac-dslide-overlay"></div>
+      <div class="ac-dslide-content">
+        <div class="ac-hero-tag">📝 JAMB · WAEC · NECO</div>
+        <h1 class="ac-dslide-title">Ace your <em>JAMB, WAEC</em> &amp; NECO exams</h1>
+        <p class="ac-dslide-sub">Realistic CBT mock tests with full explanations — practice the way you'll be examined.</p>
+      </div>
+    </div>
+
+    <div class="ac-dslide" data-dindex="3">
+      <img src="{% static 'images/slide4.png' %}" alt="Understand the why" class="ac-dslide-img">
+      <div class="ac-dslide-overlay"></div>
+      <div class="ac-dslide-content">
+        <div class="ac-hero-tag">🏆 Concepts that Stick</div>
+        <h1 class="ac-dslide-title">Understand the <em>"why"</em>, not just the "how"</h1>
+        <p class="ac-dslide-sub">Build the understanding that takes you from average to excellent — one concept at a time.</p>
+      </div>
+    </div>
+
+    <!-- Dots -->
+    <div class="ac-ddots">
+      <div class="ac-ddot active" data-ddot="0"></div>
+      <div class="ac-ddot" data-ddot="1"></div>
+      <div class="ac-ddot" data-ddot="2"></div>
+      <div class="ac-ddot" data-ddot="3"></div>
+    </div>
+
+  </div>
+
+  <!-- Right: Form (desktop only) -->
+  <div class="ac-form-panel">
+    <div class="ac-form-wrap">
+      <div id="ac-sk-desktop">
+        <div class="ac-skeleton ac-sk-logo"></div>
+        <div class="ac-skeleton ac-sk-title"></div>
+        <div class="ac-skeleton ac-sk-sub"></div>
+        <div class="ac-skeleton ac-sk-field"></div>
+        <div class="ac-skeleton ac-sk-field"></div>
+        <div class="ac-skeleton ac-sk-btn"></div>
+      </div>
+      <div id="ac-content-desktop" style="display:none;">
+        <div class="ac-modal-logo">T</div>
+        <h1 class="ac-form-title">Welcome back 👋</h1>
+        <p class="ac-form-subtitle">Continue learning where you left off</p>
+        {% if messages %}
+        <div class="ac-messages">
+          {% for message in messages %}
+          <div class="ac-message {% if message.tags == 'error' %}ac-message-error{% elif message.tags == 'success' %}ac-message-success{% endif %}">{{ message }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <form method="post" class="ac-form" id="ac-desktop-form">
+          {% csrf_token %}
+          <div class="ac-field">
+            <label class="ac-label">Admission Number</label>
+            <input type="text" name="user_check" class="ac-input" placeholder="e.g. TMTC/2026/0007" required autocomplete="username">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Password</label>
+            <div class="ac-pw-wrap">
+              <input type="password" name="password" id="ac-pw-desktop" class="ac-input" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" class="ac-pw-toggle" id="ac-toggle-desktop">👁️</button>
+            </div>
+          </div>
+          <div class="ac-forgot">
+            <button type="button" class="ac-forgot-link" id="ac-forgot-desktop">Forgot password?</button>
+          </div>
+          <button type="submit" class="ac-btn-primary">Sign In</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.ac-page -->
+
+
+<!-- ═══════════════════════════════════════════
+     MOBILE ONBOARDING SCREEN
+═══════════════════════════════════════════ -->
+<div class="ac-mobile-screen">
+  <div class="ac-slides">
+
+    <!-- Slide 1 -->
+    <div class="ac-slide active" data-index="0">
+      <div class="ac-slide-img-wrap">
+        <img src="{% static 'images/slide1.png' %}" alt="Learn it Properly" class="ac-slide-img">
+      </div>
+      <div class="ac-slide-body">
+        <h2 class="ac-slide-title">Learn it Properly.<br>Use it <em>Confidently.</em></h2>
+        <p class="ac-slide-sub">TopMark breaks Maths and Physics into clear, step-by-step lessons — from the fundamentals to SSS advanced topics.</p>
+      </div>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="ac-slide" data-index="1">
+      <div class="ac-slide-img-wrap">
+        <img src="{% static 'images/slide2.png' %}" alt="Watch lessons or join live classes" class="ac-slide-img">
+      </div>
+      <div class="ac-slide-body">
+        <h2 class="ac-slide-title">Watch lessons or join <em>live classes</em></h2>
+        <p class="ac-slide-sub">Easy-to-follow video explanations and live classroom sessions — learn at your own pace, from anywhere.</p>
+      </div>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="ac-slide" data-index="2">
+      <div class="ac-slide-img-wrap">
+        <img src="{% static 'images/slide3.png' %}" alt="Ace your exams" class="ac-slide-img">
+      </div>
+      <div class="ac-slide-body">
+        <h2 class="ac-slide-title">Ace your <em>JAMB, WAEC</em> &amp; NECO exams</h2>
+        <p class="ac-slide-sub">Realistic CBT mock tests with full explanations — practice the way you'll be examined.</p>
+      </div>
+    </div>
+
+    <!-- Slide 4 -->
+    <div class="ac-slide" data-index="3">
+      <div class="ac-slide-img-wrap">
+        <img src="{% static 'images/slide4.png' %}" alt="Understand the why" class="ac-slide-img">
+      </div>
+      <div class="ac-slide-body">
+        <h2 class="ac-slide-title">Understand the <em>"why"</em>, not just the "how"</h2>
+        <p class="ac-slide-sub">Concepts that actually stick. Build the understanding that takes you from average to excellent.</p>
+      </div>
+    </div>
+
+  </div><!-- /.ac-slides -->
+
+  <!-- Dots -->
+  <div class="ac-dots" id="ac-dots">
+    <div class="ac-dot active" data-dot="0"></div>
+    <div class="ac-dot" data-dot="1"></div>
+    <div class="ac-dot" data-dot="2"></div>
+    <div class="ac-dot" data-dot="3"></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="ac-cta-area">
+    <button class="ac-btn-get-started" id="ac-get-started-btn">
+      <span>GET STARTED</span>
+      <div class="ac-btn-blob">
+        <div class="ac-blob-top"></div>
+        <div class="ac-blob-bottom"></div>
+      </div>
+      <div class="ac-blob-icon">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+    </button>
+  </div>
+
+</div><!-- /.ac-mobile-screen -->
+
+
+<!-- ═══════════════════════════════════════════
+     LOGIN MODAL (mobile + desktop trigger)
+═══════════════════════════════════════════ -->
+<div class="ac-modal-overlay" id="ac-modal-overlay">
+  <div class="ac-modal" id="ac-modal" role="dialog" aria-modal="true" aria-label="Sign in">
+    <button class="ac-modal-close" id="ac-modal-close" aria-label="Close">✕</button>
+    <div class="ac-modal-handle"></div>
+
+    <!-- Skeleton -->
+    <div id="ac-modal-skeleton">
+      <div class="ac-skeleton ac-sk-logo"></div>
+      <div class="ac-skeleton ac-sk-title"></div>
+      <div class="ac-skeleton ac-sk-sub"></div>
+      <div class="ac-skeleton ac-sk-field"></div>
+      <div class="ac-skeleton ac-sk-field"></div>
+      <div class="ac-skeleton ac-sk-btn"></div>
+    </div>
+
+    <!-- Content -->
+    <div id="ac-modal-content" style="display:none;">
+      <div class="ac-modal-logo">T</div>
+      <h2 class="ac-modal-title">Welcome back 👋</h2>
+
+      {% if messages %}
+      <div class="ac-messages">
+        {% for message in messages %}
+        <div class="ac-message {% if message.tags == 'error' %}ac-message-error{% elif message.tags == 'success' %}ac-message-success{% endif %}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" id="ac-modal-form">
+        {% csrf_token %}
+        <div class="ac-field">
+          <label class="ac-label">Admission Number</label>
+          <input type="text" name="user_check" class="ac-input" placeholder="e.g. TMTC/2026/0007" required autocomplete="username">
+        </div>
+        <div class="ac-field">
+          <label class="ac-label">Password</label>
+          <div class="ac-pw-wrap">
+            <input type="password" name="password" id="ac-pw-modal" class="ac-input" placeholder="Enter your password" required autocomplete="current-password">
+            <button type="button" class="ac-pw-toggle" id="ac-toggle-modal">👁️</button>
+          </div>
+        </div>
+        <div class="ac-forgot">
+          <button type="button" class="ac-forgot-link" id="ac-forgot-modal">Forgot password?</button>
+        </div>
+        <button type="submit" class="ac-btn-primary" id="ac-modal-signin-btn">Sign In</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+(function () {
+  /* ─── Desktop Slideshow ─── */
+  var dslides  = document.querySelectorAll('.ac-dslide');
+  var ddots    = document.querySelectorAll('.ac-ddot');
+  var dcurrent = 0;
+  var dtotal   = dslides.length;
+  var dtimer   = null;
+
+  function dGoTo(n) {
+    dslides[dcurrent].classList.remove('active');
+    ddots[dcurrent].classList.remove('active');
+    dcurrent = (n + dtotal) % dtotal;
+    dslides[dcurrent].classList.add('active');
+    ddots[dcurrent].classList.add('active');
+  }
+
+  function dStartAuto() {
+    clearInterval(dtimer);
+    dtimer = setInterval(function () { dGoTo(dcurrent + 1); }, 3500);
+  }
+
+  ddots.forEach(function (d) {
+    d.addEventListener('click', function () {
+      dGoTo(parseInt(d.dataset.ddot));
+      dStartAuto();
+    });
+  });
+
+  dStartAuto();
+
+  /* ─── Slideshow ─── */
+  var slides   = document.querySelectorAll('.ac-slide');
+  var dots     = document.querySelectorAll('.ac-dot');
+  var current  = 0;
+  var total    = slides.length;
+  var timer    = null;
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dots[current].classList.remove('active');
+    current = (n + total) % total;
+    slides[current].classList.add('active');
+    dots[current].classList.add('active');
+  }
+
+  function startAuto() {
+    clearInterval(timer);
+    timer = setInterval(function () { goTo(current + 1); }, 3500);
+  }
+
+  dots.forEach(function (d) {
+    d.addEventListener('click', function () {
+      goTo(parseInt(d.dataset.dot));
+      startAuto();
+    });
+  });
+
+  startAuto();
+
+  /* ─── Touch swipe on slides ─── */
+  var touchStartX = 0;
+  var slidesEl = document.querySelector('.ac-slides');
+  if (slidesEl) {
+    slidesEl.addEventListener('touchstart', function (e) {
+      touchStartX = e.changedTouches[0].clientX;
+    }, { passive: true });
+    slidesEl.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 50) {
+        goTo(dx < 0 ? current + 1 : current - 1);
+        startAuto();
+      }
+    }, { passive: true });
+  }
+
+  /* ─── Modal open / close ─── */
+  var overlay  = document.getElementById('ac-modal-overlay');
+  var modal    = document.getElementById('ac-modal');
+  var closeBtn = document.getElementById('ac-modal-close');
+  var gsBtn    = document.getElementById('ac-get-started-btn');
+
+  function openModal() {
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Reveal content after a tiny delay to let skeleton show briefly
+    setTimeout(function () {
+      var sk = document.getElementById('ac-modal-skeleton');
+      var ct = document.getElementById('ac-modal-content');
+      if (sk && ct) { sk.style.display = 'none'; ct.style.display = 'block'; }
+    }, 320);
+  }
+
+  function closeModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  if (gsBtn)    gsBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (overlay) {
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) closeModal();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* ─── Desktop skeleton ─── */
+  setTimeout(function () {
+    var sk = document.getElementById('ac-sk-desktop');
+    var ct = document.getElementById('ac-content-desktop');
+    if (sk && ct) { sk.style.display = 'none'; ct.style.display = 'block'; }
+  }, 280);
+
+  /* ─── Password toggles ─── */
+  function pwToggle(toggleId, inputId) {
+    var t = document.getElementById(toggleId);
+    var p = document.getElementById(inputId);
+    if (t && p) {
+      t.addEventListener('click', function () {
+        var show = p.type === 'password';
+        p.type = show ? 'text' : 'password';
+        t.textContent = show ? '🙈' : '👁️';
+      });
+    }
+  }
+  pwToggle('ac-toggle-desktop', 'ac-pw-desktop');
+  pwToggle('ac-toggle-modal',   'ac-pw-modal');
+
+  /* ─── Forgot password ─── */
+  function forgotHandler(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', function () {
+      window.location.href = "{% url 'index' %}";
+    });
+  }
+  forgotHandler('ac-forgot-desktop');
+  forgotHandler('ac-forgot-modal');
+
+  /* ─── If Django returned errors, auto-open modal on mobile ─── */
+  {% if messages %}
+  if (window.innerWidth < 860) {
+    openModal();
+    // skip skeleton immediately when errors are present
+    var sk2 = document.getElementById('ac-modal-skeleton');
+    var ct2 = document.getElementById('ac-modal-content');
+    if (sk2 && ct2) { sk2.style.display = 'none'; ct2.style.display = 'block'; }
+  }
+  {% endif %}
+
+})();
+</script>
+
+</body>
+</html>

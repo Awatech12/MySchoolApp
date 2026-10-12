@@ -1,0 +1,634 @@
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <title>Live Classes | awaClass</title>
+  <style>
+    .live-classes-page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+    @media (min-width: 768px) {
+      .live-classes-page { margin-left: 50px; }
+    }
+
+    /* ─── PAGE HEADER ───────────────────────── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0f0f0f;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .page-title .title-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: #fff4ed;
+      border: 1px solid #fde0c8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #f97316;
+    }
+    .create-room-btn {
+      background: #f97316;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .create-room-btn:hover { background: #ea6c0a; color: white; }
+
+    /* ─── SECTION LABEL ─────────────────────── */
+    .section-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #f0f0f0;
+    }
+
+    /* ─── GRID ──────────────────────────────── */
+    .rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+
+    /* ─── ROOM CARD ─────────────────────────── */
+    .room-card {
+      background: white;
+      border: 1px solid #e5e5e5;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .room-card:hover { border-color: #f97316; transform: translateY(-3px); }
+
+    .room-header {
+      background: #0f0f0f;
+      padding: 20px;
+      color: white;
+      position: relative;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    /* Scheduled card header */
+    .room-header.scheduled-header { background: #1a1a2e; }
+
+    .live-badge {
+      position: absolute; top: 14px; right: 14px;
+      background: #ef4444;
+      color: white;
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .scheduled-badge {
+      position: absolute; top: 14px; right: 14px;
+      background: #f97316;
+      color: white;
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: white;
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .room-header h3 {
+      margin: 0 0 6px 0;
+      font-size: 17px; font-weight: 700; line-height: 1.3;
+      padding-right: 70px;
+    }
+    .creator-info {
+      font-size: 12px;
+      color: rgba(255,255,255,.65);
+      display: flex; align-items: center; gap: 5px;
+    }
+
+    .room-body { padding: 16px 20px 20px; }
+
+    .room-desc {
+      font-size: 13px;
+      color: #606060;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .room-stats {
+      display: flex; gap: 18px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .stat { display:flex; align-items:center; gap:6px; font-size:13px; color:#606060; }
+    .stat i { font-size:13px; color:#f97316; }
+
+    .join-btn, .copy-btn {
+      display: flex;
+      align-items: center; justify-content: center;
+      gap: 7px;
+      padding: 10px;
+      border-radius: 9px;
+      font-weight: 600; font-size: 14px;
+      transition: background 0.2s;
+      text-decoration: none;
+      border: none; cursor: pointer; width: 100%;
+    }
+    .join-btn { background: #f97316; color: white; }
+    .join-btn:hover { background: #ea6c0a; color: white; }
+    .copy-btn { background: #f3f4f6; color: #374151; }
+    .copy-btn:hover { background: #e5e7eb; }
+
+    /* ─── EMPTY STATE ───────────────────────── */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 70px 20px;
+      border: 1px dashed #e5e5e5;
+      border-radius: 14px;
+      background: #fafafa;
+    }
+    .empty-icon-wrap {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: #fff4ed; border: 1px solid #fde0c8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; color: #f97316;
+      margin: 0 auto 18px;
+    }
+    .empty-state h3 { font-size: 18px; color: #0f0f0f; margin-bottom: 8px; }
+    .empty-state p  { color: #888; font-size: 14px; margin-bottom: 24px; }
+
+    /* ─── MODAL ─────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: white;
+      border-radius: 18px;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      overflow: hidden;
+      animation: slideUp .22s ease;
+    }
+    @keyframes slideUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    .modal-head {
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-head h2 { margin:0; font-size:18px; font-weight:700; color:#0f0f0f; display:flex;align-items:center;gap:9px; }
+    .modal-head h2 i { color:#f97316; }
+    .modal-close {
+      background: #f3f4f6; border: none; border-radius: 8px;
+      width: 32px; height: 32px;
+      cursor: pointer; font-size: 16px; color: #555;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: #e5e7eb; }
+
+    .modal-body { padding: 24px; }
+
+    /* Toggle tabs */
+    .tab-row {
+      display: flex; gap: 6px;
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 22px;
+    }
+    .tab-btn {
+      flex: 1; padding: 9px 0;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      background: transparent; color: #888;
+      transition: all .18s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .tab-btn.active { background: white; color: #0f0f0f; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    .form-field { margin-bottom: 16px; }
+    .form-field label {
+      display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;
+    }
+    .form-field input,
+    .form-field textarea {
+      width: 100%; box-sizing: border-box;
+      padding: 10px 12px;
+      border: 1px solid #e5e5e5;
+      border-radius: 9px;
+      font-size: 14px; color: #0f0f0f;
+      outline: none;
+      transition: border-color .18s;
+      font-family: inherit;
+    }
+    .form-field input:focus,
+    .form-field textarea:focus { border-color: #f97316; }
+    .form-field textarea { resize: vertical; min-height: 72px; }
+
+    .schedule-fields { display: none; }
+    .schedule-fields.show { display: block; }
+
+    .date-time-row { display: flex; gap: 10px; }
+    .date-time-row .form-field { flex: 1; margin-bottom: 0; }
+
+    .modal-foot {
+      padding: 0 24px 24px;
+      display: flex; gap: 10px;
+    }
+    .btn-cancel {
+      flex: 1; padding: 11px;
+      border: 1px solid #e5e5e5;
+      border-radius: 9px; background: white;
+      font-size: 14px; font-weight: 600; color: #555;
+      cursor: pointer;
+    }
+    .btn-cancel:hover { background: #f3f4f6; }
+    .btn-submit {
+      flex: 2; padding: 11px;
+      border: none; border-radius: 9px;
+      background: #f97316; color: white;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background .18s;
+    }
+    .btn-submit:hover { background: #ea6c0a; }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* Error / success banners inside modal */
+    .modal-alert {
+      padding: 10px 14px;
+      border-radius: 9px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .modal-alert.error   { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; display:block; }
+    .modal-alert.success { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; display:block; }
+
+    /* ─── RESPONSIVE ─────────────────────────── */
+    @media (max-width: 600px) {
+      .rooms-grid { grid-template-columns: 1fr; }
+      .page-title { font-size: 20px; }
+      .date-time-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+{% include 'sidebar.html' %}
+
+<main class="live-classes-page">
+
+  <div class="page-header">
+    <h1 class="page-title">
+      <span class="title-icon"><i class="fa-solid fa-video"></i></span>
+      Live Classes
+    </h1>
+    <button class="create-room-btn" onclick="openModal()">
+      <i class="fa-solid fa-plus"></i> New Live Class
+    </button>
+  </div>
+
+  <!-- ── ACTIVE SESSIONS ── -->
+  {% if sessions %}
+  <p class="section-label"><i class="fa-solid fa-circle" style="color:#ef4444;font-size:9px;"></i> Live Now</p>
+  {% endif %}
+
+  <div class="rooms-grid">
+    {% for session in sessions %}
+    <div class="room-card">
+      <div class="room-header">
+        <div class="live-badge"><span class="live-dot"></span> LIVE</div>
+        <h3>{{ session.title }}</h3>
+        <div class="creator-info">
+          <i class="fa-solid fa-chalkboard-user"></i>
+          {{ session.created_by.get_full_name|default:session.created_by.username }}
+        </div>
+      </div>
+      <div class="room-body">
+        {% if session.description %}
+        <p class="room-desc">{{ session.description }}</p>
+        {% endif %}
+        <div class="room-stats">
+          <div class="stat">
+            <i class="fa-solid fa-users"></i>
+            <span>{{ session.participants.count }}/{{ session.max_participants }}</span>
+          </div>
+          <div class="stat">
+            <i class="fa-regular fa-clock"></i>
+            <span>{{ session.created_at|timesince }} ago</span>
+          </div>
+        </div>
+        <a href="{% url 'live_room' room_name=session.room_name %}" class="join-btn">
+          <i class="fa-solid fa-right-to-bracket"></i> Join Class
+        </a>
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+      <div class="empty-icon-wrap"><i class="fa-solid fa-chalkboard-user"></i></div>
+      <h3>No Active Live Classes</h3>
+      <p>Be the first to start a live class and teach your students.</p>
+      <button class="create-room-btn" onclick="openModal()" style="display:inline-flex;margin:0 auto;">
+        <i class="fa-solid fa-plus"></i> Create Your First Class
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── UPCOMING / SCHEDULED SESSIONS ── -->
+  {% if upcoming %}
+  <p class="section-label"><i class="fa-regular fa-calendar" style="color:#f97316;"></i> Upcoming</p>
+  <div class="rooms-grid">
+    {% for session in upcoming %}
+    <div class="room-card">
+      <div class="room-header scheduled-header">
+        <div class="scheduled-badge"><i class="fa-regular fa-calendar"></i> SCHEDULED</div>
+        <h3>{{ session.title }}</h3>
+        <div class="creator-info">
+          <i class="fa-solid fa-chalkboard-user"></i>
+          {{ session.created_by.get_full_name|default:session.created_by.username }}
+        </div>
+      </div>
+      <div class="room-body">
+        {% if session.description %}
+        <p class="room-desc">{{ session.description }}</p>
+        {% endif %}
+        <div class="room-stats">
+          <div class="stat">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span>{{ session.scheduled_at|date:"d M Y" }}</span>
+          </div>
+          <div class="stat">
+            <i class="fa-regular fa-clock"></i>
+            <span>{{ session.scheduled_at|date:"g:i A" }}</span>
+          </div>
+        </div>
+        {% if session.created_by == request.user %}
+        <a href="{% url 'start_live_room' room_name=session.room_name %}" class="join-btn" style="margin-bottom:10px;">
+          <i class="fa-solid fa-circle-play"></i> Start Class
+        </a>
+        {% endif %}
+        <button class="copy-btn" onclick="copyLink('{{ request.scheme }}://{{ request.get_host }}/live/{{ session.room_name }}/')">
+          <i class="fa-regular fa-copy"></i> Copy Invite Link
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</main>
+
+<!-- ─────────────────── CREATE ROOM MODAL ─────────────────── -->
+<div class="modal-overlay" id="createModal" onclick="closeOnBackdrop(event)">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2><i class="fa-solid fa-video"></i> New Live Class</h2>
+      <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Tab row -->
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-now" onclick="switchTab('now')">
+          <i class="fa-solid fa-bolt"></i> Start Now
+        </button>
+        <button class="tab-btn" id="tab-schedule" onclick="switchTab('schedule')">
+          <i class="fa-regular fa-calendar"></i> Schedule
+        </button>
+      </div>
+
+      <div class="modal-alert" id="modalAlert"></div>
+
+      <form id="createRoomForm">
+        {% csrf_token %}
+
+        <div class="form-field">
+          <label for="roomTitle">Class Title <span style="color:#ef4444">*</span></label>
+          <input type="text" id="roomTitle" name="title" placeholder="e.g. Mathematics – Quadratic Equations" maxlength="300" required>
+        </div>
+
+        <div class="form-field">
+          <label for="roomDesc">Description <span style="color:#aaa;font-weight:400">(optional)</span></label>
+          <textarea id="roomDesc" name="description" placeholder="What will you cover in this session?" maxlength="500"></textarea>
+        </div>
+
+        <!-- Schedule fields (hidden by default) -->
+        <div class="schedule-fields" id="scheduleFields">
+          <div class="date-time-row">
+            <div class="form-field">
+              <label for="schedDate">Date <span style="color:#ef4444">*</span></label>
+              <input type="date" id="schedDate" name="sched_date">
+            </div>
+            <div class="form-field">
+              <label for="schedTime">Time <span style="color:#ef4444">*</span></label>
+              <input type="time" id="schedTime" name="sched_time">
+            </div>
+          </div>
+          <!-- hidden combined field -->
+          <input type="hidden" id="scheduledAt" name="scheduled_at">
+        </div>
+
+      </form>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-submit" id="submitBtn" onclick="submitForm()">
+        <i class="fa-solid fa-bolt" id="submitIcon"></i>
+        <span id="submitLabel">Start Now</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast ─── -->
+<div id="toast" style="
+  display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:#0f0f0f; color:white; padding:11px 20px; border-radius:10px;
+  font-size:14px; font-weight:500; z-index:2000; white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,.2);
+"></div>
+
+<script>
+  // ── Modal helpers ────────────────────────────────────────
+  function openModal() {
+    document.getElementById('createModal').classList.add('open');
+    document.getElementById('roomTitle').focus();
+  }
+  function closeModal() {
+    document.getElementById('createModal').classList.remove('open');
+    document.getElementById('createRoomForm').reset();
+    hideAlert();
+  }
+  function closeOnBackdrop(e) {
+    if (e.target === document.getElementById('createModal')) closeModal();
+  }
+
+  // ── Tab switching ────────────────────────────────────────
+  let currentTab = 'now';
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-now').classList.toggle('active', tab === 'now');
+    document.getElementById('tab-schedule').classList.toggle('active', tab === 'schedule');
+    const sf = document.getElementById('scheduleFields');
+    sf.classList.toggle('show', tab === 'schedule');
+    document.getElementById('submitIcon').className = tab === 'now' ? 'fa-solid fa-bolt' : 'fa-regular fa-calendar-check';
+    document.getElementById('submitLabel').textContent = tab === 'now' ? 'Start Now' : 'Schedule Class';
+    hideAlert();
+
+    // Set min date/time to now
+    if (tab === 'schedule') {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const minDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+      document.getElementById('schedDate').min = minDate;
+      if (!document.getElementById('schedDate').value) {
+        document.getElementById('schedDate').value = minDate;
+      }
+      if (!document.getElementById('schedTime').value) {
+        now.setMinutes(now.getMinutes() + 30);
+        document.getElementById('schedTime').value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      }
+    }
+  }
+
+  // ── Alert ───────────────────────────────────────────────
+  function showAlert(msg, type='error') {
+    const el = document.getElementById('modalAlert');
+    el.textContent = msg;
+    el.className = 'modal-alert ' + type;
+  }
+  function hideAlert() {
+    const el = document.getElementById('modalAlert');
+    el.className = 'modal-alert';
+    el.textContent = '';
+  }
+
+  // ── Toast ───────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3000);
+  }
+
+  // ── Copy link ───────────────────────────────────────────
+  function copyLink(url) {
+    navigator.clipboard.writeText(url).then(() => showToast('Invite link copied!'));
+  }
+
+  // ── Submit ──────────────────────────────────────────────
+  async function submitForm() {
+    hideAlert();
+    const title = document.getElementById('roomTitle').value.trim();
+    if (!title) { showAlert('Please enter a class title.'); return; }
+
+    if (currentTab === 'schedule') {
+      const d = document.getElementById('schedDate').value;
+      const t = document.getElementById('schedTime').value;
+      if (!d || !t) { showAlert('Please pick a date and time.'); return; }
+      // Combine into ISO local string for the hidden field
+      document.getElementById('scheduledAt').value = `${d}T${t}`;
+    } else {
+      document.getElementById('scheduledAt').value = '';
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Please wait…';
+
+    const form = document.getElementById('createRoomForm');
+    const data = new FormData(form);
+
+    try {
+      const res = await fetch("{% url 'create_live_room' %}", {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: data,
+      });
+      const json = await res.json();
+      if (json.ok) {
+        if (json.redirect) {
+          window.location.href = json.redirect;
+        } else {
+          // Scheduled
+          closeModal();
+          showToast(`"${json.title}" scheduled for ${json.scheduled_at} ✓`);
+          setTimeout(() => location.reload(), 2200);
+        }
+      } else {
+        showAlert(json.error || 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = `<i class="${currentTab==='now'?'fa-solid fa-bolt':'fa-regular fa-calendar-check'}"></i> ${currentTab==='now'?'Start Now':'Schedule Class'}`;
+      }
+    } catch(err) {
+      showAlert('Network error. Please try again.');
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-bolt"></i> Try Again`;
+    }
+  }
+
+  // Close on Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+
+{% include 'footer.html' %}
+</body>
+</html>

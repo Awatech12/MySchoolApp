@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <title>Live Class: Fullscreen Host + Self Bubble | awaClass</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    }
+
+    .live-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+
+    /* MAIN STAGE — host video fills entire background */
+    .host-stage {
+      position: absolute;
+      inset: 0;
+      background: #111;
+      overflow: hidden;
+    }
+
+    #host-video-element {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+    }
+
+    /* placeholder when host cam is off */
+    .host-avatar-placeholder {
+      display: none;
+      position: absolute;
+      inset: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: #121212;
+      color: #aaa;
+      z-index: 5;
+    }
+
+    .host-avatar-placeholder .avatar-circle {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #f97316;
+    }
+
+    /* waiting overlay while host stream not yet arrived (student side) */
+    .waiting-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: #0a0a0a;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 20;
+      backdrop-filter: blur(4px);
+    }
+
+    .waiting-overlay .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid #2c2c2c;
+      border-top-color: #f97316;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* HOST NAME BADGE (bottom-left) */
+    .host-name-badge {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    .host-live-dot {
+      width: 9px;
+      height: 9px;
+      background: #f97316;
+      border-radius: 50%;
+      animation: pulse 1.4s infinite;
+    }
+
+    @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+
+    /* TOP-LEFT ROOM INFO */
+    .room-info {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 15;
+      flex-wrap: wrap;
+    }
+
+    .live-badge {
+      background: #e11d48;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .viewer-counter {
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      padding: 5px 12px;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      border: 0.5px solid rgba(255,255,255,0.2);
+    }
+
+    .viewer-counter i { color: #f97316; }
+
+    .session-title-pill {
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      padding: 5px 12px;
+      border-radius: 40px;
+      font-size: 12px;
+      color: #eee;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
+    }
+
+    /* Audio unlock prompt - but we'll auto-unlock aggressively */
+    .audio-unlock-prompt {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.95);
+      backdrop-filter: blur(10px);
+      padding: 12px 24px;
+      border-radius: 50px;
+      z-index: 10001;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      border: 2px solid #f97316;
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      display: none;
+    }
+
+    /* ─── STUDENT SELF BUBBLE (bottom-right) ─── */
+    .self-bubble-container {
+      position: absolute;
+      bottom: 100px;
+      right: 20px;
+      z-index: 25;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .self-bubble {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: #1e1e1e;
+      border: 3px solid #f97316;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .self-bubble video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .self-bubble .self-avatar {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2a2a2a;
+      font-size: 40px;
+      color: #aaa;
+    }
+
+    .self-name-badge {
+      text-align: center;
+      margin-top: 6px;
+      font-size: 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 2px 8px;
+      border-radius: 20px;
+      color: white;
+      font-weight: 500;
+      backdrop-filter: blur(4px);
+      white-space: nowrap;
+    }
+
+    .self-mic-icon {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: #111;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: white;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* student tray for OTHER students (host sees all students) */
+    .student-tray {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 15;
+      max-height: 80vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+
+    .student-bubble-wrapper {
+      position: relative;
+      width: 70px;
+      cursor: pointer;
+    }
+
+    .student-bubble {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #2a2a2a;
+      border: 2px solid rgba(255,255,255,0.3);
+      transition: 0.1s;
+    }
+
+    .student-bubble video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .student-bubble .bubble-avatar {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #ccc;
+    }
+
+    .bubble-name {
+      text-align: center;
+      font-size: 9px;
+      margin-top: 4px;
+      color: #ddd;
+      white-space: nowrap;
+      background: rgba(0,0,0,0.5);
+      padding: 2px 4px;
+      border-radius: 12px;
+    }
+
+    .bubble-muted-icon {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: #ef4444;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: white;
+    }
+
+    .bubble-mic-ctrl {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(249, 115, 22, 0.85);
+      color: white;
+      font-size: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: background 0.2s, transform 0.15s;
+      z-index: 5;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .bubble-mic-ctrl:hover { background: rgba(249,115,22,1); transform: scale(1.15); }
+    .bubble-mic-ctrl.mic-ctrl-muted { background: rgba(239,68,68,0.9); }
+
+    /* ========== FIXED CONTROLS BAR (always visible) ========== */
+    .controls-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(28, 28, 28, 0.96);
+      backdrop-filter: blur(20px);
+      border-radius: 60px;
+      padding: 10px 24px;
+      display: flex;
+      gap: 18px;
+      z-index: 9999;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s ease;
+      pointer-events: auto;
+    }
+
+    .control-btn {
+      background: #2d2d2d;
+      border: none;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .control-btn:hover { background: #3f3f3f; transform: scale(1.05); }
+    .control-btn.danger { background: #ef4444; }
+    .control-btn.active { background: #f97316; }
+
+    .leave-btn {
+      background: #ef4444;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .control-group span {
+      font-size: 10px;
+      color: #ddd;
+      font-weight: 500;
+      text-shadow: 0 1px 2px black;
+    }
+
+    /* chat sidebar */
+    .chat-sidebar {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 320px;
+      height: 100%;
+      background: #121212e6;
+      backdrop-filter: blur(20px);
+      transform: translateX(100%);
+      transition: 0.25s ease;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #333;
+    }
+
+    .chat-sidebar.open { transform: translateX(0); }
+
+    .chat-header {
+      background: #f97316;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      color: white;
+      font-weight: bold;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chat-message {
+      background: #2a2a2a;
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      color: #eee;
+    }
+
+    .chat-message strong { color: #f97316; }
+
+    .chat-input {
+      padding: 12px;
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid #2a2a2a;
+    }
+
+    .chat-input input {
+      flex: 1;
+      background: #2a2a2a;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 30px;
+      color: white;
+    }
+
+    .chat-input button {
+      background: #f97316;
+      border: none;
+      padding: 0 16px;
+      border-radius: 30px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .chat-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 9995;
+      display: none;
+    }
+
+    .chat-overlay.active { display: block; }
+
+    /* responsive adjustments */
+    @media (max-width: 640px) {
+      .self-bubble { width: 72px; height: 72px; }
+      .controls-bar {
+        bottom: 16px;
+        left: 0;
+        right: 0;
+        transform: none;
+        border-radius: 0;
+        padding: 8px 16px;
+        gap: 10px;
+        overflow-x: auto;
+        justify-content: flex-start;
+        width: 100%;
+        border-radius: 20px 20px 0 0;
+      }
+      .control-btn { width: 46px; height: 46px; font-size: 18px; }
+      .student-tray { top: 12px; right: 12px; }
+      .student-bubble { width: 56px; height: 56px; }
+    }
+
+    /* reaction picker */
+    .reaction-picker {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.8);
+      background: rgba(28,28,28,0.96);
+      backdrop-filter: blur(20px);
+      border-radius: 60px;
+      padding: 10px 18px;
+      display: flex;
+      gap: 10px;
+      z-index: 9998;
+      border: 1px solid rgba(255,255,255,0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .reaction-picker.open {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+      pointer-events: auto;
+    }
+    .reaction-emoji {
+      font-size: 28px;
+      cursor: pointer;
+      transition: transform 0.15s;
+      line-height: 1;
+      user-select: none;
+    }
+    .reaction-emoji:hover { transform: scale(1.4); }
+
+    .emoji-float {
+      position: fixed;
+      font-size: 32px;
+      pointer-events: none;
+      z-index: 9997;
+      animation: floatUp 2.5s ease-out forwards;
+      user-select: none;
+    }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      80%  { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-160px) scale(1.4); }
+    }
+
+    .hand-queue {
+      position: fixed;
+      top: 70px;
+      left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9990;
+      pointer-events: none;
+    }
+    .hand-badge {
+      background: rgba(249,115,22,0.92);
+      backdrop-filter: blur(10px);
+      padding: 7px 14px;
+      border-radius: 40px;
+      font-size: 13px;
+      color: white;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      animation: slideIn 0.3s ease;
+      pointer-events: auto;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .hand-badge .dismiss-hand {
+      background: rgba(255,255,255,0.25);
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+
+    .poll-overlay {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(380px, 92vw);
+      background: rgba(18,18,18,0.97);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid #333;
+      z-index: 9995;
+      padding: 20px;
+      display: none;
+    }
+    .poll-overlay.open { display: block; animation: slideUp 0.25s ease; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .poll-title-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .poll-title-bar h4 { color: #f97316; font-size: 14px; font-weight: 700; display: flex; gap: 6px; }
+    .poll-question { color: #eee; font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+    .poll-option {
+      background: #2a2a2a;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .poll-option:hover { border-color: #f97316; }
+    .poll-option .opt-label { color: #eee; font-size: 13px; font-weight: 500; position: relative; z-index: 1; }
+    .poll-option .opt-pct { color: #f97316; font-size: 12px; font-weight: 700; float: right; position: relative; z-index: 1; }
+    .poll-option .opt-bar {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      background: rgba(249,115,22,0.15);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    .poll-creator {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 10001;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .poll-creator.open { display: flex; }
+    .poll-creator-box {
+      background: #181818;
+      border-radius: 20px;
+      padding: 24px;
+      width: min(400px, 100%);
+      border: 1px solid #333;
+    }
+    .poll-creator-box h3 { color: #f97316; font-size: 16px; margin-bottom: 18px; }
+    .poll-creator-box input, .poll-creator-box .poll-opt-input {
+      width: 100%;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .add-option-btn {
+      background: none;
+      border: 1px dashed #555;
+      color: #888;
+      border-radius: 10px;
+      padding: 8px;
+      width: 100%;
+      cursor: pointer;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .add-option-btn:hover { border-color: #f97316; color: #f97316; }
+    .poll-creator-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .btn-launch-poll { background: #f97316; color: white; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
+    .btn-cancel-poll { background: #2a2a2a; color: #aaa; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="live-container">
+  <div class="host-stage" id="host-stage">
+    <video id="host-video-element" autoplay playsinline></video>
+    <div class="host-avatar-placeholder" id="host-placeholder">
+      <div class="avatar-circle"><i class="fa-solid fa-chalkboard-user"></i></div>
+      <span id="host-placeholder-name">Host</span>
+    </div>
+    <div class="waiting-overlay" id="waiting-overlay">
+      <div class="spinner"></div>
+      <span>Waiting for host to start the stream...</span>
+    </div>
+    <div class="room-info">
+      <span class="live-badge"><span class="host-live-dot"></span> LIVE</span>
+      <div class="viewer-counter"><i class="fa-regular fa-eye"></i> <span id="participant-count">1</span> <span style="font-size:10px;">watching</span></div>
+      <span class="session-title-pill" id="session-title-display">Loading...</span>
+    </div>
+    <div class="host-name-badge">
+      <div class="host-live-dot"></div>
+      <span id="host-display-name">Host</span>
+      <small>(Host)</small>
+    </div>
+    <div class="student-tray" id="student-tray"></div>
+    <div class="self-bubble-container" id="self-bubble-container" style="display: none;">
+      <div class="self-bubble" id="self-bubble">
+        <video id="self-video" autoplay playsinline muted></video>
+        <div class="self-avatar" id="self-avatar"><i class="fa-solid fa-user"></i></div>
+        <div class="self-mic-icon" id="self-mic-icon"><i class="fa-solid fa-microphone"></i></div>
+      </div>
+      <div class="self-name-badge" id="self-name-label">You</div>
+    </div>
+  </div>
+
+  <div class="controls-bar">
+    <div class="control-group"><button class="control-btn" id="toggle-video"><i class="fa-solid fa-video"></i></button><span>Camera</span></div>
+    <div class="control-group"><button class="control-btn" id="toggle-audio"><i class="fa-solid fa-microphone"></i></button><span>Mic</span></div>
+    <div class="control-group" id="flip-camera-group" style="display:none;"><button class="control-btn" id="flip-camera"><i class="fa-solid fa-rotate"></i></button><span>Flip</span></div>
+    <div class="control-group" id="screen-share-group"><button class="control-btn" id="toggle-screen"><i class="fa-solid fa-desktop"></i></button><span>Screen</span></div>
+    <div class="control-group" id="raise-hand-group"><button class="control-btn" id="raise-hand-btn"><i class="fa-solid fa-hand"></i></button><span>Hand</span></div>
+    <div class="control-group"><button class="control-btn" id="toggle-react"><i class="fa-solid fa-face-smile"></i></button><span>React</span></div>
+    <div class="control-group" id="poll-btn-group" style="display:none;"><button class="control-btn" id="toggle-poll-creator"><i class="fa-solid fa-chart-bar"></i></button><span>Poll</span></div>
+    <div class="control-group" id="mute-all-group" style="display:none;"><button class="control-btn" id="mute-all-btn" title="Mute all students"><i class="fa-solid fa-microphone-slash"></i></button><span>Mute All</span></div>
+    <div class="control-group"><button class="control-btn" id="toggle-chat"><i class="fa-regular fa-comment-dots"></i></button><span>Chat</span></div>
+    <div class="control-group"><button class="control-btn leave-btn" id="leave-room"><i class="fa-solid fa-phone-slash"></i></button><span>Leave</span></div>
+  </div>
+
+  <div class="reaction-picker" id="reaction-picker">
+    <span class="reaction-emoji" data-emoji="👍">👍</span><span class="reaction-emoji" data-emoji="❤️">❤️</span>
+    <span class="reaction-emoji" data-emoji="😂">😂</span><span class="reaction-emoji" data-emoji="😮">😮</span>
+    <span class="reaction-emoji" data-emoji="🔥">🔥</span><span class="reaction-emoji" data-emoji="👏">👏</span>
+    <span class="reaction-emoji" data-emoji="🙋">🙋</span>
+  </div>
+
+  <div class="hand-queue" id="hand-queue"></div>
+  <div class="poll-overlay" id="poll-overlay">
+    <div class="poll-title-bar"><h4><i class="fa-solid fa-chart-simple"></i> Live Poll</h4><i class="fa-solid fa-xmark" id="close-poll" style="color:#aaa;cursor:pointer;"></i></div>
+    <div class="poll-question" id="poll-question-text"></div>
+    <div id="poll-options-list"></div>
+    <div class="poll-vote-count" id="poll-vote-count">0 votes</div>
+  </div>
+  <div class="poll-creator" id="poll-creator">
+    <div class="poll-creator-box">
+      <h3><i class="fa-solid fa-chart-bar"></i> Create a Poll</h3>
+      <input type="text" id="poll-q-input" placeholder="Ask the class a question...">
+      <div id="poll-options-builder">
+        <div class="poll-opt-row"><input class="poll-opt-input" placeholder="Option A" value=""><button class="remove-opt" onclick="removePollOption(this)">✕</button></div>
+        <div class="poll-opt-row"><input class="poll-opt-input" placeholder="Option B" value=""><button class="remove-opt" onclick="removePollOption(this)">✕</button></div>
+      </div>
+      <button class="add-option-btn" id="add-option-btn"><i class="fa-solid fa-plus"></i> Add Option</button>
+      <div class="poll-creator-actions"><button class="btn-cancel-poll" id="cancel-poll-btn">Cancel</button><button class="btn-launch-poll" id="launch-poll-btn"><i class="fa-solid fa-bolt"></i> Launch Poll</button></div>
+    </div>
+  </div>
+
+  <div class="chat-sidebar" id="chat-sidebar">
+    <div class="chat-header"><span><i class="fa-regular fa-comment"></i> Class Panel</span><i class="fa-solid fa-xmark" id="close-chat" style="cursor:pointer;"></i></div>
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" id="tab-chat" onclick="switchTab('chat')">Chat <span class="tab-dot" id="chat-dot"></span></button>
+      <button class="sidebar-tab" id="tab-qa" onclick="switchTab('qa')">Q&amp;A <span class="tab-dot" id="qa-dot"></span></button>
+    </div>
+    <div class="tab-content active" id="tab-content-chat">
+      <div class="chat-messages" id="chat-messages"><div class="chat-message"><strong>✨ System:</strong> Welcome to the live class</div></div>
+      <div class="chat-input"><input type="text" id="chat-input" placeholder="Say something..."><button id="send-chat">Send</button></div>
+    </div>
+    <div class="tab-content" id="tab-content-qa">
+      <div class="qa-list" id="qa-list"><div class="qa-empty" id="qa-empty"><i class="fa-solid fa-question-circle" style="font-size:28px;color:#333;margin-bottom:8px;display:block;"></i>No questions yet.<br>Students can ask questions here.</div></div>
+      <div class="qa-input-area" id="qa-input-area"><input type="text" id="qa-input" placeholder="Ask the teacher a question..."><button id="send-qa">Ask</button></div>
+    </div>
+  </div>
+  <div class="chat-overlay" id="chat-overlay"></div>
+</div>
+
+<script>
+  // Django template variables (to be replaced by backend)
+  const roomName = '{{ room_name }}';
+  const userName = '{{ user.username }}';
+  const userId   = Number('{{ user.id }}');
+  const isHost   = Boolean({{ is_creator|yesno:"true,false" }});
+  const hostId   = Number('{{ host_id }}');
+  const sessionTitle = '{{ session.title|escapejs }}';
+  const hostUsername = '{{ session.created_by.username|escapejs }}';
+
+  const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }], iceCandidatePoolSize: 10 };
+  
+  let localStream = null, peerConnections = {}, socket = null, isVideoEnabled = true, isAudioEnabled = true;
+  let isScreenSharing = false, screenStream = null, currentFacingMode = 'user', handRaised = false;
+  let activePoll = null, pollVotes = {}, myVote = null, activeSidebarTab = 'chat', questions = {};
+  let hostStreamAttached = false;
+  
+  const hostVideoEl = document.getElementById('host-video-element'), waitingOverlay = document.getElementById('waiting-overlay');
+  const studentTray = document.getElementById('student-tray'), selfBubbleContainer = document.getElementById('self-bubble-container');
+  const selfVideo = document.getElementById('self-video'), selfAvatar = document.getElementById('self-avatar'), selfMicIcon = document.getElementById('self-mic-icon');
+  const participantCountSpan = document.getElementById('participant-count'), sessionTitleSpan = document.getElementById('session-title-display');
+  const hostDisplaySpan = document.getElementById('host-display-name');
+  sessionTitleSpan.textContent = sessionTitle || 'Live Class'; hostDisplaySpan.textContent = hostUsername || 'Host';
+  document.getElementById('host-placeholder-name').textContent = hostUsername || 'Host';
+
+  // CRITICAL: Force host audio to always play for students
+  function ensureHostAudioAlwaysPlays() {
+    if (isHost) return;
+    hostVideoEl.volume = 1.0;
+    hostVideoEl.muted = false;
+    const playAudio = () => {
+      if (hostVideoEl.srcObject) {
+        hostVideoEl.play().catch(e => console.log("play retry:", e));
+      }
+    };
+    hostVideoEl.addEventListener('canplaythrough', playAudio, { once: true });
+    playAudio();
+    // Also, if any interaction, ensure unmuted
+    const events = ['click', 'touchstart', 'keydown'];
+    const handler = () => {
+      hostVideoEl.muted = false;
+      hostVideoEl.volume = 1.0;
+      hostVideoEl.play().catch(()=>{});
+    };
+    events.forEach(ev => document.addEventListener(ev, handler, { once: true, passive: true }));
+  }
+
+  function setHostVideo(stream) {
+    hostVideoEl.srcObject = stream;
+    hostVideoEl.style.display = 'block';
+    document.getElementById('host-placeholder').style.display = 'none';
+    waitingOverlay.style.display = 'none';
+    if (isHost) {
+      hostVideoEl.muted = true;
+      hostVideoEl.play().catch(e=>console.log(e));
+    } else {
+      hostVideoEl.muted = false;
+      hostVideoEl.volume = 1.0;
+      hostVideoEl.play().then(() => console.log("✅ Host audio playing")).catch(err => {
+        console.warn("Auto-play blocked, forcing via user interaction", err);
+        hostVideoEl.muted = true;
+        hostVideoEl.play().catch(()=>{});
+        const unlock = () => { hostVideoEl.muted = false; hostVideoEl.play(); document.removeEventListener('click', unlock); };
+        document.addEventListener('click', unlock, { once: true });
+      });
+      ensureHostAudioAlwaysPlays();
+    }
+  }
+
+  function showWaitingOverlay() { hostVideoEl.style.display = 'none'; document.getElementById('host-placeholder').style.display = 'none'; waitingOverlay.style.display = 'flex'; }
+  function showSelfBubble() { selfBubbleContainer.style.display = 'block'; if(localStream) { selfVideo.srcObject = localStream; selfVideo.style.display = 'block'; selfAvatar.style.display = 'none'; } }
+  function updateSelfMicIcon() { selfMicIcon.innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>'; selfMicIcon.style.background = isAudioEnabled ? '#111' : '#ef4444'; }
+
+  function addStudentBubble(username, uid) {
+    if(document.getElementById(`bubble-wrapper-${uid}`)) return;
+    const wrapper = document.createElement('div'); wrapper.className = 'student-bubble-wrapper'; wrapper.id = `bubble-wrapper-${uid}`;
+    const bubble = document.createElement('div'); bubble.className = 'student-bubble';
+    const video = document.createElement('video'); video.autoplay = true; video.playsInline = true; video.id = `video-element-${uid}`;
+    const avatarDiv = document.createElement('div'); avatarDiv.className = 'bubble-avatar'; avatarDiv.innerHTML = '<i class="fa-solid fa-user"></i>';
+    const mutedIcon = document.createElement('div'); mutedIcon.className = 'bubble-muted-icon'; mutedIcon.id = `bubble-muted-${uid}`;
+    bubble.appendChild(video); bubble.appendChild(avatarDiv); bubble.appendChild(mutedIcon);
+    if(isHost) { const ctrl = document.createElement('button'); ctrl.className = 'bubble-mic-ctrl'; ctrl.innerHTML = '<i class="fa-solid fa-microphone"></i>'; ctrl.onclick = (e) => { e.stopPropagation(); teacherToggleStudentMic(uid); }; bubble.appendChild(ctrl); }
+    const nameSpan = document.createElement('div'); nameSpan.className = 'bubble-name'; nameSpan.textContent = username;
+    wrapper.appendChild(bubble); wrapper.appendChild(nameSpan); studentTray.appendChild(wrapper);
+  }
+  function removeStudentBubble(uid) { document.getElementById(`bubble-wrapper-${uid}`)?.remove(); if(peerConnections[uid]) { peerConnections[uid].close(); delete peerConnections[uid]; } }
+  
+  function routeRemoteStream(remoteUserId, stream) {
+    if(remoteUserId == hostId) { setHostVideo(stream); }
+    else { const vid = document.getElementById(`video-element-${remoteUserId}`); if(vid && stream) { vid.srcObject = stream; document.getElementById(`bubble-avatar-${remoteUserId}`).style.display = 'none'; } }
+  }
+
+  async function createOffer(remoteUserId) {
+    const pc = new RTCPeerConnection(configuration);
+    peerConnections[remoteUserId] = pc;
+    if(localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    pc.onicecandidate = e => { if(e.candidate) socket.send(JSON.stringify({ type: 'ice_candidate', candidate: e.candidate, target_user_id: remoteUserId })); };
+    pc.ontrack = e => { if(e.streams?.[0]) routeRemoteStream(remoteUserId, e.streams[0]); };
+    const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+    socket.send(JSON.stringify({ type: 'offer', offer, target_user_id: remoteUserId }));
+  }
+  async function handleOffer(data) { if(data.target_user_id && data.target_user_id != userId) return;
+    const pc = new RTCPeerConnection(configuration); peerConnections[data.user_id] = pc;
+    if(localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    pc.onicecandidate = e => { if(e.candidate) socket.send(JSON.stringify({ type: 'ice_candidate', candidate: e.candidate, target_user_id: data.user_id })); };
+    pc.ontrack = e => { if(e.streams?.[0]) routeRemoteStream(data.user_id, e.streams[0]); };
+    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
+    socket.send(JSON.stringify({ type: 'answer', answer, target_user_id: data.user_id }));
+  }
+  async function handleAnswer(data) { const pc = peerConnections[data.user_id]; if(pc) await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); }
+  async function handleIceCandidate(data) { const pc = peerConnections[data.user_id]; if(pc && data.candidate) await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
+  function updateRemoteMute(uid, enabled) { const icon = document.getElementById(`bubble-muted-${uid}`); if(icon) icon.style.display = enabled ? 'none' : 'flex'; }
+  function teacherToggleStudentMic(targetUserId) { const wrapper = document.getElementById(`bubble-wrapper-${targetUserId}`); const currentlyEnabled = wrapper?.dataset.micEnabled !== '0'; const newEnabled = !currentlyEnabled; socket.send(JSON.stringify({ type: 'mic_control', target_user_id: targetUserId, enabled: newEnabled })); updateRemoteMute(targetUserId, newEnabled); if(wrapper) wrapper.dataset.micEnabled = newEnabled ? '1' : '0'; }
+  
+  function addChatMessage(sender, msg) { const container = document.getElementById('chat-messages'); const div = document.createElement('div'); div.className = 'chat-message'; div.innerHTML = `<strong>${escapeHtml(sender)}</strong>: ${escapeHtml(msg)}`; container.appendChild(div); container.scrollTop = container.scrollHeight; }
+  function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+  function updateParticipantCount() { participantCountSpan.textContent = Object.keys(peerConnections).length + 1; }
+  
+  async function initLocalStream() {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode }, audio: { echoCancellation: true, noiseSuppression: true } });
+      localStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
+      localStream.getVideoTracks().forEach(t => t.enabled = isVideoEnabled);
+      if(isHost) { setHostVideo(localStream); selfBubbleContainer.style.display = 'none'; studentTray.style.display = 'flex'; }
+      else { showSelfBubble(); studentTray.style.display = 'none'; showWaitingOverlay(); updateSelfMicIcon(); }
+      document.getElementById('toggle-video').innerHTML = isVideoEnabled ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-video-slash"></i>';
+      document.getElementById('toggle-audio').innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>';
+    } catch(err) { addChatMessage('System', 'Cannot access camera/mic: ' + err.message); }
+  }
+  function toggleVideo() { isVideoEnabled = !isVideoEnabled; localStream?.getVideoTracks()[0]?.setEnabled(isVideoEnabled); document.getElementById('toggle-video').innerHTML = isVideoEnabled ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-video-slash"></i>'; socket.send(JSON.stringify({ type: 'video_toggle', enabled: isVideoEnabled })); }
+  function toggleAudio(forcedState) { if(typeof forcedState === 'boolean') isAudioEnabled = forcedState; else isAudioEnabled = !isAudioEnabled; localStream?.getAudioTracks()[0]?.setEnabled(isAudioEnabled); document.getElementById('toggle-audio').innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>'; updateSelfMicIcon(); socket.send(JSON.stringify({ type: 'audio_toggle', enabled: isAudioEnabled })); }
+  
+  function toggleHand() { handRaised = !handRaised; document.getElementById('raise-hand-btn').classList.toggle('active', handRaised); socket.send(JSON.stringify({ type: 'raise_hand', raised: handRaised })); }
+  function sendReaction(emoji) { socket.send(JSON.stringify({ type: 'reaction', emoji })); for(let i=0;i<4;i++) setTimeout(()=>{ const el=document.createElement('div'); el.className='emoji-float'; el.textContent=emoji; el.style.left=(20+Math.random()*60)+'vw'; el.style.bottom='120px'; document.body.appendChild(el); el.addEventListener('animationend',()=>el.remove()); }, i*100); document.getElementById('reaction-picker').classList.remove('open'); }
+  function showHandBadge(username, uid) { if(document.getElementById(`hand-badge-${uid}`)) return; const badge=document.createElement('div'); badge.className='hand-badge'; badge.id=`hand-badge-${uid}`; badge.innerHTML=`✋ <strong>${escapeHtml(username)}</strong> has a question <button class="dismiss-hand" onclick="dismissHand(${uid})">✕</button>`; document.getElementById('hand-queue').appendChild(badge); }
+  function dismissHand(uid) { document.getElementById(`hand-badge-${uid}`)?.remove(); }
+  function addQuestionToPanel(qid, username, text) { const list=document.getElementById('qa-list'); document.getElementById('qa-empty').style.display='none'; const item=document.createElement('div'); item.className='qa-item'; item.id=`qa-${qid}`; item.innerHTML=`<div class="qa-asker">🎓 ${escapeHtml(username)}</div><div class="qa-text">${escapeHtml(text)}</div>${isHost?'<div class="qa-actions"><button class="qa-mark-btn" onclick="markAnswered(\''+qid+'\')">✓ Mark Answered</button></div>':''}`; list.appendChild(item); list.scrollTop=list.scrollHeight; if(activeSidebarTab!=='qa') document.getElementById('qa-dot').classList.add('show'); }
+  function markAnswered(qid) { socket.send(JSON.stringify({ type: 'question_answered', question_id: qid })); document.getElementById(`qa-${qid}`)?.classList.add('answered'); }
+  function showPoll(pollId, question, options) { activePoll=pollId; pollVotes={}; myVote=null; options.forEach((_,i)=>pollVotes[i]=0); document.getElementById('poll-question-text').textContent=question; renderPollOptions(options); document.getElementById('poll-overlay').classList.add('open'); }
+  function renderPollOptions(options) { const container=document.getElementById('poll-options-list'); container.innerHTML=''; const total=Object.values(pollVotes).reduce((a,b)=>a+b,0); options.forEach((opt,i)=>{ const votes=pollVotes[i]||0; const pct=total>0?Math.round((votes/total)*100):0; const div=document.createElement('div'); div.className='poll-option'+(myVote===i?' voted':''); div.dataset.index=i; div.innerHTML=`<div class="opt-bar" style="width:${pct}%"></div><span class="opt-label">${escapeHtml(opt)}</span><span class="opt-pct">${pct}%</span>`; if(myVote===null && !isHost) div.addEventListener('click',()=>castVote(i)); container.appendChild(div); }); document.getElementById('poll-vote-count').textContent=`${total} vote${total!==1?'s':''}`; }
+  function castVote(idx) { if(myVote!==null || !activePoll) return; myVote=idx; socket.send(JSON.stringify({ type:'poll_vote', poll_id:activePoll, option_index:idx })); pollVotes[idx]=(pollVotes[idx]||0)+1; renderPollOptions(Array.from(document.querySelectorAll('.poll-option')).map(o=>o.innerText)); }
+  
+  function initWebSocket() { const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'; socket = new WebSocket(`${protocol}//${location.host}/ws/live/${roomName}/`); socket.onmessage = (e) => { const data=JSON.parse(e.data); if(data.type==='user_joined' && data.user_id!=userId) { if(isHost && data.user_id!=hostId) addStudentBubble(data.user, data.user_id); if(!isHost && data.user_id==hostId) waitingOverlay.style.display='none'; if(!isHost && data.user_id!=hostId) addStudentBubble(data.user, data.user_id); else if(isHost && data.user_id!=hostId) createOffer(data.user_id); addChatMessage('System',`${data.user} joined`); updateParticipantCount(); } else if(data.type==='user_left') { removeStudentBubble(data.user_id); dismissHand(data.user_id); addChatMessage('System',`${data.user} left`); updateParticipantCount(); if(!isHost && data.user_id==hostId) showWaitingOverlay(); } else if(data.type==='offer') handleOffer(data); else if(data.type==='answer') handleAnswer(data); else if(data.type==='ice_candidate') handleIceCandidate(data); else if(data.type==='audio_toggle') updateRemoteMute(data.user_id, data.enabled); else if(data.type==='chat_message') { addChatMessage(data.user, data.message); if(activeSidebarTab!=='chat') document.getElementById('chat-dot').classList.add('show'); } else if(data.type==='raise_hand') { if(data.user_id!=userId) { if(data.raised) showHandBadge(data.user, data.user_id); else dismissHand(data.user_id); } } else if(data.type==='reaction') { if(data.user_id!=userId) { for(let i=0;i<4;i++) setTimeout(()=>{ const el=document.createElement('div'); el.className='emoji-float'; el.textContent=data.emoji; el.style.left=(20+Math.random()*60)+'vw'; document.body.appendChild(el); el.addEventListener('animationend',()=>el.remove()); }, i*100); } } else if(data.type==='question_ask') { addQuestionToPanel(data.question_id, data.user, data.question); } else if(data.type==='question_answered') { document.getElementById(`qa-${data.question_id}`)?.classList.add('answered'); } else if(data.type==='poll_create') { showPoll(data.poll_id, data.question, data.options); addChatMessage('System',`📊 ${data.user} launched a poll: "${data.question}"`); } else if(data.type==='poll_vote') { if(activePoll===data.poll_id) { pollVotes[data.option_index]=(pollVotes[data.option_index]||0)+1; renderPollOptions(Array.from(document.querySelectorAll('.poll-option')).map(o=>o.innerText)); } } else if(data.type==='mic_control' && data.target_user_id==userId && !isHost) { toggleAudio(data.enabled); addChatMessage('System', data.enabled ? '🎙️ Mic unmuted by teacher.' : '🔇 Mic muted by teacher.'); } }; socket.onclose = () => setTimeout(initWebSocket, 3000); }
+  
+  function leaveRoom() { localStream?.getTracks().forEach(t=>t.stop()); screenStream?.getTracks().forEach(t=>t.stop()); socket?.close(); window.location.href = "{% url 'live_room_list' %}"; }
+  
+  document.addEventListener('DOMContentLoaded', async () => {
+    await initLocalStream(); initWebSocket();
+    if(isHost) { document.getElementById('flip-camera-group').style.display = /Mobi|Android/i.test(navigator.userAgent) ? 'flex' : 'none'; document.getElementById('poll-btn-group').style.display = 'flex'; document.getElementById('mute-all-group').style.display = 'flex'; document.getElementById('raise-hand-group').style.display = 'none'; document.getElementById('qa-input-area').style.display = 'none'; }
+    else { document.getElementById('screen-share-group').style.display = 'none'; document.getElementById('poll-btn-group').style.display = 'none'; ensureHostAudioAlwaysPlays(); }
+    document.getElementById('toggle-video').onclick = toggleVideo;
+    document.getElementById('toggle-audio').onclick = () => toggleAudio();
+    document.getElementById('leave-room').onclick = leaveRoom;
+    document.getElementById('raise-hand-btn').onclick = toggleHand;
+    document.getElementById('toggle-react').onclick = (e) => { e.stopPropagation(); document.getElementById('reaction-picker').classList.toggle('open'); };
+    document.querySelectorAll('.reaction-emoji').forEach(em => em.onclick = () => sendReaction(em.dataset.emoji));
+    document.addEventListener('click', () => document.getElementById('reaction-picker').classList.remove('open'));
+    document.getElementById('toggle-poll-creator')?.addEventListener('click', () => document.getElementById('poll-creator').classList.add('open'));
+    document.getElementById('cancel-poll-btn').onclick = () => document.getElementById('poll-creator').classList.remove('open');
+    document.getElementById('launch-poll-btn').onclick = () => { const q=document.getElementById('poll-q-input').value; const opts=Array.from(document.querySelectorAll('.poll-opt-input')).map(i=>i.value.trim()).filter(Boolean); if(q && opts.length>=2) { socket.send(JSON.stringify({ type:'poll_create', poll_id:'poll_'+Date.now(), question:q, options:opts })); document.getElementById('poll-creator').classList.remove('open'); } else addChatMessage('System','Please fill question and at least 2 options.'); };
+    document.getElementById('add-option-btn').onclick = () => { const builder=document.getElementById('poll-options-builder'); const row=document.createElement('div'); row.className='poll-opt-row'; row.innerHTML='<input class="poll-opt-input" placeholder="Option"><button class="remove-opt" onclick="this.parentElement.remove()">✕</button>'; builder.appendChild(row); };
+    document.getElementById('close-poll').onclick = () => { document.getElementById('poll-overlay').classList.remove('open'); if(isHost && activePoll) socket.send(JSON.stringify({ type:'poll_end', poll_id:activePoll })); activePoll=null; };
+    document.getElementById('toggle-chat').onclick = () => { document.getElementById('chat-sidebar').classList.add('open'); document.getElementById('chat-overlay').classList.add('active'); };
+    document.getElementById('close-chat').onclick = () => { document.getElementById('chat-sidebar').classList.remove('open'); document.getElementById('chat-overlay').classList.remove('active'); };
+    document.getElementById('send-chat').onclick = () => { const input=document.getElementById('chat-input'); if(input.value.trim()) { socket.send(JSON.stringify({ type:'chat_message', message:input.value })); input.value=''; } };
+    document.getElementById('send-qa').onclick = () => { const input=document.getElementById('qa-input'); if(input.value.trim()) { const qid='q_'+Date.now()+'_'+userId; addQuestionToPanel(qid, userName, input.value); socket.send(JSON.stringify({ type:'question_ask', question:input.value, question_id:qid })); input.value=''; } };
+    document.getElementById('mute-all-btn')?.addEventListener('click', () => { document.querySelectorAll('.student-bubble-wrapper').forEach(wrapper => { const uid=wrapper.id.replace('bubble-wrapper-',''); const currentlyEnabled = wrapper.dataset.micEnabled !== '0'; if(currentlyEnabled) { socket.send(JSON.stringify({ type:'mic_control', target_user_id:uid, enabled:false })); updateRemoteMute(uid, false); wrapper.dataset.micEnabled='0'; const ctrl=document.getElementById(`bubble-mic-ctrl-${uid}`); if(ctrl) { ctrl.innerHTML='<i class="fa-solid fa-microphone-slash"></i>'; ctrl.classList.add('mic-ctrl-muted'); } } }); addChatMessage('System','🔇 Muted all students.'); });
+  });
+  window.switchTab = function(tab) { activeSidebarTab=tab; document.getElementById('tab-chat').classList.toggle('active',tab==='chat'); document.getElementById('tab-qa').classList.toggle('active',tab==='qa'); document.getElementById('tab-content-chat').classList.toggle('active',tab==='chat'); document.getElementById('tab-content-qa').classList.toggle('active',tab==='qa'); if(tab==='chat') document.getElementById('chat-dot')?.classList.remove('show'); if(tab==='qa') document.getElementById('qa-dot')?.classList.remove('show'); };
+  window.dismissHand = dismissHand; window.markAnswered = markAnswered; window.removePollOption = function(btn) { if(document.getElementById('poll-options-builder').children.length>2) btn.parentElement.remove(); };
+</script>
+</body>
+</html>

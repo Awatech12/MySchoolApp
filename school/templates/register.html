@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+ <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>awaClass | Join the learning revolution</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --ac-bg:         #fafafa;
+      --ac-surface:    #efefef;
+      --ac-text:       #262626;
+      --ac-text-light: #737373;
+      --ac-primary:    #0095f6;
+      --ac-primary-dk: #0074cc;
+      --ac-primary-lt: #e8f4fd;
+      --ac-border:     #dbdbdb;
+      --ac-error:      #dc2626;
+      --ac-success:    #16a34a;
+      --ac-purple:     #0095f6;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--ac-bg);
+      color: var(--ac-text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* TWO-PANEL LAYOUT (exactly like index) */
+    .ac-page {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Left panel — hero with slideshow (desktop only) */
+    .ac-hero-panel {
+      display: none;
+      flex: 1;
+      background: var(--ac-primary-lt);
+      position: relative;
+      overflow: hidden;
+    }
+    @media (min-width: 860px) {
+      .ac-hero-panel {
+        display: block;
+      }
+    }
+
+    /* Desktop slideshow container */
+    .ac-slideshow-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .ac-dslide {
+      display: none;
+      position: absolute;
+      inset: 0;
+      animation: acDFadeIn 0.65s ease;
+    }
+    .ac-dslide.active {
+      display: block;
+    }
+
+    @keyframes acDFadeIn {
+      from { opacity: 0; transform: scale(1.02); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .ac-dslide-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Overlay for text readability */
+    .ac-dslide-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.7) 0%,
+        rgba(0,0,0,0.35) 50%,
+        rgba(0,0,0,0.1) 100%
+      );
+    }
+
+    .ac-dslide-content {
+      position: absolute;
+      bottom: 64px;
+      left: 48px;
+      right: 48px;
+      z-index: 2;
+    }
+
+    .ac-dslide-title {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.18;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .ac-dslide-title em {
+      font-style: normal;
+      color: #8fd0fd;
+    }
+
+    .ac-dslide-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.65;
+      max-width: 380px;
+    }
+
+    .ac-hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 100px;
+      margin-bottom: 14px;
+      letter-spacing: 0.03em;
+    }
+
+    /* Dots for desktop slideshow */
+    .ac-ddots {
+      position: absolute;
+      bottom: 28px;
+      left: 48px;
+      display: flex;
+      gap: 8px;
+      z-index: 3;
+    }
+    .ac-ddot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.45);
+      cursor: pointer;
+      transition: all 0.25s;
+      border: none;
+    }
+    .ac-ddot.active {
+      background: #fff;
+      width: 24px;
+      border-radius: 4px;
+    }
+
+    /* Right panel — form (desktop + mobile) */
+    .ac-form-panel {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: var(--ac-bg);
+      overflow-y: auto;
+    }
+    @media (min-width: 860px) {
+      .ac-form-panel {
+        width: 520px;
+        flex-shrink: 0;
+        padding: 60px 48px;
+        
+      }
+    }
+
+    .ac-form-wrap {
+      width: 100%;
+      max-width: 460px;
+    }
+
+    /* Brand logo (same as index) */
+    .ac-modal-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--ac-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 29px;
+      font-weight: 800;
+      color: white;
+      margin: 0 auto 20px;
+    }
+
+    .ac-form-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .ac-form-subtitle {
+      font-size: 14px;
+      color: var(--ac-text-light);
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    /* Messages */
+    .ac-messages {
+      margin-bottom: 20px;
+    }
+    .ac-message {
+      padding: 10px 14px;
+      font-size: 13px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      background: #efefef;
+    }
+    .ac-message-error {
+      background: #fef2f2;
+      color: var(--ac-error);
+    }
+    .ac-message-success {
+      background: #f0fdf4;
+      color: var(--ac-success);
+    }
+
+    /* Form styles (consistent with index) */
+    .ac-form {
+      width: 100%;
+    }
+    .ac-field {
+      margin-bottom: 16px;
+    }
+    .ac-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--ac-text);
+    }
+    .ac-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      background: var(--ac-surface);
+      
+      border-radius: 12px;
+      color: var(--ac-text);
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .ac-input:focus {
+      outline: none;
+      
+      
+    }
+    .ac-input.ac-error {
+      
+    }
+    .ac-input.ac-success {
+      
+    }
+
+    /* Inline row for name & password fields */
+    .ac-inline-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 0;
+    }
+    .ac-inline-row .ac-field {
+      flex: 1;
+      margin-bottom: 16px;
+      min-width: 130px;
+    }
+    @media (max-width: 560px) {
+      .ac-inline-row {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
+
+    .ac-pw-wrap {
+      position: relative;
+    }
+    .ac-pw-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #8e8e8e;
+      transition: color 0.15s;
+    }
+    .ac-pw-toggle:hover {
+      color: var(--ac-primary);
+    }
+
+    .ac-hint {
+      font-size: 11px;
+      margin-top: 5px;
+      color: var(--ac-text-light);
+      font-weight: 500;
+    }
+    .ac-hint-error {
+      color: var(--ac-error);
+    }
+    .ac-hint-success {
+      color: var(--ac-success);
+    }
+
+    .ac-btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--ac-primary);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.18s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+    .ac-btn-primary:hover {
+      background: var(--ac-primary-dk);
+      transform: translateY(-1px);
+    }
+    .ac-btn-primary:active {
+      transform: translateY(0);
+    }
+    .ac-btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .ac-divider {
+      display: flex;
+      align-items: center;
+      margin: 24px 0 20px;
+      color: var(--ac-text-light);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .ac-divider::before,
+    .ac-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: transparent;
+    }
+    .ac-divider span {
+      padding: 0 14px;
+    }
+
+    .ac-btn-outline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: var(--ac-primary);
+      
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    .ac-btn-outline:hover {
+      background: var(--ac-primary-lt);
+    }
+
+    /* Skeleton loader (same style as index) */
+    .ac-skeleton {
+      background: linear-gradient(90deg, #efefef 25%, #e4e4e4 50%, #efefef 75%);
+      background-size: 200% 100%;
+      animation: acShimmer 1.3s ease-in-out infinite;
+      border-radius: 12px;
+    }
+    @keyframes acShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .ac-sk-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      margin: 0 auto 20px;
+    }
+    .ac-sk-title {
+      width: 55%;
+      height: 24px;
+      margin: 0 auto 8px;
+    }
+    .ac-sk-sub {
+      width: 70%;
+      height: 14px;
+      margin: 0 auto 28px;
+    }
+    .ac-sk-field {
+      height: 48px;
+      margin-bottom: 16px;
+    }
+    .ac-sk-inline {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 0;
+    }
+    .ac-sk-inline .ac-sk-field {
+      flex: 1;
+      margin-bottom: 16px;
+    }
+    .ac-sk-btn {
+      height: 52px;
+      margin-top: 8px;
+    }
+    @media (max-width: 560px) {
+      .ac-sk-inline {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
+
+    /* Mobile responsive improvements */
+    @media (max-width: 859px) {
+      .ac-form-wrap {
+        max-width: 480px;
+      }
+      .ac-form-panel {
+        padding: 32px 20px;
+      }
+      .ac-modal-logo {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+      }
+    }
+
+    /* ===== PROFILE PICTURE MODAL ===== */
+    .ac-pp-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: acFadeIn 0.2s ease;
+    }
+    .ac-pp-backdrop.open {
+      display: flex;
+    }
+    @keyframes acFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .ac-pp-modal {
+      background: #fff;
+      border-radius: 24px;
+      padding: 36px 32px 32px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      
+      animation: acSlideUp 0.28s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes acSlideUp {
+      from { opacity: 0; transform: translateY(28px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .ac-pp-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    .ac-pp-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin-bottom: 6px;
+    }
+    .ac-pp-sub {
+      font-size: 13px;
+      color: var(--ac-text-light);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    /* Avatar preview circle */
+    .ac-pp-avatar-wrap {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 20px;
+      cursor: pointer;
+    }
+    .ac-pp-avatar {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      object-fit: cover;
+      
+      transition: border-color 0.2s, transform 0.18s;
+      background: #efefef;
+    }
+    .ac-pp-avatar-wrap:hover .ac-pp-avatar {
+      
+      transform: scale(1.03);
+    }
+    .ac-pp-avatar-edit {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--ac-primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      
+      pointer-events: none;
+    }
+
+    /* Hidden file input */
+    #ac-pp-file-input {
+      display: none;
+    }
+
+    /* Upload tap zone */
+    .ac-pp-upload-zone {
+      
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 13px;
+      color: var(--ac-text-light);
+      font-weight: 500;
+    }
+    .ac-pp-upload-zone:hover,
+    .ac-pp-upload-zone.has-file {
+      
+      background: var(--ac-primary-lt);
+      color: var(--ac-primary);
+    }
+
+    /* Modal action buttons */
+    .ac-pp-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .ac-pp-btn-finish {
+      width: 100%;
+      padding: 13px;
+      background: var(--ac-primary);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+    .ac-pp-btn-finish:hover {
+      background: var(--ac-primary-dk);
+      transform: translateY(-1px);
+    }
+    .ac-pp-btn-finish:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .ac-pp-btn-skip {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: var(--ac-text-light);
+      
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.18s, color 0.18s;
+    }
+    .ac-pp-btn-skip:hover {
+      
+      color: var(--ac-text);
+    }
+
+    /* Spinner inside finish button */
+    .ac-pp-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: acSpin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes acSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .ac-pp-file-name {
+      font-size: 12px;
+      color: var(--ac-primary);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* ===== SUBJECT MODAL (share the pp-modal look) ===== */
+    .ac-modal-back {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--ac-text-light);
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+      border-radius: 8px;
+    }
+    .ac-modal-back:hover {
+      color: var(--ac-text);
+      background: var(--ac-border);
+    }
+
+    .ac-subj-modal {
+      max-width: 460px;
+    }
+    .ac-subj-counter {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ac-primary);
+      margin-bottom: 14px;
+    }
+    .ac-subj-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding-right: 4px;
+      text-align: left;
+    }
+    @media (max-width: 420px) {
+      .ac-subj-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .ac-subj-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      
+      border-radius: 10px;
+      background: var(--ac-surface);
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ac-text);
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .ac-subj-chip input {
+      accent-color: var(--ac-primary);
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+    .ac-subj-chip.selected {
+      
+      background: var(--ac-primary-lt);
+      color: var(--ac-primary-dk);
+    }
+
+    /* ===== CAREER GOAL MODAL ===== */
+    .ac-career-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+    .ac-career-chip {
+      padding: 8px 14px;
+      
+      border-radius: 100px;
+      background: var(--ac-surface);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ac-text);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .ac-career-chip:hover {
+      
+    }
+    .ac-career-chip.selected {
+      
+      background: var(--ac-primary-lt);
+      color: var(--ac-primary-dk);
+    }
+    .ac-career-or {
+      font-size: 11px;
+      color: var(--ac-text-light);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 700;
+      margin: 4px 0 10px;
+    }
+  
+    /* flat style: no borders, lines or shadows — soft fills separate things instead */
+    button, input:not([type=checkbox]):not([type=radio]), select, textarea { border: 0; }
+    .ac-input:focus { outline: 2px solid var(--ac-primary); outline-offset: 0; }
+    .ac-input.ac-error   { background: #fef2f2; }
+    .ac-input.ac-success { background: #f0fdf4; }
+    .ac-btn-outline { background: var(--ac-primary-lt); }
+    .ac-btn-outline:hover { background: #d3eafb; }
+    .ac-pp-btn-skip { background: var(--ac-surface); }
+    .ac-pp-btn-skip:hover { background: #e4e4e4; }
+    .ac-pp-upload-zone { background: var(--ac-surface); }
+    .ac-pp-avatar { background: var(--ac-surface); }
+  </style>
+</head>
+<body>
+
+<div class="ac-page">
+
+  <!-- LEFT PANEL: Desktop slideshow (inspired by index) -->
+  <div class="ac-hero-panel">
+    <div class="ac-slideshow-container">
+      <!-- Slide 1 -->
+      <div class="ac-dslide active" data-dindex="0">
+        <img src="{% static 'images/slide1.png' %}" alt="Learn it Properly" class="ac-dslide-img">
+        <div class="ac-dslide-overlay"></div>
+        <div class="ac-dslide-content">
+          <div class="ac-hero-tag">🎓 Mathematics · Physics · Science</div>
+          <h1 class="ac-dslide-title">Learn it Properly.<br>Use it <em>Confidently.</em></h1>
+          <p class="ac-dslide-sub">awaClass breaks Maths and Physics into clear, step-by-step lessons — from the fundamentals to SSS advanced topics.</p>
+        </div>
+      </div>
+      <!-- Slide 2 -->
+      <div class="ac-dslide" data-dindex="1">
+        <img src="{% static 'images/slide2.png' %}" alt="Watch lessons or join live classes" class="ac-dslide-img">
+        <div class="ac-dslide-overlay"></div>
+        <div class="ac-dslide-content">
+          <div class="ac-hero-tag">🎬 Video Lessons · Live Classes</div>
+          <h1 class="ac-dslide-title">Watch lessons or join <em>live classes</em></h1>
+          <p class="ac-dslide-sub">Easy-to-follow video explanations and live classroom sessions — learn at your own pace, from anywhere.</p>
+        </div>
+      </div>
+      <!-- Slide 3 -->
+      <div class="ac-dslide" data-dindex="2">
+        <img src="{% static 'images/slide3.png' %}" alt="Ace your exams" class="ac-dslide-img">
+        <div class="ac-dslide-overlay"></div>
+        <div class="ac-dslide-content">
+          <div class="ac-hero-tag">📝 JAMB · WAEC · NECO</div>
+          <h1 class="ac-dslide-title">Ace your <em>JAMB, WAEC</em> &amp; NECO exams</h1>
+          <p class="ac-dslide-sub">Realistic CBT mock tests with full explanations — practice the way you'll be examined.</p>
+        </div>
+      </div>
+      <!-- Slide 4 -->
+      <div class="ac-dslide" data-dindex="3">
+        <img src="{% static 'images/slide4.png' %}" alt="Understand the why" class="ac-dslide-img">
+        <div class="ac-dslide-overlay"></div>
+        <div class="ac-dslide-content">
+          <div class="ac-hero-tag">🏆 Concepts that Stick</div>
+          <h1 class="ac-dslide-title">Understand the <em>"why"</em>, not just the "how"</h1>
+          <p class="ac-dslide-sub">Build the understanding that takes you from average to excellent — one concept at a time.</p>
+        </div>
+      </div>
+      <!-- Dots -->
+      <div class="ac-ddots">
+        <div class="ac-ddot active" data-ddot="0"></div>
+        <div class="ac-ddot" data-ddot="1"></div>
+        <div class="ac-ddot" data-ddot="2"></div>
+        <div class="ac-ddot" data-ddot="3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: Registration Form -->
+  <div class="ac-form-panel">
+    <div class="ac-form-wrap" id="ac-register-card">
+
+      <!-- Skeleton Loader -->
+      <div id="ac-skeleton">
+        <div class="ac-skeleton ac-sk-logo"></div>
+        <div class="ac-skeleton ac-sk-title"></div>
+        <div class="ac-skeleton ac-sk-sub"></div>
+        <div class="ac-skeleton ac-sk-field"></div>
+        <div class="ac-skeleton ac-sk-field"></div>
+        <div class="ac-sk-inline">
+          <div class="ac-skeleton ac-sk-field"></div>
+          <div class="ac-skeleton ac-sk-field"></div>
+        </div>
+        <div class="ac-sk-inline">
+          <div class="ac-skeleton ac-sk-field"></div>
+          <div class="ac-skeleton ac-sk-field"></div>
+        </div>
+        <div class="ac-skeleton ac-sk-btn"></div>
+      </div>
+
+      <!-- Real Content (visible after skeleton) -->
+      <div id="ac-content" style="display: none;">
+        <div class="ac-modal-logo">A</div>
+        <h1 class="ac-form-title">Create your account ✨</h1>
+        <p class="ac-form-subtitle">Join our learning community — it's free</p>
+
+        <!-- Django messages block -->
+        <div class="ac-messages">
+          {% for message in messages %}
+            <div class="ac-message {% if 'error' in message.tags %}ac-message-error{% else %}ac-message-success{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+        <!-- Client-side messages container -->
+        <div id="ac-dynamic-messages" class="ac-messages"></div>
+
+        <form method="post" action="{% url 'register' %}" class="ac-form" id="ac-register-form" novalidate>
+          {% csrf_token %}
+
+          <!-- Username field -->
+          <div class="ac-field">
+            <label class="ac-label">Username *</label>
+            <input type="text" name="username" id="ac-username" class="ac-input" placeholder="Choose a username" autocomplete="username">
+            <div class="ac-hint" id="ac-username-hint"></div>
+          </div>
+
+          <!-- Email field -->
+          <div class="ac-field">
+            <label class="ac-label">Email Address *</label>
+            <input type="email" name="email" id="ac-email" class="ac-input" placeholder="student@example.com" autocomplete="email">
+          </div>
+
+          <!-- First & Last name inline -->
+          <div class="ac-inline-row">
+            <div class="ac-field">
+              <label class="ac-label">First Name *</label>
+              <input type="text" name="fname" id="ac-fname" class="ac-input" placeholder="First name">
+            </div>
+            <div class="ac-field">
+              <label class="ac-label">Last Name *</label>
+              <input type="text" name="lname" id="ac-lname" class="ac-input" placeholder="Last name">
+            </div>
+          </div>
+
+          <!-- Password & Confirm Password inline -->
+          <div class="ac-inline-row">
+            <div class="ac-field">
+              <label class="ac-label">Password *</label>
+              <div class="ac-pw-wrap">
+                <input type="password" name="pass1" id="ac-pass1" class="ac-input" placeholder="Create password">
+                <button type="button" class="ac-pw-toggle" data-target="ac-pass1">👁️</button>
+              </div>
+            </div>
+            <div class="ac-field">
+              <label class="ac-label">Confirm Password *</label>
+              <div class="ac-pw-wrap">
+                <input type="password" name="pass2" id="ac-pass2" class="ac-input" placeholder="Confirm password">
+                <button type="button" class="ac-pw-toggle" data-target="ac-pass2">👁️</button>
+              </div>
+              <div class="ac-hint" id="ac-pw-hint"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="ac-btn-primary" id="ac-register-submit">Create Account →</button>
+        </form>
+
+        <div class="ac-divider"><span>already have an account?</span></div>
+        <a href="{% url 'index' %}" class="ac-btn-outline">Sign in instead →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROFILE PICTURE MODAL ===== -->
+<div class="ac-pp-backdrop" id="ac-pp-backdrop">
+  <div class="ac-pp-modal" role="dialog" aria-modal="true" aria-labelledby="ac-pp-title">
+
+    <div class="ac-pp-icon">🎉</div>
+    <h2 class="ac-pp-title" id="ac-pp-title">Almost done!</h2>
+    <p class="ac-pp-sub">Add a profile picture so your classmates can recognise you.<br>You can always change it later.</p>
+
+    <!-- Avatar preview -->
+    <div class="ac-pp-avatar-wrap" id="ac-pp-avatar-wrap" title="Tap to choose a photo">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 110'%3E%3Crect width='110' height='110' fill='%23f5f5f4'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%23d6d3d1'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%23d6d3d1'/%3E%3C/svg%3E"
+           alt="Profile preview" class="ac-pp-avatar" id="ac-pp-preview">
+      <div class="ac-pp-avatar-edit">📷</div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="ac-pp-file-input" accept="image/jpeg,image/png,image/webp,image/gif">
+
+    <!-- Tap-to-upload zone (also acts as label for file input) -->
+    <div class="ac-pp-upload-zone" id="ac-pp-upload-zone">
+      <span id="ac-pp-zone-text">Tap to choose a photo from your device</span>
+      <div class="ac-pp-file-name" id="ac-pp-file-name" style="display:none;"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="ac-pp-actions">
+      <button class="ac-pp-btn-finish" id="ac-pp-finish-btn">Finish Registration →</button>
+      <button class="ac-pp-btn-skip" id="ac-pp-skip-btn">Skip for now</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SUBJECT SELECTION MODAL ===== -->
+<div class="ac-pp-backdrop" id="ac-subj-backdrop">
+  <div class="ac-pp-modal ac-subj-modal" role="dialog" aria-modal="true" aria-labelledby="ac-subj-title" style="position:relative;">
+    <button type="button" class="ac-modal-back" id="ac-subj-back-btn" title="Back">←</button>
+
+    <div class="ac-pp-icon">📚</div>
+    <h2 class="ac-pp-title" id="ac-subj-title">Pick your subjects</h2>
+    <p class="ac-pp-sub" id="ac-subj-sub">Tick every subject you want to register for.</p>
+
+    <div class="ac-subj-counter" id="ac-subj-counter">0 subjects selected</div>
+    <div class="ac-subj-grid" id="ac-subj-grid"></div>
+
+    <div class="ac-pp-actions">
+      <button class="ac-pp-btn-finish" id="ac-subj-finish-btn" disabled>Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CAREER GOAL MODAL ===== -->
+<div class="ac-pp-backdrop" id="ac-career-backdrop">
+  <div class="ac-pp-modal" role="dialog" aria-modal="true" aria-labelledby="ac-career-title" style="position:relative;">
+    <button type="button" class="ac-modal-back" id="ac-career-back-btn" title="Back">←</button>
+
+    <div class="ac-pp-icon">🚀</div>
+    <h2 class="ac-pp-title" id="ac-career-title">What do you want to become?</h2>
+    <p class="ac-pp-sub">Pick one below, or type your own dream career.</p>
+
+    <div class="ac-career-grid" id="ac-career-grid"></div>
+    <div class="ac-career-or">or write your own</div>
+    <input type="text" id="ac-career-input" class="ac-input" placeholder="e.g. Doctor, Pilot, Software Engineer" style="margin-bottom:20px;text-align:center;" maxlength="100">
+
+    <div class="ac-pp-actions">
+      <button class="ac-pp-btn-finish" id="ac-career-finish-btn" disabled>Finish Registration →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+
+    // ========== 1. Desktop slideshow ==========
+    const dslides = document.querySelectorAll('.ac-dslide');
+    const ddots   = document.querySelectorAll('.ac-ddot');
+    let dcurrent  = 0;
+    const dtotal  = dslides.length;
+    let dtimer    = null;
+
+    function dGoTo(n) {
+      if (!dslides.length) return;
+      dslides[dcurrent].classList.remove('active');
+      ddots[dcurrent].classList.remove('active');
+      dcurrent = (n + dtotal) % dtotal;
+      dslides[dcurrent].classList.add('active');
+      ddots[dcurrent].classList.add('active');
+    }
+
+    function dStartAuto() {
+      if (dtimer) clearInterval(dtimer);
+      dtimer = setInterval(() => dGoTo(dcurrent + 1), 3800);
+    }
+
+    if (ddots.length) {
+      ddots.forEach(dot => {
+        dot.addEventListener('click', function() {
+          dGoTo(parseInt(this.dataset.ddot));
+          dStartAuto();
+        });
+      });
+      dStartAuto();
+    }
+
+    // ========== 2. Skeleton removal ==========
+    setTimeout(function() {
+      const skeleton = document.getElementById('ac-skeleton');
+      const content = document.getElementById('ac-content');
+      if (skeleton && content) {
+        skeleton.style.display = 'none';
+        content.style.display = 'block';
+      }
+    }, 280);
+
+    // ========== 3. Password visibility toggle ==========
+    const toggles = document.querySelectorAll('.ac-pw-toggle');
+    toggles.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('data-target');
+        const inputField = document.getElementById(targetId);
+        if (inputField) {
+          const isPassword = inputField.type === 'password';
+          inputField.type = isPassword ? 'text' : 'password';
+          this.textContent = isPassword ? '🙈' : '👁️';
+        }
+      });
+    });
+
+    // ========== 4. Real-time field validation ==========
+    const usernameField = document.getElementById('ac-username');
+    const usernameHint  = document.getElementById('ac-username-hint');
+    const emailField    = document.getElementById('ac-email');
+    const pass1Field    = document.getElementById('ac-pass1');
+    const pass2Field    = document.getElementById('ac-pass2');
+    const pwHint        = document.getElementById('ac-pw-hint');
+
+    if (usernameField && usernameHint) {
+      usernameField.addEventListener('input', function() {
+        const val = usernameField.value.trim();
+        if (val.length > 0 && val.length < 5) {
+          usernameHint.textContent = '✗ Username must be at least 5 characters';
+          usernameHint.className = 'ac-hint ac-hint-error';
+          usernameField.classList.add('ac-error');
+          usernameField.classList.remove('ac-success');
+        } else if (val.length >= 5) {
+          usernameHint.textContent = '✓ Valid username';
+          usernameHint.className = 'ac-hint ac-hint-success';
+          usernameField.classList.remove('ac-error');
+          usernameField.classList.add('ac-success');
+        } else {
+          usernameHint.textContent = '';
+          usernameField.classList.remove('ac-error', 'ac-success');
+        }
+      });
+    }
+
+    if (emailField) {
+      function validateEmail() {
+        const email = emailField.value.trim();
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && !emailPattern.test(email)) {
+          emailField.classList.add('ac-error');
+          emailField.classList.remove('ac-success');
+          let emailHint = document.getElementById('ac-email-dynamic-hint');
+          if (!emailHint) {
+            emailHint = document.createElement('div');
+            emailHint.id = 'ac-email-dynamic-hint';
+            emailHint.className = 'ac-hint ac-hint-error';
+            emailField.parentNode.appendChild(emailHint);
+          }
+          emailHint.textContent = 'Enter a valid email (e.g., name@domain.com)';
+        } else {
+          emailField.classList.remove('ac-error');
+          if (email) emailField.classList.add('ac-success');
+          const existingHint = document.getElementById('ac-email-dynamic-hint');
+          if (existingHint) existingHint.remove();
+        }
+      }
+      emailField.addEventListener('input', validateEmail);
+    }
+
+    if (pass2Field && pwHint) {
+      function checkPasswordMatch() {
+        const p1 = pass1Field ? pass1Field.value : '';
+        const p2 = pass2Field.value;
+        if (!p2) {
+          pwHint.textContent = '';
+          pass2Field.classList.remove('ac-error', 'ac-success');
+          return;
+        }
+        if (p1 === p2 && p1.length > 0) {
+          pwHint.textContent = '✓ Passwords match';
+          pwHint.className = 'ac-hint ac-hint-success';
+          pass2Field.classList.remove('ac-error');
+          pass2Field.classList.add('ac-success');
+        } else if (p1 !== p2) {
+          pwHint.textContent = '✗ Passwords do not match';
+          pwHint.className = 'ac-hint ac-hint-error';
+          pass2Field.classList.remove('ac-success');
+          pass2Field.classList.add('ac-error');
+        } else {
+          pwHint.textContent = '';
+          pass2Field.classList.remove('ac-error', 'ac-success');
+        }
+      }
+      pass2Field.addEventListener('input', checkPasswordMatch);
+      if (pass1Field) pass1Field.addEventListener('input', function() {
+        if (pass2Field.value) checkPasswordMatch();
+        else pass2Field.classList.remove('ac-error', 'ac-success');
+      });
+    }
+
+    // ========== 5. Input focus styling ==========
+    const allInputs = document.querySelectorAll('.ac-input');
+    allInputs.forEach(inp => {
+      inp.addEventListener('focus', () => {
+        
+      });
+      inp.addEventListener('blur', () => {
+        if (!inp.classList.contains('ac-error') && !inp.classList.contains('ac-success')) {
+          
+        }
+      });
+    });
+
+    // ========== 6. Messages helpers ==========
+    const dynamicMsgDiv = document.getElementById('ac-dynamic-messages');
+
+    function showClientMessage(text, type) {
+      if (!dynamicMsgDiv) return;
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `ac-message ${type === 'error' ? 'ac-message-error' : 'ac-message-success'}`;
+      msgDiv.textContent = text;
+      dynamicMsgDiv.appendChild(msgDiv);
+      dynamicMsgDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearClientMessages() {
+      if (dynamicMsgDiv) dynamicMsgDiv.innerHTML = '';
+    }
+
+    // ========== 7. Form submit → validate → open modal ==========
+    const form      = document.getElementById('ac-register-form');
+    const submitBtn = document.getElementById('ac-register-submit');
+    const backdrop  = document.getElementById('ac-pp-backdrop');
+
+    // Store collected form data here once validated
+    let pendingFormData = null;
+
+    if (form) {
+      form.addEventListener('submit', function(event) {
+        // Always prevent default — we handle submission via AJAX after modal
+        event.preventDefault();
+        clearClientMessages();
+
+        const username = usernameField ? usernameField.value.trim() : '';
+        const email    = emailField    ? emailField.value.trim()    : '';
+        const fname    = document.getElementById('ac-fname') ? document.getElementById('ac-fname').value.trim() : '';
+        const lname    = document.getElementById('ac-lname') ? document.getElementById('ac-lname').value.trim() : '';
+        const password = pass1Field ? pass1Field.value : '';
+        const confirm  = pass2Field ? pass2Field.value : '';
+
+        let hasError = false;
+
+        if (!username || username.length < 5) {
+          showClientMessage('Username must be at least 5 characters.', 'error');
+          hasError = true;
+        }
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailPattern.test(email)) {
+          showClientMessage('Please provide a valid email address.', 'error');
+          hasError = true;
+        }
+        if (!fname) {
+          showClientMessage('First name is required.', 'error');
+          hasError = true;
+        }
+        if (!lname) {
+          showClientMessage('Last name is required.', 'error');
+          hasError = true;
+        }
+        if (!password || password.length < 6) {
+          showClientMessage('Password must be at least 6 characters.', 'error');
+          hasError = true;
+        }
+        if (password !== confirm) {
+          showClientMessage('Passwords do not match.', 'error');
+          hasError = true;
+        }
+
+        if (hasError) return;
+
+        // All good — collect data and open the profile picture modal
+        pendingFormData = { username, email, fname, lname, password, confirm };
+        openPpModal();
+      });
+    }
+
+    // ========== 8. Profile picture modal logic ==========
+    const ppFileInput  = document.getElementById('ac-pp-file-input');
+    const ppPreview    = document.getElementById('ac-pp-preview');
+    const ppAvatarWrap = document.getElementById('ac-pp-avatar-wrap');
+    const ppUploadZone = document.getElementById('ac-pp-upload-zone');
+    const ppZoneText   = document.getElementById('ac-pp-zone-text');
+    const ppFileName   = document.getElementById('ac-pp-file-name');
+    const ppFinishBtn  = document.getElementById('ac-pp-finish-btn');
+    const ppSkipBtn    = document.getElementById('ac-pp-skip-btn');
+
+    let selectedPicFile = null;
+
+    // Default placeholder SVG (reused when clearing)
+    const defaultAvatarSrc = ppPreview ? ppPreview.src : '';
+
+    function openPpModal() {
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePpModal() {
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Avatar wrap / upload zone both trigger file picker
+    if (ppAvatarWrap) {
+      ppAvatarWrap.addEventListener('click', () => ppFileInput && ppFileInput.click());
+    }
+    if (ppUploadZone) {
+      ppUploadZone.addEventListener('click', () => ppFileInput && ppFileInput.click());
+    }
+
+    if (ppFileInput) {
+      ppFileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        // Validate type & size (max 5 MB)
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowed.includes(file.type)) {
+          alert('Please choose a JPEG, PNG, WEBP, or GIF image.');
+          this.value = '';
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image is too large. Maximum size is 5 MB.');
+          this.value = '';
+          return;
+        }
+
+        selectedPicFile = file;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          ppPreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        // Update zone text
+        ppZoneText.textContent = 'Photo selected ✓ Tap to change';
+        ppFileName.textContent = file.name;
+        ppFileName.style.display = 'block';
+        ppUploadZone.classList.add('has-file');
+      });
+    }
+
+    // ---- Submit registration (picture + category/subjects + career goal) ----
+    function submitRegistration(withPicture) {
+      if (!pendingFormData) return;
+
+      careerFinishBtn.disabled = true;
+      careerFinishBtn.innerHTML = '<span class="ac-pp-spinner"></span> Creating account…';
+
+      const fd = new FormData();
+      // Grab CSRF token from the existing form
+      const csrfInput = document.querySelector('#ac-register-form [name=csrfmiddlewaretoken]');
+      if (csrfInput) fd.append('csrfmiddlewaretoken', csrfInput.value);
+
+      fd.append('username', pendingFormData.username);
+      fd.append('email',    pendingFormData.email);
+      fd.append('fname',    pendingFormData.fname);
+      fd.append('lname',    pendingFormData.lname);
+      fd.append('pass1',    pendingFormData.password);
+      fd.append('pass2',    pendingFormData.confirm);
+      fd.append('student_category', selectedCategory || '');
+      selectedSubjects.forEach(name => fd.append('subjects', name));
+      fd.append('career_goal', selectedCareer || '');
+
+      if (withPicture && selectedPicFile) {
+        fd.append('profile_picture', selectedPicFile);
+      }
+
+      fetch('{% url "register_with_picture" %}', {
+        method: 'POST',
+        body: fd,
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Show success state before redirecting
+          careerFinishBtn.innerHTML = '✓ Account created! Redirecting…';
+          setTimeout(() => {
+            window.location.href = data.redirect || '/';
+          }, 900);
+        } else {
+          // Server-side error — close modal, show error on the main form
+          closeCareerModal();
+          careerFinishBtn.disabled = false;
+          careerFinishBtn.innerHTML = 'Finish Registration →';
+          clearClientMessages();
+          showClientMessage(data.error || 'Registration failed. Please try again.', 'error');
+        }
+      })
+      .catch(() => {
+        closeCareerModal();
+        careerFinishBtn.disabled = false;
+        careerFinishBtn.innerHTML = 'Finish Registration →';
+        clearClientMessages();
+        showClientMessage('Network error. Please check your connection and try again.', 'error');
+      });
+    }
+
+    // ========== 9. Subject & Career-goal selection modals ==========
+    // Keep these lists in sync with SENIOR_SECONDARY_SUBJECTS in views.py
+    const SENIOR_SUBJECTS = [
+      'Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology',
+      'Economics', 'Government', 'Literature in English', 'Geography',
+      'Further Mathematics', 'Agricultural Science', 'Accounting', 'Commerce',
+      'Christian Religious Studies', 'Islamic Religious Studies', 'Civic Education',
+      'Computer Studies', 'French', 'Technical Drawing', 'Food and Nutrition'
+    ];
+    const COMMON_CAREERS = [
+      'Doctor', 'Nurse', 'Engineer', 'Lawyer', 'Teacher', 'Pilot',
+      'Accountant', 'Scientist', 'Software Developer', 'Architect',
+      'Banker', 'Entrepreneur', 'Pharmacist', 'Journalist'
+    ];
+
+    const subjBackdrop    = document.getElementById('ac-subj-backdrop');
+    const subjBackBtn     = document.getElementById('ac-subj-back-btn');
+    const subjGrid        = document.getElementById('ac-subj-grid');
+    const subjCounter     = document.getElementById('ac-subj-counter');
+    const subjSub         = document.getElementById('ac-subj-sub');
+    const subjFinishBtn   = document.getElementById('ac-subj-finish-btn');
+    const careerBackdrop  = document.getElementById('ac-career-backdrop');
+    const careerBackBtn   = document.getElementById('ac-career-back-btn');
+    const careerGrid      = document.getElementById('ac-career-grid');
+    const careerInput     = document.getElementById('ac-career-input');
+    const careerFinishBtn = document.getElementById('ac-career-finish-btn');
+
+    const selectedCategory = 'senior'; // Senior Secondary only
+    let selectedSubjects   = new Set();
+    let selectedCareer     = '';
+    let pendingWithPicture = false;
+
+    // keepSelection=true preserves already-ticked subjects (used when coming back from the career step)
+    function openSubjModal(keepSelection) {
+      if (!keepSelection) {
+        selectedSubjects = new Set();
+      }
+      const list = SENIOR_SUBJECTS;
+      subjSub.textContent = 'Tick every Senior Secondary subject you want to register for.';
+      subjGrid.innerHTML = list.map(name => `
+        <label class="ac-subj-chip ${selectedSubjects.has(name) ? 'selected' : ''}" data-name="${name}">
+          <input type="checkbox" value="${name}" ${selectedSubjects.has(name) ? 'checked' : ''}>
+          <span>${name}</span>
+        </label>
+      `).join('');
+      updateSubjCounter();
+      subjBackdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSubjModal() {
+      subjBackdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function updateSubjCounter() {
+      const n = selectedSubjects.size;
+      subjCounter.textContent = `${n} subject${n === 1 ? '' : 's'} selected`;
+      subjFinishBtn.disabled = n === 0;
+    }
+
+    function openCareerModal() {
+      careerGrid.innerHTML = COMMON_CAREERS.map(name => `
+        <button type="button" class="ac-career-chip${selectedCareer.toLowerCase() === name.toLowerCase() ? ' selected' : ''}" data-name="${name}">${name}</button>
+      `).join('');
+      careerInput.value = selectedCareer;
+      updateCareerFinishState();
+      careerBackdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeCareerModal() {
+      careerBackdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function updateCareerFinishState() {
+      careerFinishBtn.disabled = careerInput.value.trim().length === 0;
+    }
+
+    // pp modal's Finish / Skip now move on to the subject picker instead of submitting
+    if (ppFinishBtn) {
+      ppFinishBtn.addEventListener('click', () => {
+        pendingWithPicture = true;
+        closePpModal();
+        openSubjModal(false);
+      });
+    }
+    if (ppSkipBtn) {
+      ppSkipBtn.addEventListener('click', () => {
+        pendingWithPicture = false;
+        closePpModal();
+        openSubjModal(false);
+      });
+    }
+
+    if (subjGrid) {
+      subjGrid.addEventListener('click', function(e) {
+        const chip = e.target.closest('.ac-subj-chip');
+        if (!chip) return;
+        const checkbox = chip.querySelector('input');
+        checkbox.checked = !checkbox.checked;
+        const name = chip.dataset.name;
+        if (checkbox.checked) {
+          selectedSubjects.add(name);
+          chip.classList.add('selected');
+        } else {
+          selectedSubjects.delete(name);
+          chip.classList.remove('selected');
+        }
+        updateSubjCounter();
+      });
+    }
+
+    if (careerGrid) {
+      careerGrid.addEventListener('click', function(e) {
+        const chip = e.target.closest('.ac-career-chip');
+        if (!chip) return;
+        const name = chip.dataset.name;
+        careerInput.value = name;
+        careerGrid.querySelectorAll('.ac-career-chip').forEach(c => c.classList.toggle('selected', c === chip));
+        updateCareerFinishState();
+      });
+    }
+    if (careerInput) {
+      careerInput.addEventListener('input', function() {
+        const val = careerInput.value.trim().toLowerCase();
+        careerGrid.querySelectorAll('.ac-career-chip').forEach(c => {
+          c.classList.toggle('selected', c.dataset.name.toLowerCase() === val);
+        });
+        updateCareerFinishState();
+      });
+    }
+
+    if (subjBackBtn) {
+      subjBackBtn.addEventListener('click', () => {
+        closeSubjModal();
+        openPpModal();
+      });
+    }
+    if (subjFinishBtn) {
+      subjFinishBtn.addEventListener('click', () => {
+        if (selectedSubjects.size === 0) return;
+        closeSubjModal();
+        openCareerModal();
+      });
+    }
+    if (careerBackBtn) {
+      careerBackBtn.addEventListener('click', () => {
+        selectedCareer = careerInput.value;
+        closeCareerModal();
+        openSubjModal(true);
+      });
+    }
+    if (careerFinishBtn) {
+      careerFinishBtn.addEventListener('click', () => {
+        selectedCareer = careerInput.value.trim();
+        if (!selectedCareer) return;
+        submitRegistration(pendingWithPicture);
+      });
+    }
+
+    // Close on backdrop click (outside modal box)
+    [backdrop, subjBackdrop, careerBackdrop].forEach(bd => {
+      if (bd) {
+        bd.addEventListener('click', function(e) {
+          if (e.target !== bd) return;
+          bd.classList.remove('open');
+          document.body.style.overflow = '';
+        });
+      }
+    });
+
+  })();
+</script>
+
+</body>
+</html>

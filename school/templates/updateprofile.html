@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KishiFace - Edit Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        /* Define custom color for easy reference (from tailwind.config) */
+        :root {
+            --primary-blue: #0095f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fafafa;
+            padding-top: 56px; /* Space for the fixed header */
+            margin: 0; /* Ensure no default body margin */
+        }
+        
+        /* Header styles (Replaces: fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-20) */
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px; /* h-14 (14 * 4px = 56px) */
+            background-color: white; /* bg-white */
+            border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
+            display: flex; /* flex */
+            align-items: center; /* items-center */
+            justify-content: space-between; /* justify-between */
+            padding-left: 1rem; /* px-4 */
+            padding-right: 1rem; /* px-4 */
+            z-index: 20; /* z-20 */
+        }
+
+        /* Header link/button text styles */
+        .header-action {
+            font-size: 1.125rem; /* text-lg */
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Header back/cancel link (Replaces: text-gray-800) */
+        .header-cancel {
+            color: #1f2937; /* text-gray-800 */
+        }
+        
+        /* Header title (Replaces: text-lg font-semibold text-gray-900) */
+        .header-title {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600; /* font-semibold */
+            color: #111827; /* text-gray-900 */
+        }
+        
+        /* Header submit button (Done) (Replaces: text-lg font-bold text-primary-blue hover:text-blue-600) */
+        .header-done {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 700; /* font-bold */
+            color: var(--primary-blue); /* text-primary-blue */
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: color 0.15s ease-in-out;
+        }
+
+        .header-done:hover {
+            color: #2563eb; /* hover:text-blue-600 */
+        }
+
+        /* Main content container (Replaces: max-w-xl mx-auto w-full) */
+        .main-content {
+            max-width: 36rem; /* max-w-xl (576px) */
+            margin-left: auto; /* mx-auto */
+            margin-right: auto; /* mx-auto */
+            width: 100%; /* w-full */
+        }
+
+        /* Profile section container (Replaces: flex flex-col items-center py-6 border-b border-gray-200 mb-6) */
+        .profile-section {
+            display: flex; /* flex */
+            flex-direction: column; /* flex-col */
+            align-items: center; /* items-center */
+            padding-top: 1.5rem; /* py-6 */
+            padding-bottom: 1.5rem; /* py-6 */
+            border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
+            margin-bottom: 1.5rem; /* mb-6 */
+        }
+        
+        /* Profile image (Replaces: h-24 w-24 rounded-full object-cover mb-2 border border-gray-300) */
+        .profile-pic {
+            height: 6rem; /* h-24 */
+            width: 6rem; /* w-24 */
+            border-radius: 9999px; /* rounded-full */
+            object-fit: cover; /* object-cover */
+            margin-bottom: 0.5rem; /* mb-2 */
+            border: 1px solid #d1d5db; /* border border-gray-300 */
+        }
+        
+        /* Change photo link (Replaces: text-sm font-semibold text-primary-blue hover:text-blue-600 transition duration-150) */
+        .change-photo-link {
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 600; /* font-semibold */
+            color: var(--primary-blue); /* text-primary-blue */
+            text-decoration: none;
+            transition: color 0.15s ease-in-out; /* transition duration-150 */
+        }
+
+        .change-photo-link:hover {
+            color: #2563eb; /* hover:text-blue-600 */
+        }
+        
+        /* Username text (Replaces: text-xl font-medium text-gray-800 mt-2) */
+        .username-text {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 500; /* font-medium */
+            color: #1f2937; /* text-gray-800 */
+            margin-top: 0.5rem; /* mt-2 */
+        }
+
+        /* Messages container (Replaces: px-4) */
+        .messages-container {
+            padding-left: 1rem; /* px-4 */
+            padding-right: 1rem; /* px-4 */
+        }
+
+        /* Message alert box (Replaces: p-3 mb-4 rounded-lg bg-red-100 border border-red-300 text-red-700 text-sm) */
+        .alert-box {
+            padding: 0.75rem; /* p-3 */
+            margin-bottom: 1rem; /* mb-4 */
+            border-radius: 0.5rem; /* rounded-lg */
+            background-color: #fee2e2; /* bg-red-100 */
+            border: 1px solid #fca5a5; /* border border-red-300 */
+            color: #b91c1c; /* text-red-700 */
+            font-size: 0.875rem; /* text-sm */
+        }
+
+        /* Form sections wrapper (Replaces: space-y-4 px-4 pb-4) */
+        .form-fields-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem; /* space-y-4 */
+            padding-left: 1rem; /* px-4 */
+            padding-right: 1rem; /* px-4 */
+            padding-bottom: 1rem; /* pb-4 */
+        }
+        
+        /* Input row container (Replaces: flex items-center) */
+        .input-row {
+            display: flex; /* flex */
+            align-items: center; /* items-center */
+        }
+
+        /* Bio/About row container (Replaces: flex items-start) */
+        .bio-row {
+            display: flex; /* flex */
+            align-items: flex-start; /* items-start */
+        }
+        
+        /* Input label (Replaces: w-1/4 text-sm font-medium text-gray-700) */
+        .profile-label {
+            width: 25%; /* w-1/4 */
+            min-width: 25%; /* Prevent shrinking */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            color: #374151; /* text-gray-700 */
+            /* Vertical alignment for bio label (Replaces pt-2) */
+        }
+        
+        .bio-label {
+            padding-top: 0.5rem; /* pt-2 */
+        }
+        
+        /* Input/Textarea field styling (Reuses existing .profile-input and adds flex-grow and bg-gray-50) */
+        .profile-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #dbdbdb;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: border-color 0.15s ease-in-out;
+            margin-top: 0.25rem; /* Used in the original structure, keep for consistency if needed, though form layout might not need it */
+            flex-grow: 1; /* flex-grow */
+            background-color: #f9fafb; /* bg-gray-50 */
+            /* Remove default margin-top if using flex for .input-row */
+            margin-top: 0; 
+        }
+
+        .profile-input:focus {
+            border-color: #a8a8a8;
+            outline: none;
+            box-shadow: none;
+        }
+
+        /* Bio field separator (Replaces: pt-2 border-t border-gray-200) */
+        .bio-separator {
+            padding-top: 0.5rem; /* pt-2 */
+            border-top: 1px solid #e5e7eb; /* border-t border-gray-200 */
+        }
+
+        /* Private Information Separator (Replaces: pt-4 text-primary-blue font-semibold text-sm border-t border-gray-200) */
+        .private-info-separator {
+            padding-top: 1rem; /* pt-4 */
+            color: var(--primary-blue); /* text-primary-blue */
+            font-weight: 600; /* font-semibold */
+            font-size: 0.875rem; /* text-sm */
+            border-top: 1px solid #e5e7eb; /* border-t border-gray-200 */
+            margin-top: 0; /* Override space-y-4 margin if present */
+        }
+        
+        /* Hidden button (Replaces: hidden) */
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="fixed-header">
+        <a href="{% url 'profile' user.username %}" class="header-action header-cancel">
+            Cancel
+        </a>
+        
+        <h1 class="header-title">
+            Edit Profile
+        </h1>
+        
+        <button type="submit" form="updateForm" class="header-action header-done">
+            Done
+        </button>
+    </header>
+
+    <main class="main-content">
+
+        <div class="profile-section">
+            <img src="{{user.profile.picture.url}}" alt="Profile Picture" 
+                 class="profile-pic">
+            
+            <a href="#" class="change-photo-link">
+                Change Profile Photo
+            </a>
+            <p class="username-text">{{user.username}}</p>
+        </div>
+        
+        {% if messages %}
+        <div class="messages-container">
+            <div class="alert-box">
+                {% for message in messages %}
+                <p>{{message}}</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" id="updateForm">
+            {% csrf_token %}
+
+            <div class="form-fields-wrapper">
+                <div class="input-row">
+                    <label for="fname" class="profile-label">Profile Picture</label>
+                    <input type="file" name="image" id="image" 
+                           class="profile-input">
+                </div>
+                <div class="input-row">
+                    <label for="fname" class="profile-label">First Name</label>
+                    <input type="text" name="fname" id="fname" value="{{user.first_name}}" 
+                           class="profile-input">
+                </div>
+                
+                <div class="input-row">
+                    <label for="lname" class="profile-label">Last Name</label>
+                    <input type="text" name="lname" id="lname" value="{{user.last_name}}" 
+                           class="profile-input">
+                </div>
+
+                <div class="bio-separator">
+                    <div class="bio-row">
+                        <label for="bio" class="profile-label bio-label">Bio</label>
+                        <textarea name="bio" id="bio" rows="3"
+                                  class="profile-input resize-none">{{profile.bio}}</textarea>
+                    </div>
+                </div>
+
+                <p class="private-info-separator">Private Information</p>
+                
+                <div class="input-row">
+                    <label for="phone" class="profile-label">Phone</label>
+                    <input type="text" name="phone" id="phone" value="{{profile.phone}}" 
+                           class="profile-input">
+                </div>
+                
+                <div class="input-row">
+                    <label for="address" class="profile-label">Address</label>
+                    <input type="text" name="address" id="address" value="{{profile.address}}" 
+                           class="profile-input">
+                </div>
+                
+                <div class="input-row">
+                    <label for="location" class="profile-label">Location</label>
+                    <input type="text" name="location" id="location" value="{{profile.location}}" 
+                           class="profile-input">
+                </div>
+
+                <button type="submit" class="hidden">Update</button>
+
+            </div>
+        </form>
+
+    </main>
+</body>
+</html>

@@ -1,0 +1,120 @@
+{% comment %}
+  snippet/leaderboard_card.html
+  Leaderboard with dropdown for Overall + Mathematics + Physics.
+  Context vars: top_students, top_mathematics, top_physics
+{% endcomment %}
+
+{% with empty_msg="No results yet." %}
+
+<style>
+.awaClass-lb-filter { display: flex; align-items: center; }
+.awaClass-lb-select {
+  font-size: 11px; font-weight: 600; color: #606060;
+  background: #f5f5f5; border: 1px solid #e5e5e5; border-radius: 6px;
+  padding: 4px 22px 4px 8px; cursor: pointer; outline: none;
+  font-family: inherit; transition: border-color 0.15s;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23909090' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center;
+}
+.awaClass-lb-select:focus { border-color: #f97316; }
+.awaClass-lb-panel { display: none; }
+.awaClass-lb-panel.active { display: block; }
+</style>
+
+<div class="awaClass-leaderboard-card">
+
+  <div class="awaClass-lb-header">
+    <div class="awaClass-lb-header-left">
+      <span class="awaClass-lb-icon">🏆</span>
+      <h3>Leaderboard</h3>
+    </div>
+    <div class="awaClass-lb-filter">
+      <select class="awaClass-lb-select" data-lb-select>
+        <option value="overall">Overall</option>
+        <option value="mathematics">Mathematics</option>
+        <option value="physics">Physics</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- OVERALL -->
+  <div class="awaClass-lb-panel active" data-lb-panel="overall">
+    <ul class="awaClass-lb-list">
+      {% for student in top_students %}
+      <li class="awaClass-lb-item" data-username="{{ student.user.username }}" role="button" tabindex="0"
+          title="View {{ student.user.get_full_name|default:student.user.username }}'s scores"
+          onkeydown="if(event.key==='Enter'||event.key===' '){this.click();}">
+        <span class="awaClass-lb-pos pos-{{ student.position }}">{{ student.position }}</span>
+        <img src="{{ student.profile.get_picture_url }}" alt="{{ student.user.username }}" class="awaClass-lb-avatar" loading="lazy">
+        <div class="awaClass-lb-info">
+          <p class="awaClass-lb-name">{{ student.user.get_full_name|default:student.user.username }}</p>
+          <span class="awaClass-lb-level lvl-{{ student.level_num }}">{{ student.level_name }}</span>
+        </div>
+        <div class="awaClass-lb-points">
+          <span class="awaClass-lb-pts-val">{{ student.stat_val }}</span>
+          <span class="awaClass-lb-pts-label">{{ student.stat_label }}</span>
+        </div>
+      </li>
+      {% empty %}
+      <li class="awaClass-lb-empty">No students yet. Be the first!</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- MATHEMATICS -->
+  <div class="awaClass-lb-panel" data-lb-panel="mathematics">
+    <ul class="awaClass-lb-list">
+      {% for student in top_mathematics %}
+      <li class="awaClass-lb-item" data-username="{{ student.user.username }}" role="button" tabindex="0"
+          title="View {{ student.user.get_full_name|default:student.user.username }}'s scores"
+          onkeydown="if(event.key==='Enter'||event.key===' '){this.click();}">
+        <span class="awaClass-lb-pos pos-{{ student.position }}">{{ student.position }}</span>
+        <img src="{{ student.profile.get_picture_url }}" alt="{{ student.user.username }}" class="awaClass-lb-avatar" loading="lazy">
+        <div class="awaClass-lb-info">
+          <p class="awaClass-lb-name">{{ student.user.get_full_name|default:student.user.username }}</p>
+          <span class="awaClass-lb-level lvl-{{ student.level_num }}">{{ student.level_name }}</span>
+        </div>
+        <div class="awaClass-lb-points">
+          <span class="awaClass-lb-pts-val">{{ student.stat_val }}</span>
+          <span class="awaClass-lb-pts-label">{{ student.stat_label }}</span>
+        </div>
+      </li>
+      {% empty %}
+      <li class="awaClass-lb-empty">No Mathematics results yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- PHYSICS -->
+  <div class="awaClass-lb-panel" data-lb-panel="physics">
+    <ul class="awaClass-lb-list">
+      {% for student in top_physics %}
+      <li class="awaClass-lb-item" data-username="{{ student.user.username }}" role="button" tabindex="0"
+          title="View {{ student.user.get_full_name|default:student.user.username }}'s scores"
+          onkeydown="if(event.key==='Enter'||event.key===' '){this.click();}">
+        <span class="awaClass-lb-pos pos-{{ student.position }}">{{ student.position }}</span>
+        <img src="{{ student.profile.get_picture_url }}" alt="{{ student.user.username }}" class="awaClass-lb-avatar" loading="lazy">
+        <div class="awaClass-lb-info">
+          <p class="awaClass-lb-name">{{ student.user.get_full_name|default:student.user.username }}</p>
+          <span class="awaClass-lb-level lvl-{{ student.level_num }}">{{ student.level_name }}</span>
+        </div>
+        <div class="awaClass-lb-points">
+          <span class="awaClass-lb-pts-val">{{ student.stat_val }}</span>
+          <span class="awaClass-lb-pts-label">{{ student.stat_label }}</span>
+        </div>
+      </li>
+      {% empty %}
+      <li class="awaClass-lb-empty">No Physics results yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="awaClass-lb-footer">
+    <a href="{% url 'cbt_exams' %}">Take an Exam →</a>
+  </div>
+
+</div>
+
+{% endwith %}
+

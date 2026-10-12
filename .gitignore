@@ -1,0 +1,15 @@
+# Ignore environment files
+.env
+# Ignore Media
+media/
+# Ignore pytho Cache Files`
+*.pyo
+*.pyc
+__pycache__/
+
+*.sqlite3
+db.sqlite3
+*.log
+/media/
+from dotenv import load_dotenv
+load_dotenv(os.path.join(BASE_DIR, '.env'))

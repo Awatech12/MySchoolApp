@@ -1,0 +1,11 @@
+{% load humanize %}
+<a 
+    style="text-decoration: none; text-decoration: #606060;" 
+    hx-get="{% url 'like' video.post_id %}"
+    hx-swap="innerHTML"
+    hx-target="#post-like-{{video.post_id}}">
+    {% if request.user in video.like.all %} 
+    <i id="icon" class="fa-solid fa-heart action-icon" style="color: var(--color-danger, #666);"></i> 
+    {% else %} <i id="icon" class="fa-regular fa-heart action-icon"></i> 
+    {% endif %} {{video.like.count|intcomma}}
+</a> 

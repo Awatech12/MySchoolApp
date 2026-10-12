@@ -1,0 +1,240 @@
+/*
+ * --------------------------------
+ * Base Styles & Utility
+ * --------------------------------
+ */
+:root {
+    --primary-blue: #007aff; /* Clean, modern blue for accents */
+    --light-gray: #f4f4f7; /* Very light background color */
+    --medium-gray: #e0e0e0; /* Subtle border color */
+    --dark-text: #1c1c1e;
+    --light-text: #6c6c70;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    background-color: var(--light-gray);
+    color: var(--dark-text);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+.dashboard-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 15px;
+}
+
+h2.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-text);
+    margin-bottom: 20px;
+    padding-left: 5px;
+    border-left: 4px solid var(--primary-blue); /* Simple, modern accent line */
+}
+
+
+/*
+ * --------------------------------
+ * 1. Subjects Grid
+ * --------------------------------
+ */
+.subjects-section {
+    margin-bottom: 40px;
+}
+
+.subjects-grid {
+    display: grid;
+    /* Mobile-first: 3 columns for small screens */
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 15px;
+}
+
+.subject-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    padding: 15px 10px;
+    background-color: white;
+    border: 1px solid var(--medium-gray);
+    border-radius: 12px;
+    transition: transform 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+.subject-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary-blue);
+}
+
+.subject-icon {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+.subject-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-text);
+}
+
+/* Tablet/Small Desktop Adjustment: 5 columns */
+@media (min-width: 600px) {
+    .subjects-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+/* Large Desktop Adjustment: 6 columns */
+@media (min-width: 900px) {
+    .subjects-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+
+/*
+ * --------------------------------
+ * 2. Admin CTA (Superuser)
+ * --------------------------------
+ */
+.admin-cta {
+    margin-bottom: 40px;
+    padding: 20px;
+    background-color: #e6f0ff; /* Light blue background for emphasis */
+    border: 1px solid var(--primary-blue);
+    border-radius: 12px;
+}
+
+.cta-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.cta-icon {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+}
+
+.cta-text h3 {
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+    color: var(--dark-text);
+}
+
+.cta-text p {
+    font-size: 0.9rem;
+    color: var(--light-text);
+}
+
+.cta-button {
+    margin-left: auto; /* Pushes the button to the far right */
+    padding: 10px 20px;
+    background-color: var(--primary-blue);
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.cta-button:hover {
+    background-color: #005bb5;
+}
+
+
+/*
+ * --------------------------------
+ * 3. Account Setup Progress
+ * --------------------------------
+ */
+.progress-section {
+    margin-bottom: 40px;
+    padding: 15px;
+    background-color: white;
+    border: 1px solid var(--medium-gray);
+    border-radius: 12px;
+}
+
+.progress-indicator {
+    width: 100%;
+    height: 10px;
+    background-color: var(--medium-gray);
+    border-radius: 5px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar {
+    /* Use CSS variable set in HTML for progress width */
+    width: var(--completion-percent, 0%);
+    height: 100%;
+    background-color: #4cd964; /* Green for completion */
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
+}
+
+.completion-text {
+    display: block;
+    text-align: right;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-bottom: 20px;
+}
+
+.setup-action-card {
+    border-top: 1px solid var(--medium-gray);
+    padding-top: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.action-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+    flex-basis: 100%; /* Title takes full width on small screens */
+    color: var(--dark-text);
+}
+
+.action-description {
+    font-size: 0.8rem;
+    color: var(--light-text);
+    flex-basis: 70%;
+}
+
+.action-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    text-decoration: none;
+    transition: color 0.2s;
+    flex-basis: 30%;
+    text-align: right;
+    
+    /* Ensure action link is below on very small screens if necessary */
+    margin-top: 10px; 
+}
+
+@media (min-width: 450px) {
+    .action-title {
+        flex-basis: auto;
+        margin-bottom: 0;
+    }
+    .action-link {
+        flex-basis: auto;
+        margin-top: 0;
+    }
+}
