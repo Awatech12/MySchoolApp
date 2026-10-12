@@ -7,7 +7,7 @@ import cloudinary
 BASE_DIR = Path(__file__).resolve().parent.parent
 #load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = os.getenv("SECRET_KEY") 
+SECRET_KEY ='django-insecure-+_hifhep#jpt5&%*i%nnog_8ws@($^*^8zjg5kf&=jf3%gr8vj'
 DEBUG = os.getenv("DEBUG", 'False') == 'True'  
 USE_CLOUDINARY = True
 
@@ -15,6 +15,8 @@ USE_CLOUDINARY = True
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
+    'https://topmarktutorial.onrender.com',
+
     
 ]
 
