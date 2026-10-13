@@ -15,12 +15,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
 :root{
-  --tm-navy:#1f3a68; --tm-navy-dk:#162b4e; --tm-navy-50:#f1f4f9; --tm-navy-100:#d9e1ee;
-  --tm-ink:#1f2937; --tm-muted:#6b7280; --tm-line:#d9dde3; --tm-bg:#ffffff; --tm-white:#fff;
+  --tm-navy:#0095f6; --tm-navy-dk:#0074cc; --tm-navy-50:#e8f4fd; --tm-navy-100:#dbdbdb;
+  --tm-ink:#262626; --tm-muted:#737373; --tm-line:#dbdbdb; --tm-bg:#ffffff; --tm-white:#fff;
   --tm-radius:4px;
 
   /* Compatibility for shared partials (sidebar / footer) that read these names. */
-  --tm-orange:#1f3a68; --tm-orange-dk:#162b4e;
+  --tm-orange:#0095f6; --tm-orange-dk:#0074cc;
   --awaClass-bg:#fafafa; --awaClass-white:#fff; --awaClass-border:#dbdbdb; --awaClass-border-light:#efefef;
   --awaClass-text:#262626; --awaClass-text-muted:#8e8e8e; --awaClass-text-light:#8e8e8e;
   --awaClass-gray:#8e8e8e; --awaClass-gray-light:#c7c7c7; --awaClass-primary:#0095f6;
@@ -37,7 +37,7 @@ img{max-width:100%;display:block}
 a{color:inherit}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--tm-navy);outline-offset:2px}
-.tm-skip{position:absolute;left:-9999px;top:8px;background:var(--tm-navy);color:#fff;padding:10px 14px;border-radius:4px;z-index:3000}
+.tm-skip{position:absolute;left:-9999px;top:8px;background:var(--tm-navy-dk);color:#fff;padding:10px 14px;border-radius:4px;z-index:3000}
 .tm-skip:focus{left:8px}
 .tm-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
@@ -45,7 +45,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-page{max-width:1000px;margin:0 auto;padding:16px 14px 96px}
 @media(min-width:768px){.tm-page{padding:28px 24px 48px 84px}}
 .tm-pagehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--tm-navy)}
-.tm-pagehead h1{font-size:20px;font-weight:700;color:var(--tm-navy);letter-spacing:.01em}
+.tm-pagehead h1{font-size:20px;font-weight:700;color:var(--tm-navy-dk);letter-spacing:.01em}
 .tm-back{background:#fff;color:var(--tm-ink);border:1px solid var(--tm-line);border-radius:var(--tm-radius);padding:5px 10px;font-size:13px;cursor:pointer}
 .tm-back:hover{background:var(--tm-navy-50)}
 
@@ -65,7 +65,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:var(--tm-radius);font-weight:600;font-size:14px;cursor:pointer;text-decoration:none;border:1px solid transparent}
 .tm-btn-primary,.tm-btn-navy{background:var(--tm-navy);color:#fff;border-color:var(--tm-navy)}
 .tm-btn-primary:hover,.tm-btn-navy:hover{background:var(--tm-navy-dk)}
-.tm-btn-outline,.tm-btn-light{background:#fff;color:var(--tm-navy);border-color:var(--tm-navy-100)}
+.tm-btn-outline,.tm-btn-light{background:#fff;color:var(--tm-navy-dk);border-color:var(--tm-navy-100)}
 .tm-btn-outline:hover,.tm-btn-light:hover{background:var(--tm-navy-50)}
 .tm-btn-sm{min-height:36px;padding:0 12px;font-size:13px}
 .tm-btn[disabled]{opacity:.55;cursor:not-allowed}
@@ -75,7 +75,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-tabs::-webkit-scrollbar{display:none}
 .tm-tab{flex:0 0 auto;min-height:44px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--tm-muted);font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
 .tm-tab:hover{color:var(--tm-navy)}
-.tm-tab[aria-selected="true"]{color:var(--tm-navy);border-bottom-color:var(--tm-navy)}
+.tm-tab[aria-selected="true"]{color:var(--tm-navy-dk);border-bottom-color:var(--tm-navy)}
 
 /* ── sections ── */
 .tm-panel[hidden]{display:none}
@@ -85,7 +85,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-section-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid var(--tm-line)}
 .tm-section-h h2{font-size:16px;font-weight:700;color:var(--tm-navy)}
 .tm-sub{font-size:13px;color:var(--tm-muted)}
-.tm-link{color:var(--tm-navy);font-weight:600;font-size:13px;text-decoration:underline}
+.tm-link{color:var(--tm-navy-dk);font-weight:600;font-size:13px;text-decoration:underline}
 
 /* overview figures */
 .tm-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:1px solid var(--tm-line);border-radius:var(--tm-radius)}
@@ -95,7 +95,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-stat-l{font-size:12px;color:var(--tm-muted)}
 
 /* details list */
-.tm-dl div{display:grid;grid-template-columns:180px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #eceef2}
+.tm-dl div{display:grid;grid-template-columns:180px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #efefef}
 .tm-dl div:last-child{border-bottom:0}
 .tm-dl dt{font-size:14px;color:var(--tm-muted)}
 .tm-dl dd{font-weight:600;overflow-wrap:anywhere}
@@ -103,7 +103,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 @media(max-width:480px){.tm-dl div{grid-template-columns:1fr;gap:0}}
 
 /* subject performance */
-.tm-bar-row{padding:10px 0;border-bottom:1px solid #eceef2}
+.tm-bar-row{padding:10px 0;border-bottom:1px solid #efefef}
 .tm-bar-row:last-child{border-bottom:0}
 .tm-bar-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:600;margin-bottom:5px}
 .tm-bar-top small{font-weight:400;color:var(--tm-muted);font-size:12px}
@@ -111,7 +111,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-bar>span{display:block;height:100%;background:var(--tm-navy)}
 
 /* grade tag */
-.tm-pill{display:inline-block;border:1px solid var(--tm-navy-100);background:var(--tm-navy-50);color:var(--tm-navy);border-radius:3px;padding:1px 8px;font-size:12px;font-weight:600}
+.tm-pill{display:inline-block;border:1px solid var(--tm-navy-100);background:var(--tm-navy-50);color:var(--tm-navy-dk);border-radius:3px;padding:1px 8px;font-size:12px;font-weight:600}
 
 /* notices & empty */
 .tm-note{display:flex;gap:10px;align-items:flex-start;background:var(--tm-navy-50);border:1px solid var(--tm-navy-100);color:var(--tm-navy-dk);border-radius:var(--tm-radius);padding:10px 12px;font-size:13px;margin-bottom:12px}
@@ -121,12 +121,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* results table */
 .tm-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
-.tm-select,.tm-input{width:100%;min-height:44px;border-radius:var(--tm-radius);padding:9px 12px;background:#fff;border:1px solid #b9c0cc;font-size:15px}
+.tm-select,.tm-input{width:100%;min-height:44px;border-radius:var(--tm-radius);padding:9px 12px;background:#fff;border:1px solid #dbdbdb;font-size:15px}
 .tm-select:focus,.tm-input:focus{outline:2px solid var(--tm-navy);outline-offset:0;border-color:var(--tm-navy)}
 .tm-toolbar .tm-select{width:auto;min-width:180px}
+.tm-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+@media(max-width:560px){.tm-filters,.tm-filters>div,.tm-filters .tm-select,.tm-filters .tm-btn{width:100%}}
 .tm-tablewrap{overflow-x:auto}
 .tm-table{width:100%;border-collapse:collapse;font-size:14px}
-.tm-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--tm-navy);padding:9px 10px;white-space:nowrap}
+.tm-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--tm-navy-dk);padding:9px 10px;white-space:nowrap}
 .tm-table td{padding:10px;vertical-align:top;border-bottom:1px solid var(--tm-line)}
 .tm-table .t-name{font-weight:600}
 .tm-table tr[hidden]{display:none!important}
@@ -146,7 +148,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-modal[hidden]{display:none}
 .tm-sheet{background:#fff;width:100%;max-width:560px;max-height:94vh;max-height:94dvh;display:flex;flex-direction:column;border-radius:8px 8px 0 0;overflow:hidden}
 @media(min-width:640px){.tm-modal{align-items:center;padding:20px}.tm-sheet{border-radius:6px;max-height:90vh}}
-.tm-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--tm-navy);color:#fff}
+.tm-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--tm-navy-dk);color:#fff}
 .tm-sheet-h h2{font-size:17px}
 .tm-x{width:44px;height:44px;margin:-8px -8px -8px 0;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}
 .tm-sheet-b{padding:16px;overflow-y:auto;flex:1}
@@ -158,7 +160,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-form{display:grid;gap:14px}
 .tm-two{display:grid;gap:14px}
 @media(min-width:520px){.tm-two{grid-template-columns:1fr 1fr}}
-.tm-field label,.tm-field legend{display:block;font-size:13px;font-weight:600;color:var(--tm-navy);margin-bottom:5px}
+.tm-field label,.tm-field legend{display:block;font-size:13px;font-weight:600;color:var(--tm-navy-dk);margin-bottom:5px}
 .tm-hint{font-size:12px;color:var(--tm-muted);margin-top:4px}
 .tm-fieldset{border:0}
 .tm-photo{display:flex;align-items:center;gap:14px}
@@ -170,7 +172,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-checks{display:grid;gap:8px;grid-template-columns:1fr}
 @media(min-width:480px){.tm-checks{grid-template-columns:1fr 1fr}}
 .tm-check{position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid var(--tm-line);border-radius:var(--tm-radius);cursor:pointer;font-size:14px;background:#fff}
-.tm-check input{width:18px;height:18px;accent-color:var(--tm-navy);flex:none}
+.tm-check input{width:18px;height:18px;accent-color:var(--tm-navy-dk);flex:none}
 .tm-check:has(input:checked){background:var(--tm-navy-50);border-color:var(--tm-navy)}
 .tm-check:has(input:focus-visible){outline:3px solid var(--tm-navy);outline-offset:2px}
 .tm-counter{font-size:13px;font-weight:600;color:var(--tm-navy)}
@@ -193,10 +195,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .f-photo img{width:34mm;height:42mm;object-fit:cover;background:#fff;border:1px solid #9ca3af}
 .f-photo span{display:block;text-align:center;font-size:8pt;color:#475569;margin-top:2px}
 .f-name{flex:1}
-.f-name h3{font-size:16pt;color:var(--tm-navy);line-height:1.2}
-.f-sec{background:var(--tm-navy-50);color:var(--tm-navy);font-weight:800;font-size:9.5pt;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;margin:12px 0 6px;border-left:3px solid var(--tm-navy)}
+.f-name h3{font-size:16pt;color:var(--tm-navy-dk);line-height:1.2}
+.f-sec{background:var(--tm-navy-50);color:var(--tm-navy-dk);font-weight:800;font-size:9.5pt;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;margin:12px 0 6px;border-left:3px solid var(--tm-navy)}
 .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
-.f-row{display:flex;gap:8px;align-items:baseline;padding:6px 0;min-height:7.5mm;break-inside:avoid;border-bottom:1px solid #eceef2}
+.f-row{display:flex;gap:8px;align-items:baseline;padding:6px 0;min-height:7.5mm;break-inside:avoid;border-bottom:1px solid #efefef}
 .f-row.wide{grid-column:1/-1}
 .f-row b{font-size:8.5pt;color:#475569;text-transform:uppercase;letter-spacing:.03em;flex:none;min-width:30mm}
 .f-row span{font-weight:600;overflow-wrap:anywhere}
@@ -330,18 +332,24 @@ button,input,select,textarea{font:inherit;color:inherit}
             <div class="tm-note" role="note"><i class="fas fa-lock" aria-hidden="true"></i><div>Examination results are private. Only the student and TopMark staff can see them.</div></div>
             {% elif exam_history %}
             <div class="tm-toolbar">
-                <div><label for="tm-filter" class="tm-sr">Filter results by subject</label>
-                    <select id="tm-filter" class="tm-select"><option value="">All subjects</option>{% for s in subject_summaries %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}</select></div>
+                <div class="tm-filters">
+                    <div><label for="tm-filter" class="tm-sr">Filter results by subject</label>
+                        <select id="tm-filter" class="tm-select"><option value="">All subjects</option>{% for s in subject_summaries %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}</select></div>
+                    <div><label for="tm-date-filter" class="tm-sr">Filter results by test date</label>
+                        <select id="tm-date-filter" class="tm-select"><option value="">All test dates</option>{% for d in exam_days %}<option value="{{ d.date_iso }}">{{ d.date|date:"j F Y" }}</option>{% endfor %}</select></div>
+                    <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" id="tm-print-results" data-url="{% url 'print_test_results' user.username %}" disabled><i class="fas fa-print" aria-hidden="true"></i> Print Test Results</button>
+                </div>
                 <p class="tm-sub" id="tm-count" aria-live="polite">{{ exam_history|length }} result{{ exam_history|length|pluralize }}</p>
             </div>
+            <p class="tm-sub" id="tm-print-hint" style="margin-bottom:10px">Select a test date to print that day's results (all subjects taken on that date).</p>
             <div class="tm-tablewrap">
             <table class="tm-table" id="tm-results">
                 <caption class="tm-sr">Examination results, newest first</caption>
-                <thead><tr><th scope="col">Date</th><th scope="col">Examination</th><th scope="col">Subject</th><th scope="col">Score</th><th scope="col">Percentage</th><th scope="col">Grade</th><th scope="col">Teacher's feedback</th></tr></thead>
+                <thead><tr><th scope="col">S/N</th><th scope="col">Examination</th><th scope="col">Subject</th><th scope="col">Score</th><th scope="col">Percentage</th><th scope="col">Grade</th><th scope="col">Teacher's feedback</th></tr></thead>
                 <tbody>
                 {% for ex in exam_history %}
-                    <tr data-subject="{{ ex.subject }}">
-                        <td data-label="Date">{{ ex.date|date:"j M Y" }}</td>
+                    <tr data-subject="{{ ex.subject }}" data-date="{{ ex.date_iso }}">
+                        <td data-label="S/N" class="tm-sn">{{ forloop.counter }}</td>
                         <td class="t-name" data-label="Examination">{{ ex.test_name }}</td>
                         <td data-label="Subject">{{ ex.subject }}</td>
                         <td data-label="Score">{{ ex.score }}/{{ ex.total }}</td>
@@ -353,7 +361,7 @@ button,input,select,textarea{font:inherit;color:inherit}
                 </tbody>
             </table>
             </div>
-            {% if exam_history|length >= 50 %}<p class="tm-sub" style="margin-top:10px">Showing the latest 50 results.</p>{% endif %}
+            {% if exam_history|length >= exam_history_limit %}<p class="tm-sub" style="margin-top:10px">Showing the latest {{ exam_history_limit }} results.</p>{% endif %}
             {% else %}
             <div class="tm-empty"><h3>No examinations yet</h3><p>Results will appear here after the first examination.</p>
                 {% if is_owner %}<a class="tm-btn tm-btn-navy" href="{% url 'cbt_exams' %}">Take an exam</a>{% endif %}</div>
@@ -564,15 +572,27 @@ button,input,select,textarea{font:inherit;color:inherit}
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
 
-    /* ── Results filter ── */
-    var filter = $('#tm-filter');
-    if (filter) filter.addEventListener('change', function () {
-        var shown = 0;
+    /* ── Results filters (subject + test date) and "Print Test Results" ── */
+    var filter = $('#tm-filter'), dateFilter = $('#tm-date-filter'), printResults = $('#tm-print-results');
+    function applyResultFilters() {
+        var shown = 0, subj = filter ? filter.value : '', day = dateFilter ? dateFilter.value : '';
         $$('#tm-results tbody tr').forEach(function (tr) {
-            var ok = !filter.value || tr.dataset.subject === filter.value;
-            tr.hidden = !ok; if (ok) shown++;
+            var ok = (!subj || tr.dataset.subject === subj) && (!day || tr.dataset.date === day);
+            tr.hidden = !ok; if (ok) { shown++; var sn = tr.querySelector('.tm-sn'); if (sn) sn.textContent = shown; }
         });
         $('#tm-count').textContent = shown + ' result' + (shown === 1 ? '' : 's');
+        if (printResults) {
+            printResults.disabled = !day;
+            var hint = $('#tm-print-hint'); if (hint) hint.hidden = !!day;
+        }
+    }
+    [filter, dateFilter].forEach(function (el) { if (el) el.addEventListener('change', applyResultFilters); });
+    /* The report is a separate A4 page built on the server for the chosen date only, so
+       nothing else from this profile page can end up on the printout. */
+    if (printResults) printResults.addEventListener('click', function () {
+        var day = dateFilter ? dateFilter.value : '';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+        window.open(printResults.dataset.url + '?date=' + encodeURIComponent(day) + '&autoprint=1', '_blank', 'noopener');
     });
 
     /* ── Print ── */

@@ -10,6 +10,7 @@ from school.models import Profile, Post, PostComment, Notification, LiveSession,
 from django.db.models import Q
 import uuid, json, re, logging
 from datetime import date as date_type
+from datetime import datetime as datetime_type, time as time_type
 from django.db import transaction
 from django.views.decorators.cache import never_cache
 import csv, io, secrets
@@ -18,9 +19,10 @@ from datetime import timedelta
 from functools import wraps
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.urls import reverse
 from django.core.validators import validate_email
 from django.db.models import Avg, Count
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404, HttpResponseBadRequest
 from django.utils import timezone
 from django.utils.timezone import localtime
 from django.views.decorators.http import require_GET
@@ -72,6 +74,9 @@ GRADE_REMARKS = {
     'fail':        'Needs more revision',
 }
 
+# Maximum number of exam rows loaded into the profile's Examination Results tab.
+EXAM_HISTORY_LIMIT = 500
+
 MAX_PICTURE_BYTES = 5 * 1024 * 1024
 ALLOWED_PICTURE_TYPES = ('image/jpeg', 'image/png', 'image/webp', 'image/gif')
 _PHONE_RE = re.compile(r'^\+?[0-9][0-9\s\-()]{6,18}[0-9]$')
@@ -96,6 +101,30 @@ def _can_view_private(request, target_user):
     """Personal details and full academic records: the student themself or staff only."""
     u = request.user
     return u.is_authenticated and (u.pk == target_user.pk or u.is_staff or u.is_superuser)
+
+
+def _as_local(dt):
+    """A datetime in the site's timezone (naive datetimes are returned unchanged)."""
+    return timezone.localtime(dt) if timezone.is_aware(dt) else dt
+
+
+def _parse_iso_date(value):
+    """Parse a strict YYYY-MM-DD string into a date, or return None if it is not a real date."""
+    if not isinstance(value, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
+        return None
+    try:
+        return date_type.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _day_bounds(day):
+    """[start, end) of a calendar day in the site's timezone, as aware datetimes."""
+    start = datetime_type.combine(day, time_type.min)
+    end   = datetime_type.combine(day + timedelta(days=1), time_type.min)
+    if timezone.is_naive(start):
+        start, end = timezone.make_aware(start), timezone.make_aware(end)
+    return start, end
 
 
 def _valid_picture(upload):
@@ -513,7 +542,7 @@ def profile(request, username):
         best_rank = higher + 1
 
     # ── Examination history (private: owner / staff only) ────────
-    exam_list = list(all_exams[:50]) if can_view_private else []
+    exam_list = list(all_exams[:EXAM_HISTORY_LIMIT]) if can_view_private else []
 
     def _band(pct):
         return 'high' if pct >= 70 else 'mid' if pct >= 50 else 'low'
@@ -525,10 +554,12 @@ def profile(request, username):
         # ever add such fields to CBTExam, without needing any change here.
         teacher_feedback = (getattr(ex, 'feedback', '') or getattr(ex, 'teacher_feedback', '') or '').strip()
         test_name = (getattr(ex, 'title', '') or getattr(ex, 'test_name', '') or f'{subject_label} CBT Test')
+        taken_local = _as_local(ex.taken_at)
         exam_history.append({
             'test_name':        test_name,
             'subject':          subject_label,
             'date':             ex.taken_at,
+            'date_iso':         taken_local.strftime('%Y-%m-%d'),   # calendar day in the site's timezone
             'score':            ex.score,
             'total':            ex.total,
             'percentage':       ex.percentage,
@@ -539,6 +570,20 @@ def profile(request, username):
             'teacher_feedback': teacher_feedback,
             'remark':           GRADE_REMARKS.get(ex.grade, ''),
         })
+
+    # ── Test dates offered by the date filter / "Print Test Results" ──
+    # exam_history is newest-first, so each day's rows are contiguous. If the history
+    # was cut at the limit, the oldest day may be incomplete: it is not offered for
+    # filtering (printing always re-queries the database, so it is never partial).
+    exam_days = []
+    for row in exam_history:
+        if not exam_days or exam_days[-1]['date_iso'] != row['date_iso']:
+            exam_days.append({'date_iso': row['date_iso'], 'count': 0})
+        exam_days[-1]['count'] += 1
+    if exam_days and len(exam_list) >= EXAM_HISTORY_LIMIT:
+        exam_days.pop()
+    for day in exam_days:
+        day['date'] = _parse_iso_date(day['date_iso'])
 
     # legacy structure kept for any template still reading `scores`
     scores = []
@@ -621,6 +666,8 @@ def profile(request, username):
         # tabs
         'scores':             scores,
         'exam_history':       exam_history,
+        'exam_days':          exam_days,
+        'exam_history_limit': EXAM_HISTORY_LIMIT,
         'subject_summaries':  subject_summaries,
         # level
         'level_name':         level_name,
@@ -638,6 +685,68 @@ def profile(request, username):
         'recent_exams':       exam_list[:5],
     }
     return render(request, 'profile.html', context)
+
+
+@login_required
+@never_cache
+@require_GET
+def print_test_results(request, username):
+    """
+    Printable A4 "Test Results" report for ONE test date (?date=YYYY-MM-DD).
+
+    It is a standalone page (no sidebar, tabs or other profile content), so printing it
+    can only ever output the report. Same privacy rule as the profile's Examination
+    Results tab: the student themself or staff only. Results are re-queried here by
+    calendar day in the site's timezone, never trusted from the browser.
+    """
+    target = get_object_or_404(User, username=username)
+    if not _can_view_private(request, target):
+        raise PermissionDenied
+
+    day = _parse_iso_date(request.GET.get('date'))
+    if day is None or day.year < 2000 or day.year > 2100:
+        return HttpResponseBadRequest('Please choose a valid test date.')
+
+    start, end = _day_bounds(day)
+    exams = list(CBTExam.objects.filter(student=target, taken_at__gte=start, taken_at__lt=end))
+    if not exams:
+        raise Http404('No examination results were found for that date.')
+
+    subject_labels = dict(CBTExam.SUBJECT_CHOICES)
+    rows = []
+    for ex in exams:
+        label = subject_labels.get(ex.subject, ex.subject.replace('_', ' ').title())
+        feedback = (getattr(ex, 'feedback', '') or getattr(ex, 'teacher_feedback', '') or '').strip()
+        rows.append({
+            'subject':       label,
+            'score':         ex.score,
+            'total':         ex.total,
+            'percentage':    ex.percentage,
+            'grade_display': ex.get_grade_display(),
+            # Teacher's own feedback if the model ever stores it; otherwise the system remark.
+            'feedback':      feedback or GRADE_REMARKS.get(ex.grade, ''),
+        })
+    rows.sort(key=lambda r: (r['subject'], -r['percentage']))
+
+    got    = sum(r['score'] for r in rows)
+    out_of = sum(r['total'] for r in rows)
+    pct    = round(got / out_of * 100) if out_of else 0
+    overall_grade = dict(CBTExam.GRADE_CHOICES).get(_grade_for(pct), '')
+
+    profile = get_object_or_404(Profile, user=target)
+    return render(request, 'test_results_print.html', {
+        'student':          target,
+        'profile':          profile,
+        'admission_number': profile.admission_number,
+        'test_date':        day,
+        'rows':             rows,
+        'subject_count':    len({r['subject'] for r in rows}),
+        'total_score':      got,
+        'total_questions':  out_of,
+        'overall_pct':      pct,
+        'overall_grade':    overall_grade,
+        'autoprint':        request.GET.get('autoprint') == '1',
+    })
 
 
 @login_required
@@ -877,12 +986,57 @@ REGISTERED_TO_CBT_ID = {
 }
 
 
+# CBT subjects every student may take whether or not they ticked them at registration
+# (the picker in cbt_exams.html always includes English as the compulsory subject).
+COMPULSORY_CBT_SUBJECTS = {'english'}
+_CBT_ID_ALIASES = {'maths': 'mathematics'}   # picker id -> CBTExam.subject key
+
+
+def _cbt_key(picker_id):
+    return _CBT_ID_ALIASES.get(picker_id, picker_id)
+
+
+def _allowed_cbt_subjects(user):
+    """
+    CBTExam.subject keys this user may sit: the subjects they registered for plus the
+    compulsory ones. Returns None (no restriction) for staff, who are never students.
+    This is the single source of truth: cbt_submit and every CBT page view call it.
+    """
+    if user.is_staff or user.is_superuser:
+        return None
+    names = RegisteredSubject.objects.filter(student=user).values_list('subject_name', flat=True)
+    allowed = {_cbt_key(REGISTERED_TO_CBT_ID[n]) for n in names if n in REGISTERED_TO_CBT_ID}
+    return allowed | COMPULSORY_CBT_SUBJECTS
+
+
+def cbt_subject_required(subject_key):
+    """Decorator: redirect a student away from a CBT page for a subject they did not register."""
+    def decorator(view):
+        @wraps(view)
+        def wrapper(request, *args, **kwargs):
+            allowed = _allowed_cbt_subjects(request.user)
+            if allowed is not None and subject_key not in allowed:
+                messages.error(request, 'You have not registered for that subject. '
+                                        'Add it to your subjects on your profile first.')
+                return redirect('cbt_exams')
+            return view(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 @login_required
 @ensure_csrf_cookie
 def cbt_subjects(request):
-    """Render the CBT subject picker page, pre-selecting the student's registered subjects."""
+    """Render the CBT subject picker page, limited to the student's registered subjects."""
+    allowed = _allowed_cbt_subjects(request.user)
     names = RegisteredSubject.objects.filter(student=request.user).values_list('subject_name', flat=True)
     preselected = [REGISTERED_TO_CBT_ID[n] for n in names if n in REGISTERED_TO_CBT_ID]
+
+    # Picker ids the student may choose from (None = unrestricted, i.e. staff).
+    # Display only: the server re-checks every submitted result in cbt_submit.
+    allowed_ids = None if allowed is None else sorted(
+        {i for i in REGISTERED_TO_CBT_ID.values() if _cbt_key(i) in allowed} | {'english'}
+    )
 
     # Student details printed on the result slip (passport, name, admission no, etc.)
     user = request.user
@@ -898,11 +1052,14 @@ def cbt_subjects(request):
     }
     return render(request, 'cbt_exams.html', {
         'preselected_subjects': preselected,
+        'allowed_subjects': allowed_ids,
+        'profile_url': reverse('profile', args=[user.username]),
         'student_info': student_info,
     })
 
 
 @login_required
+@cbt_subject_required('mathematics')
 def cbt_mathematics(request):
     """Render the CBT exam page (Mathematics default)."""
     return render(request, 'cbt_mathematics.html')
@@ -913,30 +1070,33 @@ cbt_exam = cbt_mathematics
 
 
 @login_required
+@cbt_subject_required('physics')
 def cbt_physics(request):
     """Render the original Physics CBT exam page (unchanged)."""
     return render(request, 'cbt_physics.html')
 
 
 @login_required
+@cbt_subject_required('english')
 def cbt_english(request):
     return render(request, 'cbt_english.html')
 
 
 @login_required
+@cbt_subject_required('chemistry')
 def cbt_chemistry(request):
     return render(request, 'cbt_chemistry.html')
 
 
 @login_required
+@cbt_subject_required('physics')
 def cbt_physics_topics(request):
- 
     return render(request, 'cbt_physics_topics.html')
 
 
 @login_required
+@cbt_subject_required('mathematics')
 def cbt_mathematics_topics(request):
-
     return render(request, 'cbt_mathematics_topics.html')
 
 
@@ -966,7 +1126,7 @@ def cbt_submit(request):
         return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
 
     valid_subjects = {k for k, _ in CBTExam.SUBJECT_CHOICES}
-    aliases = {'maths': 'mathematics'}
+    allowed_subjects = _allowed_cbt_subjects(request.user)   # None = unrestricted (staff)
 
     items = data.get('results')
     if not isinstance(items, list):
@@ -981,13 +1141,19 @@ def cbt_submit(request):
     for it in items[:10]:
         try:
             subject = str(it.get('subject', '')).strip().lower()
-            subject = aliases.get(subject, subject)
+            subject = _cbt_key(subject)
             total = int(it.get('total', 0))
             score = int(it.get('score', 0))
         except (AttributeError, TypeError, ValueError):
             continue
         if subject not in valid_subjects or total < 1 or total > 500:
             continue
+        # A student may only save results for subjects they registered for. The whole
+        # submission is refused (nothing saved) so a tampered payload cannot be partly accepted.
+        if allowed_subjects is not None and subject not in allowed_subjects:
+            return JsonResponse({'ok': False,
+                                 'error': 'You can only take exams for the subjects you registered.'},
+                                status=403)
         score = max(0, min(score, total))
         pct = round(score / total * 100)
         rows.append(CBTExam(student=request.user, subject=subject, score=score, total=total,

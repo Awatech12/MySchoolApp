@@ -1237,7 +1237,7 @@
   }
 </style>
 </head>
-<body>
+<body data-profile-url="{{ profile_url }}">
 {% include 'sidebar.html' %}
 
 <!-- ===== SCREEN 1: SUBJECT SELECTION ===== -->
@@ -1511,6 +1511,7 @@
 
 {{ preselected_subjects|json_script:"preselectedSubjects" }}
 {{ student_info|json_script:"studentInfo" }}
+{{ allowed_subjects|json_script:"allowedSubjects" }}
 <script>
 // ===== SUBJECTS CONFIG =====
 const SUBJECTS = [
@@ -1581,6 +1582,12 @@ function buildSlots(n) {
   }
 }
 
+// Subject ids this student may sit (registered subjects + English). null = unrestricted (staff).
+// Display-only guard: the server re-checks every result in cbt_submit and refuses the rest.
+let ALLOWED_IDS = null;
+try { ALLOWED_IDS = JSON.parse(document.getElementById('allowedSubjects').textContent); } catch (e) {}
+function isAllowedSubject(id) { return ALLOWED_IDS === null || ALLOWED_IDS.includes(id); }
+
 function applyPreselectedSubjects() {
   let ids = [];
   try { ids = JSON.parse(document.getElementById('preselectedSubjects').textContent) || []; } catch (e) {}
@@ -1590,12 +1597,20 @@ function applyPreselectedSubjects() {
     if (sub && id !== ENGLISH_ID && !picked.includes(sub)) picked.push(sub);
   });
   // One slot per registered subject (minimum 3), never more than the subjects available
-  const n = Math.min(Math.max(3, picked.length), SUBJECTS.length - 1);
+  const pickable = SUBJECTS.filter(s => s.id !== ENGLISH_ID && isAllowedSubject(s.id)).length;
+  const n = ALLOWED_IDS === null
+    ? Math.min(Math.max(3, picked.length), SUBJECTS.length - 1)
+    : Math.max(1, Math.min(picked.length, pickable));
   buildSlots(n);
   picked.slice(0, n).forEach((sub, i) => { extraSlots[i] = sub; renderSlot(i); });
   if (picked.length > 0) {
     const hint = document.getElementById('preselectHint');
     hint.textContent = `✅ Your ${picked.length + 1} registered subjects (including English) were selected for you. Tap a subject to change it, or ✕ to leave it out.`;
+    hint.style.display = 'block';
+  } else if (ALLOWED_IDS !== null) {
+    const hint = document.getElementById('preselectHint');
+    hint.innerHTML = 'You have not registered any subjects yet. Add your subjects on your <a href="' +
+      document.body.dataset.profileUrl + '#performance">profile</a> to take CBT exams.';
     hint.style.display = 'block';
   }
 }
@@ -1720,7 +1735,7 @@ function openPicker(slotIdx) {
   const usedIds = new Set([ENGLISH_ID, ...extraSlots.map(s => s?.id).filter(Boolean)]);
   if (currentSlot) usedIds.delete(currentSlot.id); // allow re-selection of current
 
-  const chips = SUBJECTS.filter(s => s.id !== ENGLISH_ID && !usedIds.has(s.id));
+  const chips = SUBJECTS.filter(s => s.id !== ENGLISH_ID && !usedIds.has(s.id) && isAllowedSubject(s.id));
 
   const grid = document.getElementById('pickerChipsGrid');
   grid.innerHTML = chips.map(s => `
@@ -1746,6 +1761,7 @@ function filterChips(val) {
 }
 
 function pickSubject(id) {
+  if (!isAllowedSubject(id)) return;
   const sub = SUBJECTS.find(s => s.id === id);
   extraSlots[activePicker] = sub;
   renderSlot(activePicker);
@@ -1761,7 +1777,8 @@ function getSelectedSubjectIds() {
 
 // ===== START EXAM =====
 function startExam() {
-  selectedSubjects = getSelectedSubjectIds();
+  selectedSubjects = getSelectedSubjectIds().filter(isAllowedSubject);
+  if (selectedSubjects.length < 2) return;   // English + at least one registered subject
   showScreen('loadingScreen');
 
   const yearLabel = testYear === 'All Years' ? 'All Years (randomized)' : `${testYear} past questions`;

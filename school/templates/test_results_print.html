@@ -1,0 +1,224 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&display=swap">
+<title>Test Results · {% firstof student.get_full_name student.username %} · {{ test_date|date:"j F Y" }} · TopMark Tutorial Center</title>
+<style>
+:root{--accent:#0095f6;--navy:#0074cc;--navy-50:#e8f4fd;--navy-100:#dbdbdb;--ink:#262626;--muted:#737373;--line:#dbdbdb}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fafafa;line-height:1.4;font-size:10.5pt;-webkit-font-smoothing:antialiased}
+
+/* ── screen-only toolbar ── */
+.rp-bar{max-width:210mm;margin:12px auto;padding:0 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.rp-bar strong{font-size:14px;color:#262626}
+.rp-bar div{display:flex;gap:8px}
+.rp-btn{min-height:40px;padding:0 16px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:600 14px/1 inherit;font-family:inherit;cursor:pointer}
+.rp-btn.light{background:#fff;color:var(--navy);border-color:var(--line)}
+
+/* ── the A4 sheet ── */
+.rp-sheet{width:210mm;max-width:100%;min-height:297mm;margin:0 auto 24px;background:#fff;padding:12mm;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.rp-head{display:flex;align-items:center;gap:14px;padding-bottom:10px;border-bottom:2px solid var(--accent)}
+.rp-mark{width:54px;height:54px;border-radius:6px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none}
+.rp-head h1{font-size:19pt;line-height:1.1;color:var(--ink)}
+.rp-head p{font-size:10pt;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;font-weight:700;margin-top:2px}
+.rp-meta{margin-left:auto;text-align:right;font-size:9pt;line-height:1.5;color:var(--ink)}
+
+.rp-sec{background:var(--navy-50);color:var(--navy);font-weight:800;font-size:9.5pt;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;margin:14px 0 6px;border-left:3px solid var(--accent)}
+
+.rp-student{display:flex;gap:16px;align-items:flex-start}
+.rp-photo{width:30mm;flex:none}
+.rp-photo img{display:block;width:30mm;height:37mm;object-fit:cover;border:1px solid #9ca3af;background:#fff}
+.rp-info{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.rp-row{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid #efefef;break-inside:avoid}
+.rp-row.wide{grid-column:1/-1}
+.rp-row b{font-size:8.5pt;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;flex:none;min-width:27mm}
+.rp-row span{font-weight:600;overflow-wrap:anywhere}
+
+.rp-table{width:100%;border-collapse:collapse;margin-top:2px}
+.rp-table thead{display:table-header-group}
+.rp-table th{background:var(--navy);color:#fff;text-align:left;font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px}
+.rp-table td{padding:7px 8px;vertical-align:top;border-bottom:1px solid var(--line)}
+.rp-table tr{break-inside:avoid}
+.rp-table .num{text-align:right;white-space:nowrap}
+.rp-table th.num{text-align:right}
+.rp-table .subj{font-weight:700}
+.rp-table .fb{font-size:9.5pt;color:#374151}
+.rp-table tfoot td{background:var(--navy-50);font-weight:800;border-top:2px solid var(--accent);border-bottom:0}
+.rp-grade{font-weight:700}
+
+.rp-comment{border:1px solid var(--line);min-height:24mm;padding:0 9px;font-family:'Caveat','Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive;font-style:italic;font-size:14pt;line-height:6.6mm;color:#1e3a8a;
+  background-image:repeating-linear-gradient(transparent,transparent 6.4mm,#d6dbe3 6.4mm,#d6dbe3 6.6mm);background-position:0 0}
+.rp-sign{display:grid;grid-template-columns:1.4fr 1fr 28mm;gap:18px;margin-top:22px;align-items:end;break-inside:avoid}
+.rp-sign .line{border-top:1.5px solid var(--ink);padding-top:4px;font-size:9pt;text-align:center;color:#334155}
+.rp-sign .stamp{height:22mm;border:1.5px dashed #94a3b8;display:grid;place-items:center;text-align:center;font-size:8pt;color:#64748b}
+.rp-sign .sig-space{height:16mm}
+.rp-foot{margin-top:14px;padding-top:6px;border-top:1px solid var(--line);text-align:center;font-size:8pt;color:var(--muted)}
+
+@media (max-width:700px){
+  .rp-sheet{padding:14px;min-height:0}
+  .rp-student{flex-wrap:wrap}.rp-info{grid-template-columns:1fr}
+  .rp-head{flex-wrap:wrap}.rp-meta{margin-left:0;text-align:left;flex:1 1 100%}
+  .rp-table{display:block;overflow-x:auto}
+}
+
+@media print{
+  @page{size:A4;margin:12mm}
+  html,body{background:#fff!important}
+  .rp-bar{display:none!important}
+  .rp-sheet{width:auto;max-width:none;min-height:0;margin:0;padding:0;box-shadow:none}
+  .rp-mark,.rp-sec,.rp-table th,.rp-table tfoot td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<div class="rp-bar">
+    <strong>Test results report &mdash; preview</strong>
+    <div>
+        <button type="button" class="rp-btn light" onclick="window.close()">Close</button>
+        <button type="button" class="rp-btn" onclick="window.print()">Print / Save PDF</button>
+    </div>
+</div>
+
+<main class="rp-sheet">
+    <header class="rp-head">
+        <div class="rp-mark" aria-hidden="true">TM</div>
+        <div><h1>TopMark Tutorial Center</h1><p>Test Results Report</p></div>
+        <div class="rp-meta">Test date: <strong>{{ test_date|date:"j F Y" }}</strong><br>Printed: {% now "j F Y" %}</div>
+    </header>
+
+    <div class="rp-sec">Student details</div>
+    <section class="rp-student">
+        <div class="rp-photo"><img src="{{ profile.get_picture_url }}" alt="Passport photograph of {% firstof student.get_full_name student.username %}"></div>
+        <div class="rp-info">
+            <div class="rp-row wide"><b>Student name</b><span>{% firstof student.get_full_name student.username %}</span></div>
+            <div class="rp-row"><b>Admission No.</b><span>{{ admission_number }}</span></div>
+            <div class="rp-row"><b>Class</b><span>{{ profile.class_level|default:"—" }}</span></div>
+            <div class="rp-row"><b>Gender</b><span>{{ profile.gender|default:"—" }}</span></div>
+            <div class="rp-row"><b>Test date</b><span>{{ test_date|date:"l, j F Y" }}</span></div>
+            <div class="rp-row wide"><b>School</b><span>{{ profile.school|default:"—" }}</span></div>
+        </div>
+    </section>
+
+    <div class="rp-sec">Results &mdash; {{ subject_count }} subject{{ subject_count|pluralize }}</div>
+    <table class="rp-table">
+        <thead>
+            <tr>
+                <th scope="col">Subject</th>
+                <th scope="col" class="num">Score</th>
+                <th scope="col" class="num">Percentage</th>
+                <th scope="col">Grade</th>
+                <th scope="col">Teacher's feedback</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+            <tr data-subject="{{ r.subject }}" data-pct="{{ r.percentage }}">
+                <td class="subj">{{ r.subject }}</td>
+                <td class="num">{{ r.score }} / {{ r.total }}</td>
+                <td class="num">{{ r.percentage }}%</td>
+                <td class="rp-grade">{{ r.grade_display }}</td>
+                <td class="fb">{{ r.feedback|default:"—" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>Overall</td>
+                <td class="num">{{ total_score }} / {{ total_questions }}</td>
+                <td class="num">{{ overall_pct }}%</td>
+                <td>{{ overall_grade }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="rp-sec">Tutor's comments</div>
+    <div class="rp-comment" id="rp-comment" data-overall="{{ overall_pct }}" aria-label="Tutor's comments"></div>
+
+    <div class="rp-sign">
+        <div><div class="sig-space"></div><div class="line">Tutor's signature</div></div>
+        <div><div class="sig-space"></div><div class="line">Date</div></div>
+        <div class="stamp">Official<br>stamp</div>
+    </div>
+
+    <footer class="rp-foot">TopMark Tutorial Center &middot; Test Results Report &middot; {{ test_date|date:"j F Y" }} &middot; Computer-based practice results</footer>
+</main>
+
+<script>
+/* Random tutor's comment based on the student's performance. Runs once per page load,
+   before auto-print, so the comment printed is the one shown on screen. */
+(function () {
+    var box = document.getElementById('rp-comment');
+    if (!box) return;
+    function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.rp-table tbody tr[data-pct]')).map(function (tr) {
+        return { subject: tr.getAttribute('data-subject'), pct: parseFloat(tr.getAttribute('data-pct')) || 0 };
+    });
+    if (!rows.length) return;
+    var overall = parseFloat(box.getAttribute('data-overall'));
+    if (isNaN(overall)) overall = rows.reduce(function (s, r) { return s + r.pct; }, 0) / rows.length;
+
+    var opener;
+    if (overall >= 70) opener = pick([
+        'An outstanding performance overall. Keep up the excellent work.',
+        'Excellent results. Your hard work is clearly paying off.',
+        'Brilliant effort across the subjects. Maintain this standard and aim even higher.',
+        'Very impressive. You are well prepared; stay consistent.']);
+    else if (overall >= 60) opener = pick([
+        'A very good performance overall. A little more practice will take you to the top.',
+        'Good results. Keep revising and you will improve further.',
+        'Well done. You understand most of the topics; keep working on the few weak areas.',
+        'A solid result. Push a little harder to reach excellence.']);
+    else if (overall >= 50) opener = pick([
+        'A fair performance overall. More revision and practice are needed.',
+        'You are making progress, but you can do better. Revise your weak topics.',
+        'Average results. Spend more time on past questions and practice tests.',
+        'Fair effort. Consistent daily study will improve your scores.']);
+    else if (overall >= 40) opener = pick([
+        'Below expectation. Please put in more effort and seek help where needed.',
+        'You need to improve. Revisit the basics and practise regularly.',
+        'A weak performance. Extra lessons and more practice questions are strongly advised.',
+        'Do not be discouraged. Study more consistently and ask questions in class.']);
+    else opener = pick([
+        'A poor result. Urgent improvement is needed; please see your tutor for support.',
+        'Much more effort is required. Start from the fundamentals and practise daily.',
+        'These results are far below the pass mark. Extra attention and consistent study are advised.',
+        'You can do much better with dedication. Let us work together to improve.']);
+
+    var parts = [opener];
+    if (rows.length > 1) {
+        var sorted = rows.slice().sort(function (a, b) { return b.pct - a.pct; });
+        var best = sorted[0], worst = sorted[sorted.length - 1];
+        if (best.pct >= 60 && best.pct > worst.pct) {
+            parts.push(pick([
+                'Particularly good work in ' + best.subject + '.',
+                best.subject + ' is your strongest subject; well done.']));
+        }
+        if (worst.pct < 50 && worst.pct < best.pct) {
+            parts.push(pick([
+                'Give more attention to ' + worst.subject + '.',
+                'More practice is needed in ' + worst.subject + '.',
+                worst.subject + ' needs extra revision.']));
+        }
+    } else {
+        var only = rows[0];
+        if (only.pct >= 60) parts.push('Well done in ' + only.subject + '.');
+        else if (only.pct < 50) parts.push('Give more attention to ' + only.subject + '.');
+    }
+    box.textContent = parts.join(' ');
+})();
+</script>
+
+{% if autoprint %}
+<script>
+window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });
+</script>
+{% endif %}
+</body>
+</html>

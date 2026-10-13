@@ -63,6 +63,7 @@ urlpatterns = [
     # profile must stay LAST – catches any remaining <str:username>
     path('edit-profile/', views.edit_profile, name='awa_edit_profile'),
     path('subjects/update/', views.update_subjects, name='update_subjects'),
+    path('results/print/<str:username>/', views.print_test_results, name='print_test_results'),
     path('<str:username>', views.profile, name='profile'),
 ]
 
