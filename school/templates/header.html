@@ -19,6 +19,8 @@
     --ac-primary-lt: #e8f4fd;
     --ac-border:     #dbdbdb;
     --ac-shadow:     none;
+    --ac-radius:     16px;
+    --ac-header-h:   64px;
     --ac-font:       'Plus Jakarta Sans', -apple-system, sans-serif;
   }
 
@@ -37,18 +39,18 @@
   .ac-header {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 58px;
+    height: var(--ac-header-h);
     background: var(--ac-white);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 18px;
+    padding: 0 20px;
     z-index: 1000;
   }
 
   /* Header spacer — pushes every page's content below the fixed header */
   .ac-header-spacer {
-    height: 58px;
+    height: var(--ac-header-h);
     width: 100%;
     flex-shrink: 0;
   }
@@ -57,26 +59,32 @@
   .ac-header-logo {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     text-decoration: none;
   }
-  .ac-header-logo-mark {
-    width: 32px; height: 32px;
-    background: var(--ac-primary);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 800; color: #fff;
-    letter-spacing: -0.5px;
+  .ac-header-logo-img {
+    width: 40px; height: 40px;
+    object-fit: contain;
+    border-radius: 10px;
     flex-shrink: 0;
   }
   .ac-header-logo-text {
     font-size: 18px;
     font-weight: 800;
     color: var(--ac-text);
-    letter-spacing: -0.5px;
+    letter-spacing: -0.3px;
+    line-height: 1.1;
   }
-  .ac-header-logo-text span {
+  .ac-header-logo-text .brand-top span {
     color: var(--ac-primary);
+  }
+  .ac-header-logo-text small {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ac-text-light);
+    letter-spacing: 0;
+    margin-top: 3px;
   }
 
   /* Icon group */
@@ -89,8 +97,8 @@
   .ac-header-icon-btn {
     position: relative;
     display: flex; align-items: center; justify-content: center;
-    width: 40px; height: 40px;
-    border-radius: 10px;
+    width: 42px; height: 42px;
+    border-radius: 12px;
     text-decoration: none;
     color: var(--ac-text);
     font-size: 18px;
@@ -122,7 +130,7 @@
 
   /* Profile avatar */
   .ac-header-avatar {
-    width: 34px; height: 34px;
+    width: 36px; height: 36px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
@@ -131,8 +139,8 @@
 
 <header class="ac-header">
   <a href="{% url 'home' %}" class="ac-header-logo">
-    <div class="ac-header-logo-mark">T</div>
-    <span class="ac-header-logo-text">Top<span>Mark</span></span>
+    <img src="{% static 'images/logo.png' %}" alt="TopMark logo" class="ac-header-logo-img">
+    <span class="ac-header-logo-text"><span class="brand-top">Top<span>Mark</span></span><small>Tutorial Center</small></span>
   </a>
 
   <div class="ac-header-icons">

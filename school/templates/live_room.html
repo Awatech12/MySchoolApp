@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>Live Class: Fullscreen Host + Self Bubble | awaClass</title>
+  <title>Live Class | TopMark</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     * {
@@ -15,7 +18,8 @@
     body {
       background: #0a0a0a;
       overflow: hidden;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     .live-container {
@@ -63,7 +67,7 @@
       align-items: center;
       justify-content: center;
       font-size: 48px;
-      color: #f97316;
+      color: #0095f6;
     }
 
     /* waiting overlay while host stream not yet arrived (student side) */
@@ -84,7 +88,7 @@
       width: 48px;
       height: 48px;
       border: 3px solid #2c2c2c;
-      border-top-color: #f97316;
+      border-top-color: #0095f6;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
@@ -113,7 +117,7 @@
     .host-live-dot {
       width: 9px;
       height: 9px;
-      background: #f97316;
+      background: #0095f6;
       border-radius: 50%;
       animation: pulse 1.4s infinite;
     }
@@ -159,7 +163,7 @@
       border: 0.5px solid rgba(255,255,255,0.2);
     }
 
-    .viewer-counter i { color: #f97316; }
+    .viewer-counter i { color: #0095f6; }
 
     .session-title-pill {
       background: rgba(0,0,0,0.6);
@@ -188,11 +192,10 @@
       color: white;
       font-size: 14px;
       font-weight: 500;
-      border: 2px solid #f97316;
+      border: 2px solid #0095f6;
       pointer-events: auto;
       cursor: pointer;
       white-space: nowrap;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       display: none;
     }
 
@@ -211,8 +214,7 @@
       height: 96px;
       border-radius: 50%;
       background: #1e1e1e;
-      border: 3px solid #f97316;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      border: 3px solid #0095f6;
       overflow: hidden;
       position: relative;
     }
@@ -344,7 +346,7 @@
       height: 22px;
       border-radius: 50%;
       border: none;
-      background: rgba(249, 115, 22, 0.85);
+      background: rgba(0,149,246, 0.85);
       color: white;
       font-size: 9px;
       cursor: pointer;
@@ -354,9 +356,8 @@
       backdrop-filter: blur(4px);
       transition: background 0.2s, transform 0.15s;
       z-index: 5;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
-    .bubble-mic-ctrl:hover { background: rgba(249,115,22,1); transform: scale(1.15); }
+    .bubble-mic-ctrl:hover { background: rgba(0,149,246,1); transform: scale(1.15); }
     .bubble-mic-ctrl.mic-ctrl-muted { background: rgba(239,68,68,0.9); }
 
     /* ========== FIXED CONTROLS BAR (always visible) ========== */
@@ -373,7 +374,6 @@
       gap: 18px;
       z-index: 9999;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
       transition: all 0.2s ease;
       pointer-events: auto;
     }
@@ -391,12 +391,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
 
     .control-btn:hover { background: #3f3f3f; transform: scale(1.05); }
     .control-btn.danger { background: #ef4444; }
-    .control-btn.active { background: #f97316; }
+    .control-btn.active { background: #0095f6; }
 
     .leave-btn {
       background: #ef4444;
@@ -413,7 +412,6 @@
       font-size: 10px;
       color: #ddd;
       font-weight: 500;
-      text-shadow: 0 1px 2px black;
     }
 
     /* chat sidebar */
@@ -436,12 +434,13 @@
     .chat-sidebar.open { transform: translateX(0); }
 
     .chat-header {
-      background: #f97316;
+      background: #0095f6;
       padding: 16px;
       display: flex;
       justify-content: space-between;
       color: white;
-      font-weight: bold;
+      font-weight: 800;
+      letter-spacing: -0.2px;
     }
 
     .chat-messages {
@@ -461,7 +460,7 @@
       color: #eee;
     }
 
-    .chat-message strong { color: #f97316; }
+    .chat-message strong { color: #0095f6; }
 
     .chat-input {
       padding: 12px;
@@ -480,11 +479,11 @@
     }
 
     .chat-input button {
-      background: #f97316;
+      background: #0095f6;
       border: none;
       padding: 0 16px;
-      border-radius: 30px;
-      font-weight: bold;
+      border-radius: 12px;
+      font-weight: 700;
       color: white;
     }
 
@@ -576,7 +575,7 @@
       pointer-events: none;
     }
     .hand-badge {
-      background: rgba(249,115,22,0.92);
+      background: rgba(0,149,246,0.92);
       backdrop-filter: blur(10px);
       padding: 7px 14px;
       border-radius: 40px;
@@ -633,7 +632,7 @@
       align-items: center;
       margin-bottom: 14px;
     }
-    .poll-title-bar h4 { color: #f97316; font-size: 14px; font-weight: 700; display: flex; gap: 6px; }
+    .poll-title-bar h4 { color: #0095f6; font-size: 14px; font-weight: 700; display: flex; gap: 6px; }
     .poll-question { color: #eee; font-size: 14px; font-weight: 600; margin-bottom: 14px; }
     .poll-option {
       background: #2a2a2a;
@@ -646,13 +645,13 @@
       position: relative;
       overflow: hidden;
     }
-    .poll-option:hover { border-color: #f97316; }
+    .poll-option:hover { border-color: #0095f6; }
     .poll-option .opt-label { color: #eee; font-size: 13px; font-weight: 500; position: relative; z-index: 1; }
-    .poll-option .opt-pct { color: #f97316; font-size: 12px; font-weight: 700; float: right; position: relative; z-index: 1; }
+    .poll-option .opt-pct { color: #0095f6; font-size: 12px; font-weight: 700; float: right; position: relative; z-index: 1; }
     .poll-option .opt-bar {
       position: absolute;
       left: 0; top: 0; bottom: 0;
-      background: rgba(249,115,22,0.15);
+      background: rgba(0,149,246,0.15);
       border-radius: 10px;
       transition: width 0.5s ease;
     }
@@ -674,7 +673,7 @@
       width: min(400px, 100%);
       border: 1px solid #333;
     }
-    .poll-creator-box h3 { color: #f97316; font-size: 16px; margin-bottom: 18px; }
+    .poll-creator-box h3 { color: #0095f6; font-size: 16px; margin-bottom: 18px; }
     .poll-creator-box input, .poll-creator-box .poll-opt-input {
       width: 100%;
       background: #2a2a2a;
@@ -696,9 +695,9 @@
       font-size: 12px;
       margin-bottom: 10px;
     }
-    .add-option-btn:hover { border-color: #f97316; color: #f97316; }
+    .add-option-btn:hover { border-color: #0095f6; color: #0095f6; }
     .poll-creator-actions { display: flex; gap: 10px; margin-top: 14px; }
-    .btn-launch-poll { background: #f97316; color: white; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
+    .btn-launch-poll { background: #0095f6; color: white; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
     .btn-cancel-poll { background: #2a2a2a; color: #aaa; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
   </style>
 </head>

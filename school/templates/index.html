@@ -19,7 +19,6 @@
       --navy:      #0095f6;   /* primary (home page blue) */
       --navy-dk:   #0074cc;   /* primary dark */
       --gold:      #ffffff;   /* highlight on blue */
-      --gold-lt:   #e8f4fd;
       --accent:    #8fd0fd;   /* light blue highlight on dark */
       --ink:       #262626;
       --sky:       #e8f4fd;
@@ -72,8 +71,6 @@
     .btn-navy:hover { background: var(--navy-dk); }
     .btn-soft  { background: rgba(255,255,255,0.14); color: #fff; }
     .btn-soft:hover { background: rgba(255,255,255,0.24); }
-    .btn-light { background: var(--sky); color: var(--ink); }
-    .btn-light:hover { background: #dbe7fb; }
 
     /* ─── Top bar ─── */
     .topbar { background: var(--ink); color: rgba(255,255,255,0.88); font-size: 13px; }
@@ -155,11 +152,11 @@
     .about-img img { width: 100%; height: 100%; object-fit: cover; }
     .about-text p { color: var(--muted); margin-bottom: 16px; font-size: 16px; }
     .mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 26px 0 22px; }
-    .mv { background: var(--surface); border-radius: var(--radius); padding: 20px; }
+    .mv { border-radius: var(--radius); padding: 20px 0; }
     .mv h3 { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
     .mv p { font-size: 14px; margin: 0; }
     .values { display: flex; flex-wrap: wrap; gap: 8px; }
-    .values li { background: var(--gold-lt); color: var(--navy-dk); font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 100px; }
+    .values li { background: var(--sky); color: var(--navy-dk); font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 100px; }
     @media (max-width: 860px) {
       section { padding: 60px 0; }
       .about-grid { grid-template-columns: 1fr; gap: 32px; }
@@ -174,19 +171,15 @@
     .prog h3 { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 6px; }
     .prog p { font-size: 14px; margin-bottom: 14px; opacity: 0.8; }
     .prog ul { display: flex; flex-wrap: wrap; gap: 6px; }
-    .prog li { background: rgba(255,255,255,0.7); font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 100px; }
-    .prog.p-blue   { background: #dbeafe; color: #1e3a8a; }
-    .prog.p-green  { background: #dcfce7; color: #14532d; }
-    .prog.p-purple { background: #ede9fe; color: #4c1d95; }
-    .prog.p-orange { background: #ffedd5; color: #7c2d12; }
-    .prog.p-red    { background: #fee2e2; color: #7f1d1d; }
-    .prog.p-gold   { background: var(--sky); color: #0b4a7a; }
+    .prog li { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 100px; }
+    .prog { color: var(--ink); }
+    .prog li { background: var(--sky); color: var(--navy-dk); }
     @media (max-width: 960px) { .prog-grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 620px) { .prog-grid { grid-template-columns: 1fr; } }
 
     /* ─── Why choose us ─── */
     .why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    .why { background: var(--white); border-radius: var(--radius); padding: 26px; }
+    .why { border-radius: var(--radius); padding: 26px; }
     .why-tick { width: 38px; height: 38px; border-radius: 50%; background: var(--navy); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
     .why-tick svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
     .why h3 { font-size: 17px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
@@ -203,21 +196,22 @@
     .portal .sec-title { color: #fff; }
     .portal .sec-sub { color: rgba(255,255,255,0.78); margin-bottom: 26px; }
     .portal-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .portal-item { background: rgba(255,255,255,0.08); border-radius: var(--radius); padding: 20px; }
+    .portal-item { border-radius: var(--radius); padding: 20px; }
     .portal-item .em { font-size: 26px; margin-bottom: 8px; line-height: 1; }
+    .portal-item:last-child { grid-column: 1 / -1; }
     .portal-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
     .portal-item p { font-size: 13px; color: rgba(255,255,255,0.7); }
     @media (max-width: 860px) { .portal-grid { grid-template-columns: 1fr; gap: 32px; } }
-    @media (max-width: 420px) { .portal-list { grid-template-columns: 1fr; } }
+    @media (max-width: 420px) { .portal-list { grid-template-columns: 1fr; } .portal-item:last-child { grid-column: auto; } }
 
     /* ─── Admissions ─── */
     .adm-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 28px; align-items: start; }
     .steps { counter-reset: step; display: flex; flex-direction: column; gap: 14px; }
-    .step { display: flex; gap: 16px; align-items: flex-start; background: var(--surface); border-radius: var(--radius); padding: 20px; }
+    .step { display: flex; gap: 16px; align-items: flex-start; border-radius: var(--radius); padding: 20px; }
     .step::before { counter-increment: step; content: counter(step); flex: 0 0 36px; height: 36px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; }
     .step h3 { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
     .step p { font-size: 14px; color: var(--muted); }
-    .fee-card { background: var(--gold-lt); border-radius: var(--radius); padding: 28px; }
+    .fee-card { border-radius: var(--radius); padding: 28px; }
     .fee-card h3 { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 18px; }
     .fee-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 0; }
     .fee-row + .fee-row { background: linear-gradient(to bottom, rgba(0,116,204,0.18) 1px, transparent 1px); }
@@ -237,7 +231,7 @@
 
     /* ─── FAQ ─── */
     .faq { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-    .faq details { background: var(--white); border-radius: var(--radius); padding: 0 24px; }
+    .faq details { border-radius: var(--radius); padding: 0 24px; }
     .faq summary { list-style: none; cursor: pointer; padding: 20px 0; font-size: 16px; font-weight: 700; color: var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
     .faq summary::-webkit-details-marker { display: none; }
     .faq summary::after { content: '+'; font-size: 24px; font-weight: 500; color: var(--navy); line-height: 1; transition: transform 0.2s; }
@@ -246,7 +240,7 @@
 
     /* ─── Contact ─── */
     .contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    .contact-card { background: var(--surface); border-radius: var(--radius); padding: 28px 26px; }
+    .contact-card { border-radius: var(--radius); padding: 28px 26px; }
     .contact-ico { width: 48px; height: 48px; border-radius: 14px; background: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px; }
     .contact-card h3 { font-size: 17px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
     .contact-card p { font-size: 15px; color: var(--muted); margin-bottom: 4px; }
@@ -465,37 +459,37 @@
         <p class="sec-sub">Tutorial classes for secondary school students in every department: Science, Arts and Commercial.</p>
       </div>
       <div class="prog-grid">
-        <article class="prog p-blue">
+        <article class="prog">
           <div class="prog-icon">⚛️</div>
           <h3>Physics</h3>
           <p>Understand the world around you.</p>
           <ul><li>Mechanics</li><li>Electricity</li><li>Waves</li></ul>
         </article>
-        <article class="prog p-green">
+        <article class="prog">
           <div class="prog-icon">🧪</div>
           <h3>Chemistry</h3>
           <p>Build a strong foundation.</p>
           <ul><li>Organic</li><li>Inorganic</li><li>Physical</li></ul>
         </article>
-        <article class="prog p-red">
+        <article class="prog">
           <div class="prog-icon">🧬</div>
           <h3>Biology</h3>
           <p>Explore life and living things.</p>
           <ul><li>Cell biology</li><li>Genetics</li><li>Ecology</li></ul>
         </article>
-        <article class="prog p-orange">
+        <article class="prog">
           <div class="prog-icon">➗</div>
           <h3>Mathematics</h3>
           <p>Think logically, solve problems.</p>
           <ul><li>Algebra</li><li>Geometry</li><li>Statistics</li></ul>
         </article>
-        <article class="prog p-purple">
+        <article class="prog">
           <div class="prog-icon">📖</div>
           <h3>English Language</h3>
           <p>Communicate, express and excel.</p>
           <ul><li>Grammar</li><li>Comprehension</li><li>Essay writing</li></ul>
         </article>
-        <article class="prog p-gold">
+        <article class="prog">
           <div class="prog-icon">🏛️</div>
           <h3>Arts &amp; Commercial</h3>
           <p>Classes for Arts, Social Science and Commercial students.</p>
@@ -556,11 +550,10 @@
     <div class="wrap portal-grid">
       <div>
         <h2 class="sec-title">Student portal</h2>
-        <p class="sec-sub">Registered students can sign in with their Admission Number to watch lessons, join live classes and practise with CBT mock tests.</p>
+        <p class="sec-sub">Registered students can sign in with their Admission Number to join live classes and practise with CBT mock tests.</p>
         <button type="button" class="btn btn-gold" data-open-login>Sign in to your portal</button>
       </div>
       <div class="portal-list">
-        <div class="portal-item"><div class="em">🎬</div><h3>Video lessons</h3><p>Clear explanations you can replay at home.</p></div>
         <div class="portal-item"><div class="em">📡</div><h3>Live classes</h3><p>Join sessions with your tutors.</p></div>
         <div class="portal-item"><div class="em">📝</div><h3>CBT mock tests</h3><p>Practise the way you will be examined.</p></div>
         <div class="portal-item"><div class="em">📊</div><h3>Results</h3><p>See your scores and progress.</p></div>
@@ -608,7 +601,7 @@
       </div>
       <div class="gal-grid">
         <figure><img src="{% static 'images/slide1.png' %}" alt="Students studying together" loading="lazy"></figure>
-        <figure><img src="{% static 'images/slide2.png' %}" alt="Video lessons and live classes" loading="lazy"></figure>
+        <figure><img src="{% static 'images/slide2.png' %}" alt="Live classes and lessons" loading="lazy"></figure>
         <figure><img src="{% static 'images/slide3.png' %}" alt="Exam preparation" loading="lazy"></figure>
         <figure><img src="{% static 'images/slide4.png' %}" alt="Understanding concepts" loading="lazy"></figure>
       </div>

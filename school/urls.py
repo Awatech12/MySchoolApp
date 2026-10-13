@@ -13,7 +13,6 @@ urlpatterns = [
     path('open_notify/<int:pk>', views.open_notify, name='open_notify'),
     path('notify', views.notifications, name='notifications'),
     path('follow/<str:username>', views.follow, name='follow'),
-    path('student-scores/<str:username>/', views.student_scores_modal, name='student_scores_modal'),
     path('?/<str:username>', views.update_profile, name='update_profile'),
 
     # ── CBT Exam ──────────────────────────────────────────────────
