@@ -123,6 +123,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tm-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
 .tm-select,.tm-input{width:100%;min-height:44px;border-radius:var(--tm-radius);padding:9px 12px;background:#fff;border:1px solid #dbdbdb;font-size:15px}
 .tm-select:focus,.tm-input:focus{outline:2px solid var(--tm-navy);outline-offset:0;border-color:var(--tm-navy)}
+.tm-pw{position:relative}.tm-pw .tm-input{padding-right:46px}.tm-pw-toggle{position:absolute;top:0;right:0;width:44px;height:44px;background:none;color:#737373;font-size:15px}.tm-pw-toggle:hover{color:var(--tm-navy-dk)}
 .tm-toolbar .tm-select{width:auto;min-width:180px}
 .tm-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 @media(max-width:560px){.tm-filters,.tm-filters>div,.tm-filters .tm-select,.tm-filters .tm-btn{width:100%}}
@@ -226,6 +227,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 <body>
 <a class="tm-skip" href="#tm-main">Skip to main content</a>
 
+{% include 'header.html' %}
 {% include 'sidebar.html' %}
 
 <main class="tm-page" id="tm-main">
@@ -250,7 +252,8 @@ button,input,select,textarea{font:inherit;color:inherit}
         </div>
         {% if is_owner %}
         <div class="tm-student-actions">
-            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-edit-modal"><i class="fas fa-pen" aria-hidden="true"></i> Edit Profile</button>
+            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-photo-modal"><i class="fas fa-camera" aria-hidden="true"></i> Update Passport</button>
+            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-pw-modal"><i class="fas fa-key" aria-hidden="true"></i> Change Password</button>
         </div>
         {% endif %}
     </header>
@@ -303,7 +306,7 @@ button,input,select,textarea{font:inherit;color:inherit}
                 {% if is_owner and registered_subject_cards %}<button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-subj-modal"><i class="fas fa-pen" aria-hidden="true"></i> Edit subjects</button>{% endif %}
             </div>
             {% if is_owner and class_level_legacy %}
-            <div class="tm-note" role="note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>Your saved class (“{{ profile.class_level }}”) is not a Senior Secondary class. Open <strong>Edit Profile</strong> and choose SS1, SS2 or SS3 so your subjects match your class level.</div></div>
+            <div class="tm-note" role="note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>Your saved class (“{{ profile.class_level }}”) is not a Senior Secondary class. Please ask the admin to set your class to SS1, SS2 or SS3 so your subjects match your class level.</div></div>
             {% endif %}
             {% if registered_subject_cards %}
                 {% for c in registered_subject_cards %}
@@ -433,45 +436,46 @@ button,input,select,textarea{font:inherit;color:inherit}
 {% endif %}
 
 {% if is_owner %}
-<!-- ══ EDIT PROFILE ══ -->
-<div class="tm-modal" id="tm-edit-modal" hidden>
-  <div class="tm-sheet" role="dialog" aria-modal="true" aria-labelledby="tm-edit-title">
-    <div class="tm-sheet-h"><h2 id="tm-edit-title">Edit Profile</h2><button type="button" class="tm-x" data-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+<!-- ══ UPDATE PASSPORT ══ -->
+<div class="tm-modal" id="tm-photo-modal" hidden>
+  <div class="tm-sheet" role="dialog" aria-modal="true" aria-labelledby="tm-photo-title">
+    <div class="tm-sheet-h"><h2 id="tm-photo-title">Update Passport</h2><button type="button" class="tm-x" data-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button></div>
     <div class="tm-sheet-b">
-      <div class="tm-alert" id="tm-edit-msg" role="alert"></div>
-      <form id="tm-edit-form" class="tm-form" enctype="multipart/form-data" novalidate>
+      <div class="tm-alert" id="tm-photo-msg" role="alert"></div>
+      <form id="tm-photo-form" class="tm-form" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
         <div class="tm-photo">
-            <img src="{{ profile.get_picture_url }}" alt="Current profile photo" id="tm-photo-preview">
+            <img src="{{ profile.get_picture_url }}" alt="Current passport photo" id="tm-photo-preview">
             <div>
                 <input type="file" id="tm-photo" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
-                <label for="tm-photo" class="tm-btn tm-btn-outline tm-btn-sm"><i class="fas fa-camera" aria-hidden="true"></i> Change photo</label>
-                <p class="tm-hint">JPG, PNG, WEBP or GIF · max 5 MB</p>
+                <label for="tm-photo" class="tm-btn tm-btn-outline tm-btn-sm"><i class="fas fa-camera" aria-hidden="true"></i> Choose photo</label>
+                <p class="tm-hint">Clear, front-facing passport photo · JPG, PNG, WEBP or GIF · max 5 MB</p>
             </div>
-        </div>
-
-        <div class="tm-two">
-            <div class="tm-field"><label for="tm-fname">First name</label><input class="tm-input" id="tm-fname" name="fname" value="{{ user.first_name }}" maxlength="50" autocomplete="given-name" required></div>
-            <div class="tm-field"><label for="tm-lname">Last name</label><input class="tm-input" id="tm-lname" name="lname" value="{{ user.last_name }}" maxlength="50" autocomplete="family-name" required></div>
-        </div>
-        <div class="tm-two">
-            <div class="tm-field"><label for="tm-gender">Gender</label>
-                <select class="tm-select" id="tm-gender" name="gender"><option value="">Select</option>{% for g in gender_choices %}<option value="{{ g }}"{% if profile.gender == g %} selected{% endif %}>{{ g }}</option>{% endfor %}</select></div>
-            <div class="tm-field"><label for="tm-dob">Date of birth</label><input class="tm-input" type="date" id="tm-dob" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d' }}" max="{% now 'Y-m-d' %}" autocomplete="bday"></div>
-        </div>
-        <div class="tm-field"><label for="tm-phone">Phone number</label><input class="tm-input" type="tel" inputmode="tel" id="tm-phone" name="phone" value="{{ profile.phone }}" maxlength="20" placeholder="e.g. 08012345678" autocomplete="tel"></div>
-
-        <div class="tm-field"><label for="tm-class">Class / Level</label>
-            <select class="tm-select" id="tm-class" name="class_level"><option value="">Select class</option>{% for c in class_level_options %}<option value="{{ c }}"{% if c == current_class_level %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
-            {% if class_level_legacy %}<p class="tm-hint" style="color:#991b1b">Saved class “{{ profile.class_level }}” is not Senior Secondary. Please choose SS1–SS3.</p>{% else %}<p class="tm-hint">Senior Secondary classes only.</p>{% endif %}</div>
-        <div class="tm-field"><label for="tm-school">School</label><input class="tm-input" id="tm-school" name="school" value="{{ profile.school }}" maxlength="200" autocomplete="organization"></div>
-        <div class="tm-two">
-            <div class="tm-field"><label for="tm-location">Location</label><input class="tm-input" id="tm-location" name="location" value="{{ profile.location }}" maxlength="300" placeholder="City, State"></div>
-            <div class="tm-field"><label for="tm-address">Address</label><input class="tm-input" id="tm-address" name="address" value="{{ profile.address }}" maxlength="200" autocomplete="street-address"></div>
         </div>
       </form>
     </div>
-    <div class="tm-sheet-f"><button type="button" class="tm-btn tm-btn-outline" data-close>Cancel</button><button type="submit" form="tm-edit-form" class="tm-btn tm-btn-primary" id="tm-edit-save">Save changes</button></div>
+    <div class="tm-sheet-f"><button type="button" class="tm-btn tm-btn-outline" data-close>Cancel</button><button type="submit" form="tm-photo-form" class="tm-btn tm-btn-primary" id="tm-photo-save">Save photo</button></div>
+  </div>
+</div>
+
+<!-- ══ CHANGE PASSWORD ══ -->
+<div class="tm-modal" id="tm-pw-modal" hidden>
+  <div class="tm-sheet" role="dialog" aria-modal="true" aria-labelledby="tm-pw-title">
+    <div class="tm-sheet-h"><h2 id="tm-pw-title">Change Password</h2><button type="button" class="tm-x" data-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+    <div class="tm-sheet-b">
+      <div class="tm-alert" id="tm-pw-msg" role="alert"></div>
+      <form id="tm-pw-form" class="tm-form" novalidate>
+        {% csrf_token %}
+        <div class="tm-field"><label for="tm-pw-current">Current password</label>
+            <div class="tm-pw"><input class="tm-input" type="password" id="tm-pw-current" name="current_password" autocomplete="current-password" required><button type="button" class="tm-pw-toggle" data-toggle-pw aria-label="Show password"><i class="fas fa-eye" aria-hidden="true"></i></button></div></div>
+        <div class="tm-field"><label for="tm-pw-new">New password</label>
+            <div class="tm-pw"><input class="tm-input" type="password" id="tm-pw-new" name="new_password" minlength="6" maxlength="128" autocomplete="new-password" required><button type="button" class="tm-pw-toggle" data-toggle-pw aria-label="Show password"><i class="fas fa-eye" aria-hidden="true"></i></button></div>
+            <p class="tm-hint">At least 6 characters.</p></div>
+        <div class="tm-field"><label for="tm-pw-confirm">Confirm new password</label>
+            <div class="tm-pw"><input class="tm-input" type="password" id="tm-pw-confirm" name="confirm_password" maxlength="128" autocomplete="new-password" required><button type="button" class="tm-pw-toggle" data-toggle-pw aria-label="Show password"><i class="fas fa-eye" aria-hidden="true"></i></button></div></div>
+      </form>
+    </div>
+    <div class="tm-sheet-f"><button type="button" class="tm-btn tm-btn-outline" data-close>Cancel</button><button type="submit" form="tm-pw-form" class="tm-btn tm-btn-primary" id="tm-pw-save">Change password</button></div>
   </div>
 </div>
 
@@ -482,7 +486,7 @@ button,input,select,textarea{font:inherit;color:inherit}
     <div class="tm-sheet-b">
       <div class="tm-alert" id="tm-subj-msg" role="alert"></div>
       <p class="tm-sub" style="margin-bottom:12px">Subjects for <strong>Senior Secondary{% if current_class_level %} · {{ current_class_level }}{% endif %}</strong>. Tick every subject you are studying.</p>
-      {% if class_level_legacy %}<div class="tm-note" role="note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>Please set your class to SS1, SS2 or SS3 in <strong>Edit Profile</strong> before saving subjects.</div></div>{% endif %}
+      {% if class_level_legacy %}<div class="tm-note" role="note"><i class="fas fa-info-circle" aria-hidden="true"></i><div>Please ask the admin to set your class to SS1, SS2 or SS3 before saving subjects.</div></div>{% endif %}
       <form id="tm-subj-form" novalidate>
         {% csrf_token %}
         {% for g in subject_groups %}
@@ -614,12 +618,12 @@ button,input,select,textarea{font:inherit;color:inherit}
             .catch(function () { btn.disabled = false; msg('Network problem. Please try again.', 'err'); });
     }
 
-    /* ── Edit profile ── */
-    var editForm = $('#tm-edit-form');
-    if (editForm) {
+    /* ── Update passport ── */
+    var photoForm = $('#tm-photo-form');
+    if (photoForm) {
         var photo = $('#tm-photo');
         photo.addEventListener('change', function () {
-            var f = photo.files[0], msg = $('#tm-edit-msg');
+            var f = photo.files[0], msg = $('#tm-photo-msg');
             if (!f) return;
             if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type) || f.size > 5 * 1024 * 1024) {
                 photo.value = ''; msg.textContent = 'Choose a JPG, PNG, WEBP or GIF image up to 5 MB.'; msg.className = 'tm-alert err'; return;
@@ -627,14 +631,37 @@ button,input,select,textarea{font:inherit;color:inherit}
             msg.textContent = ''; msg.className = 'tm-alert';
             $('#tm-photo-preview').src = URL.createObjectURL(f);
         });
-        editForm.addEventListener('submit', function (e) {
+        photoForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            var msg = $('#tm-edit-msg'), problem = '';
-            if (!$('#tm-fname').value.trim() || !$('#tm-lname').value.trim()) problem = 'First name and last name are required.';
-            else if ($('#tm-phone').value && !/^\+?[0-9][0-9\s\-()]{6,18}[0-9]$/.test($('#tm-phone').value.trim())) problem = 'Please enter a valid phone number.';
-            else if ($('#tm-dob').value && $('#tm-dob').value >= new Date().toISOString().slice(0, 10)) problem = 'Date of birth must be in the past.';
+            var msg = $('#tm-photo-msg');
+            if (!photo.files.length) { msg.textContent = 'Please choose a passport photo first.'; msg.className = 'tm-alert err'; return; }
+            send(photoForm, '{% url "update_passport" %}', msg, $('#tm-photo-save'), 'Passport updated.', function () { location.reload(); });
+        });
+    }
+
+    /* ── Change password ── */
+    var pwForm = $('#tm-pw-form');
+    if (pwForm) {
+        $$('[data-toggle-pw]', pwForm).forEach(function (t) {
+            t.addEventListener('click', function () {
+                var inp = t.parentNode.querySelector('input'), show = inp.type === 'password';
+                inp.type = show ? 'text' : 'password';
+                t.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+                t.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        });
+        pwForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var msg = $('#tm-pw-msg'), cur = $('#tm-pw-current').value, nw = $('#tm-pw-new').value, cf = $('#tm-pw-confirm').value, problem = '';
+            if (!cur || !nw || !cf) problem = 'Please fill in all three fields.';
+            else if (nw.length < 6) problem = 'New password must be at least 6 characters.';
+            else if (nw !== cf) problem = 'New passwords do not match.';
+            else if (nw === cur) problem = 'New password must be different from your current password.';
             if (problem) { msg.textContent = problem; msg.className = 'tm-alert err'; return; }
-            send(editForm, '{% url "awa_edit_profile" %}', msg, $('#tm-edit-save'), 'Profile updated.', function () { location.reload(); });
+            send(pwForm, '{% url "change_password" %}', msg, $('#tm-pw-save'), 'Password changed.', function () {
+                pwForm.reset(); msg.textContent = ''; msg.className = 'tm-alert';
+                $('#tm-pw-save').disabled = false; closeModal();
+            });
         });
     }
 

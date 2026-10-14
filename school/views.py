@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User, auth
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -719,44 +719,63 @@ def id_card(request, username=None):
 
 
 @login_required
-def update_profile(request, username):
-    """Classic (non-AJAX) profile form. Students may only edit their own profile."""
-    if request.user.username != username:
-        messages.error(request, 'You can only edit your own profile.')
-        return redirect('profile', username=request.user.username)
-
+@require_POST
+def change_password(request):
+    """
+    AJAX endpoint for the profile page's Change Password modal.
+    Students can no longer edit their profile details (admin only); they can
+    only change their own password.
+    Accepts: current_password, new_password, confirm_password.
+    Returns JSON { success, error? }.
+    """
     user    = request.user
-    profile = user.profile
-    if request.method == 'POST':
-        error = _apply_profile_updates(user, profile, request.POST, request.FILES)
-        if error:
-            messages.error(request, error)
-            return render(request, 'updateprofile.html', {'profile': profile})
-        messages.info(request, 'Profile Updated')
-        return redirect('profile', username=username)
-    return render(request, 'updateprofile.html', {'profile': profile})
+    current = request.POST.get('current_password', '')
+    new_pw  = request.POST.get('new_password', '')
+    confirm = request.POST.get('confirm_password', '')
+
+    if not user.check_password(current):
+        return JsonResponse({'success': False, 'error': 'Your current password is incorrect.'}, status=400)
+    if len(new_pw) < 6:
+        return JsonResponse({'success': False, 'error': 'New password must be at least 6 characters.'}, status=400)
+    if len(new_pw) > 128:
+        return JsonResponse({'success': False, 'error': 'New password is too long (max 128 characters).'}, status=400)
+    if new_pw != confirm:
+        return JsonResponse({'success': False, 'error': 'New passwords do not match.'}, status=400)
+    if new_pw == current:
+        return JsonResponse({'success': False, 'error': 'New password must be different from your current password.'}, status=400)
+
+    user.set_password(new_pw)
+    user.save(update_fields=['password'])
+    update_session_auth_hash(request, user)   # keep the student signed in
+    return JsonResponse({'success': True})
 
 
 @login_required
 @require_POST
-def edit_profile(request):
+def update_passport(request):
     """
-    AJAX endpoint for the profile page's Edit Profile modal.
-    Accepts multipart/form-data: fname, lname, gender, phone, bio, location, address,
-    school, class_level, specialization, career_goal, date_of_birth, image (file).
-    Always acts on the signed-in student. Returns JSON { success, error? }.
+    AJAX endpoint for the profile page's Update Passport modal.
+    Students may only change their passport photograph (everything else on the
+    profile is managed by the admin).
+    Accepts multipart/form-data: image (file). Returns JSON { success, error?, url? }.
     """
     user    = request.user
     profile = user.profile
-    try:
-        error = _apply_profile_updates(user, profile, request.POST, request.FILES)
-    except Exception:
-        logger.exception('edit_profile failed for user %s', user.pk)
-        return JsonResponse({'success': False, 'error': 'Could not save your changes. Please try again.'}, status=500)
+    image   = request.FILES.get('image')
 
-    if error:
-        return JsonResponse({'success': False, 'error': error}, status=400)
-    return JsonResponse({'success': True})
+    if not image:
+        return JsonResponse({'success': False, 'error': 'Please choose a passport photo to upload.'}, status=400)
+    err = _valid_picture(image)
+    if err:
+        return JsonResponse({'success': False, 'error': err}, status=400)
+
+    try:
+        profile.picture = image
+        profile.save()
+    except Exception:
+        logger.exception('update_passport failed for user %s', user.pk)
+        return JsonResponse({'success': False, 'error': 'Could not save your photo. Please try again.'}, status=500)
+    return JsonResponse({'success': True, 'url': profile.get_picture_url()})
 
 
 @login_required
@@ -775,7 +794,7 @@ def update_subjects(request):
     if profile.class_level and not _normalize_class_level(profile.class_level):
         return JsonResponse({
             'success': False,
-            'error': 'Your class level is not a Senior Secondary class. Please set it to SS1, SS2 or SS3 in Edit Profile first.',
+            'error': 'Your class level is not a Senior Secondary class. Please ask the admin to set it to SS1, SS2 or SS3.',
         }, status=400)
 
     submitted      = [s.strip() for s in request.POST.getlist('subjects') if s.strip()]

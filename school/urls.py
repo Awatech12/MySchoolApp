@@ -13,7 +13,6 @@ urlpatterns = [
     path('open_notify/<int:pk>', views.open_notify, name='open_notify'),
     path('notify', views.notifications, name='notifications'),
     path('follow/<str:username>', views.follow, name='follow'),
-    path('?/<str:username>', views.update_profile, name='update_profile'),
 
     # ── CBT Exam ──────────────────────────────────────────────────
     path('cbt/',                    views.cbt_subjects,       name='cbt_exams'),       # subject picker
@@ -71,7 +70,8 @@ urlpatterns = [
     path('dashboard/api/content/delete/', views.api_content_delete, name='dash_content_delete'),
 
     # profile must stay LAST – catches any remaining <str:username>
-    path('edit-profile/', views.edit_profile, name='awa_edit_profile'),
+    path('change-password/', views.change_password, name='change_password'),
+    path('update-passport/', views.update_passport, name='update_passport'),
     path('subjects/update/', views.update_subjects, name='update_subjects'),
     path('results/print/<str:username>/', views.print_test_results, name='print_test_results'),
     path('id-card/', views.id_card, name='id_card'),
