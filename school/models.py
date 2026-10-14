@@ -371,10 +371,25 @@ class ClassPost(models.Model):
     else:
         image = models.ImageField(upload_to='class_posts/', blank=True, null=True)
 
+    # Optional voice/audio explanation attached to the question
+    # (same storage pattern as ClassPostComment.audio).
+    if settings.USE_CLOUDINARY:
+        audio = CloudinaryField('audio', resource_type='video', folder='class_post_audio', blank=True, null=True)
+    else:
+        audio = models.FileField(upload_to='class_post_audio/', blank=True, null=True)
+
     subject = models.CharField(max_length=100, blank=True, default='General')
+    class_level = models.CharField(max_length=10, blank=True, default='')   # 'SS1' / 'SS2' / 'SS3'
+    topic = models.CharField(max_length=150, blank=True, default='')
     like = models.ManyToManyField(User, related_name='class_posts_like', blank=True)
+    bookmarked_by = models.ManyToManyField(User, related_name='class_posts_bookmarked', blank=True)
     view = models.IntegerField(default=0)
     is_resolved = models.BooleanField(default=False)
+    # The one answer the asker (or a teacher) marked as the accepted answer.
+    accepted_answer = models.ForeignKey(
+        'ClassPostComment', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='accepted_for',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -401,6 +416,27 @@ class ClassPost(models.Model):
             else:
                 if self.image and hasattr(self.image, 'url'):
                     return self.image.url
+        except Exception:
+            pass
+        return None
+
+    @property
+    def get_audio_url(self):
+        """Returns a usable audio URL in both Cloudinary and local environments."""
+        try:
+            if getattr(settings, 'USE_CLOUDINARY', False):
+                import cloudinary
+                aud = self.audio
+                public_id = None
+                if hasattr(aud, 'public_id') and aud.public_id:
+                    public_id = str(aud.public_id).strip()
+                elif aud and str(aud).strip() not in ('', 'None'):
+                    public_id = str(aud).strip()
+                if public_id:
+                    return cloudinary.CloudinaryVideo(public_id).build_url(secure=True)
+            else:
+                if self.audio and hasattr(self.audio, 'url'):
+                    return self.audio.url
         except Exception:
             pass
         return None
@@ -437,6 +473,8 @@ class ClassPostComment(models.Model):
         audio = models.FileField(upload_to='comment_audio/', blank=True, null=True)
     
     like = models.ManyToManyField(User, related_name='class_comment_likes', blank=True)
+    # "This answer helped me" votes. Separate from likes: used to rank answers.
+    helpful = models.ManyToManyField(User, related_name='class_comment_helpful', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -456,6 +494,10 @@ class ClassPostComment(models.Model):
     @property
     def total_likes(self):
         return self.like.count()
+
+    @property
+    def total_helpful(self):
+        return self.helpful.count()
     
     @property
     def get_image_url(self):
@@ -516,6 +558,45 @@ class ClassPostComment(models.Model):
         
         
         
+
+class ClassPostReport(models.Model):
+    """
+    A report raised by a user against a question (post) or an answer (comment).
+    Exactly one of `post` / `comment` is set. Teachers/admins review open
+    reports on the question page and either delete the content or dismiss
+    the reports (is_handled=True).
+    """
+    REASON_CHOICES = [
+        ('inappropriate', 'Inappropriate or offensive'),
+        ('spam',          'Spam or advertising'),
+        ('off_topic',     'Not related to studies'),
+        ('incorrect',     'Wrong or misleading'),
+        ('other',         'Other'),
+    ]
+
+    report_id  = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    reporter   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='class_reports_made')
+    post       = models.ForeignKey(ClassPost, on_delete=models.CASCADE, null=True, blank=True, related_name='reports')
+    comment    = models.ForeignKey(ClassPostComment, on_delete=models.CASCADE, null=True, blank=True, related_name='reports')
+    reason     = models.CharField(max_length=20, choices=REASON_CHOICES)
+    details    = models.CharField(max_length=300, blank=True)
+    is_handled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            # One report per user per item.
+            models.UniqueConstraint(fields=['reporter', 'post'], condition=models.Q(post__isnull=False),
+                                    name='uniq_report_user_post'),
+            models.UniqueConstraint(fields=['reporter', 'comment'], condition=models.Q(comment__isnull=False),
+                                    name='uniq_report_user_comment'),
+        ]
+
+    def __str__(self):
+        target = 'question' if self.post_id else 'answer'
+        return f"{self.reporter.username} reported a {target}: {self.reason}"
+
 
 # ── Topic Learning Progress ───────────────────────────────────────
 # Paste this at the BOTTOM of your existing models.py

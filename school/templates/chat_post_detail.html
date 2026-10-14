@@ -1,4 +1,3 @@
-{% load humanize %}
 {% load static %}
 {% include 'header.html' %}
 <!DOCTYPE html>
@@ -6,736 +5,1183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>awaClass | {{ post.title|truncatechars:50 }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <title>{{ post.title }} | Student Q&amp;A Centre</title>
     <style>
-        /* ============================================
-           CLEAN DESIGN – NO SHADOWS, MINIMAL COLOR
-        ============================================ */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            color: #1a1a1a;
-        }
-
-        .detail-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 32px 20px 56px;
-        }
-
-        @media (min-width: 768px) {
-            .detail-container {
-                margin-left: 280px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .detail-container {
-                padding: 20px 16px;
-            }
-        }
-
-        /* back link */
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: transparent;
-            border: 1px solid #dce3ec;
-            color: #2c3e50;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 6px 14px;
-            border-radius: 40px;
-            text-decoration: none;
-            margin-bottom: 24px;
-            transition: background 0.2s;
-        }
-
-        .back-link:hover {
-            background: #f4f6f9;
-            border-color: #c0cbd8;
-        }
-
-        /* main post card */
-        .post-card {
-            background: #fff;
-            border: 1px solid #e6edf4;
-            margin-bottom: 28px;
-        }
-
-        .post-header {
-            padding: 20px 24px 12px 24px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            border-bottom: 1px solid #eef2f6;
-            flex-wrap: wrap;
-        }
-
-        .avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: #f0f2f5;
-            border: 1px solid #e2e8f0;
-        }
-
-        .author-info {
-            flex: 1;
-        }
-
-        .author-name {
-            font-weight: 700;
-            font-size: 16px;
-            color: #111827;
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-
-        .post-meta {
-            font-size: 13px;
-            color: #5b6e8c;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 3px 10px;
-            border-radius: 30px;
-            font-size: 12px;
-            font-weight: 500;
-            background: #f1f5f9;
-            color: #2c3e50;
-        }
-
-        .badge-resolved {
-            background: #e3f7ec;
-            color: #1e7b48;
-        }
-
-        .badge-open {
-            background: #fee8e7;
-            color: #b91c1c;
-        }
-
-        .post-title {
-            font-size: 26px;
-            font-weight: 700;
-            padding: 20px 24px 12px 24px;
-            color: #0a0c10;
-            line-height: 1.3;
-        }
-
-        .post-content {
-            padding: 0 24px 20px 24px;
-            font-size: 16px;
-            color: #2c3e50;
-            line-height: 1.65;
-        }
-
-        .post-image {
-            max-width: 100%;
-            max-height: 380px;
-            border-radius: 12px;
-            margin-top: 16px;
-            cursor: pointer;
-            border: 1px solid #e9edf2;
-        }
-
-        .post-stats {
-            padding: 12px 24px;
-            border-top: 1px solid #eef2f6;
-            border-bottom: 1px solid #eef2f6;
-            display: flex;
-            gap: 28px;
-            font-size: 14px;
-            color: #5b6e8c;
-            background: #fafcff;
-        }
-
-        .post-stats span {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .action-buttons {
-            padding: 14px 24px;
-            display: flex;
-            gap: 20px;
-        }
-
-        .action-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: #4a5b7a;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
-            border-radius: 32px;
-            transition: all 0.15s;
-        }
-
-        .action-btn:hover {
-            background: #f0f4f9;
-            color: #e85d04;
-        }
-
-        .action-btn.liked {
-            color: #e85d04;
-        }
-
-        .resolve-post-btn {
-            background: #eef2f9;
-            border: none;
-            padding: 6px 16px;
-            border-radius: 40px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: #2c3e50;
-            transition: background 0.2s;
-        }
-
-        .resolve-post-btn.resolved {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        /* comments section */
-        .comments-wrapper {
-            background: #fff;
-            border: 1px solid #e6edf4;
-        }
-
-        .comments-header {
-            padding: 18px 24px;
-            border-bottom: 1px solid #eef2f6;
-            font-weight: 700;
-            font-size: 18px;
-            background: #fefefe;
-            color: #1e293b;
-        }
-
-        .comments-header i {
-            margin-right: 8px;
-            color: #e85d04;
-        }
-
-        .comment-form-row {
-            padding: 20px 24px;
-            border-bottom: 1px solid #eef2f6;
-            display: flex;
-            gap: 16px;
-            background: #fff;
-            flex-wrap: wrap;
-        }
-
-        .comment-avatar-sm {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid #e2e8f0;
-        }
-
-        .comment-input-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .comment-textarea {
-            width: 100%;
-            padding: 12px 18px;
-            border: 1px solid #d4dce6;
-            border-radius: 24px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: vertical;
-        }
-
-        .comment-textarea:focus {
-            outline: none;
-            border-color: #e85d04;
-        }
-
-        .media-toolbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .media-btn {
-            background: #f8fafc;
-            border: 1px solid #dce3ec;
-            padding: 6px 14px;
-            border-radius: 40px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            color: #415a77;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .media-btn:hover {
-            background: #eef2f8;
-        }
-
-        .media-btn.recording {
-            background: #fee2e2;
-            color: #b91c1c;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .recording-timer {
-            font-size: 13px;
-            font-weight: 500;
-            color: #dc2626;
-        }
-
-        .preview-container {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-top: 6px;
-        }
-
-        .media-preview {
-            position: relative;
-            display: inline-block;
-        }
-
-        .preview-img {
-            width: 72px;
-            height: 72px;
-            border-radius: 12px;
-            object-fit: cover;
-            border: 1px solid #dee4ec;
-        }
-
-        .remove-media {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .submit-comment {
-            background: #e85d04;
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 40px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            align-self: flex-start;
-        }
-
-        .submit-comment:disabled {
-            background: #bac8d9;
-            cursor: not-allowed;
-        }
-
-        .comments-list {
-            max-height: 580px;
-            overflow-y: auto;
-        }
-
-        .comment-item {
-            padding: 18px 24px;
-            border-bottom: 1px solid #f0f3f8;
-            display: flex;
-            gap: 14px;
-        }
-
-        .comment-item:hover {
-            background: #fefcf9;
-        }
-
-        .comment-avatar-mini {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid #e2e8f0;
-        }
-
-        .comment-body {
-            flex: 1;
-        }
-
-        .comment-author-name {
-            font-weight: 700;
-            font-size: 14px;
-            margin-bottom: 6px;
-            color: #1e293b;
-        }
-
-        .comment-text {
-            font-size: 14px;
-            color: #2d3a48;
-            margin-bottom: 8px;
-            line-height: 1.5;
-        }
-
-        .comment-media {
-            margin: 10px 0 6px;
-        }
-
-        .comment-image {
-            max-width: 100%;
-            max-height: 220px;
-            border-radius: 12px;
-            cursor: pointer;
-            border: 1px solid #e2e8f0;
-        }
-
-        .audio-mini {
-            background: #f8fafd;
-            border-radius: 60px;
-            padding: 6px 16px;
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            border: 1px solid #e2e8f0;
-            max-width: 320px;
-        }
-
-        .play-audio-btn {
-            background: #e85d04;
-            border: none;
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            color: white;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .waveform-bars {
-            flex: 1;
-            display: flex;
-            gap: 3px;
-            align-items: center;
-            height: 30px;
-        }
-
-        .wave-bar {
-            width: 3px;
-            background: #e85d04;
-            border-radius: 2px;
-        }
-
-        .audio-time {
-            font-size: 12px;
-            color: #4a5b7a;
-            font-family: monospace;
-            min-width: 42px;
-        }
-
-        .comment-meta-row {
-            display: flex;
-            gap: 18px;
-            margin-top: 8px;
-            font-size: 12px;
-            color: #6f7e95;
-            align-items: center;
-        }
-
-        .comment-like-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #6f7e95;
-            padding: 2px 6px;
-            border-radius: 30px;
-        }
-
-        .comment-like-btn.liked {
-            color: #e85d04;
-        }
-
-        .empty-comments {
-            text-align: center;
-            padding: 48px 20px;
-            color: #6c7e9b;
-        }
-
-        .empty-comments i {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.6;
-        }
-
-        .image-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.92);
-            z-index: 1100;
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .image-modal.active {
-            display: flex;
-        }
-
-        .modal-img {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 24px;
-            right: 32px;
-            font-size: 32px;
-            color: white;
-            cursor: pointer;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid white;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            margin-right: 6px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 640px) {
-            .post-title { font-size: 22px; padding: 16px 20px; }
-            .comment-form-row { flex-direction: column; }
-            .comment-avatar-sm { display: none; }
-            .submit-comment { width: 100%; }
-            .audio-mini { max-width: 100%; }
-        }
-    </style>
+/* ============================================================
+   Student Q&A Centre — shared styles (flat, mobile-first)
+   Included by chat_room.html, chat_post_detail.html and
+   chat_post_form.html
+   ============================================================ */
+:root {
+    --qa-blue: #0095f6;
+    --qa-blue-d: #0074cc;
+    --qa-ink: #262626;
+    --qa-body: #404040;
+    --qa-muted: #737373;
+    --qa-line: #efefef;
+    --qa-line2: #dbdbdb;
+    --qa-soft: #fafafa;
+    --qa-green: #1a7f37;
+    --qa-green-bg: #eef9f1;
+    --qa-green-line: #b9e3c6;
+    --qa-amber: #8a5a00;
+    --qa-amber-bg: #fff6e0;
+    --qa-red: #c62828;
+    --qa-red-bg: #fdeeee;
+    --qa-teacher: #0b5cab;
+    --qa-teacher-bg: #e7f1fb;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: var(--qa-ink);
+    -webkit-text-size-adjust: 100%;
+}
+
+/* ---------- Page shell ---------- */
+.qa-page { padding: 20px 16px 100px; }
+.qa-wrap { max-width: 820px; margin: 0 auto; }
+@media (min-width: 768px) {
+    .qa-page { margin-left: 280px; padding: 32px 24px 100px; }
+}
+
+a { color: inherit; }
+.qa-hidden { display: none !important; }
+
+/* ---------- Header ---------- */
+.qa-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.qa-head h1 { font-size: 24px; line-height: 1.25; font-weight: 700; }
+.qa-head p  { font-size: 14px; color: var(--qa-muted); margin-top: 4px; }
+@media (max-width: 480px) {
+    .qa-head > .qa-btn { width: 100%; }
+}
+
+.qa-back {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 40px;
+    color: var(--qa-muted); font-size: 14px; font-weight: 600; text-decoration: none;
+    margin-bottom: 8px;
+}
+.qa-back:hover { color: var(--qa-ink); }
+
+/* ---------- Buttons ---------- */
+.qa-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 42px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent;
+    font-size: 14px; font-weight: 600; font-family: inherit; line-height: 1;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+    background: var(--qa-blue); color: #fff;
+}
+.qa-btn:hover { background: var(--qa-blue-d); }
+.qa-btn:disabled, .qa-btn.is-loading { opacity: .65; cursor: not-allowed; }
+.qa-btn-ghost { background: #fff; color: var(--qa-ink); border-color: var(--qa-line2); }
+.qa-btn-ghost:hover { background: var(--qa-soft); }
+.qa-btn-danger { background: #fff; color: var(--qa-red); border-color: #f0c4c4; }
+.qa-btn-danger:hover { background: var(--qa-red-bg); }
+.qa-btn-sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.qa-btn.is-on { background: var(--qa-green-bg); color: var(--qa-green); border-color: var(--qa-green-line); }
+.qa-btn-ghost.is-on { background: var(--qa-green-bg); color: var(--qa-green); border-color: var(--qa-green-line); }
+
+.qa-spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
+    display: inline-block; animation: qa-rot .7s linear infinite;
+}
+@keyframes qa-rot { to { transform: rotate(360deg); } }
+
+/* ---------- Top progress bar (page loads / filter changes) ---------- */
+.qa-progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 3000;
+    background: var(--qa-blue); opacity: 0; pointer-events: none;
+}
+.qa-progress.on { opacity: 1; width: 85%; transition: width 8s cubic-bezier(.1, .6, .2, 1); }
+
+/* ---------- Messages & toasts ---------- */
+.qa-msgs { display: grid; gap: 8px; margin-bottom: 14px; }
+.qa-msg {
+    padding: 11px 14px; border-radius: 8px; font-size: 14px; line-height: 1.45;
+    background: var(--qa-soft); border: 1px solid var(--qa-line2); color: var(--qa-ink);
+}
+.qa-msg.success { background: var(--qa-green-bg); border-color: var(--qa-green-line); color: var(--qa-green); }
+.qa-msg.error   { background: var(--qa-red-bg); border-color: #f0c4c4; color: var(--qa-red); }
+.qa-msg.warning { background: var(--qa-amber-bg); border-color: #f1dca0; color: var(--qa-amber); }
+
+.qa-toast {
+    position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%) translateY(20px);
+    max-width: calc(100% - 32px); z-index: 3500; opacity: 0; pointer-events: none;
+    background: #262626; color: #fff; padding: 11px 16px; border-radius: 8px;
+    font-size: 14px; transition: opacity .2s, transform .2s;
+}
+.qa-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.qa-toast.error { background: var(--qa-red); }
+
+/* ---------- Badges ---------- */
+.qa-badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+    border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.3;
+    background: #f1f1f1; color: #4a4a4a; white-space: nowrap;
+}
+.qa-badge.resolved   { background: var(--qa-green-bg); color: var(--qa-green); }
+.qa-badge.unanswered { background: var(--qa-amber-bg); color: var(--qa-amber); }
+.qa-badge.answered   { background: #eaf4fe; color: #0b5cab; }
+.qa-badge.subject    { background: #f1f1f1; color: #3d3d3d; }
+.qa-badge.level      { background: #fff; color: var(--qa-muted); border: 1px solid var(--qa-line2); }
+.qa-badge.teacher    { background: var(--qa-teacher-bg); color: var(--qa-teacher); border: 1px solid #c5dcf3; }
+.qa-badge.accepted   { background: var(--qa-green); color: #fff; }
+.qa-badge.flag       { background: var(--qa-red-bg); color: var(--qa-red); }
+.qa-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* ---------- People ---------- */
+.qa-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; }
+.qa-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.qa-person-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.qa-person-sub { font-size: 12px; color: var(--qa-muted); }
+
+/* ---------- Tabs (All / My questions / Saved) ---------- */
+.qa-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--qa-line); margin-bottom: 14px; }
+.qa-tab {
+    flex: 1; text-align: center; padding: 12px 6px; font-size: 14px; font-weight: 600;
+    color: var(--qa-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.qa-tab.active { color: var(--qa-ink); border-bottom-color: var(--qa-ink); }
+@media (min-width: 600px) { .qa-tab { flex: 0 0 auto; padding: 12px 18px; } }
+
+/* ---------- Filters ---------- */
+.qa-filters { display: grid; gap: 10px; margin-bottom: 14px; }
+.qa-search { position: relative; }
+.qa-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8e8e8e; font-size: 14px; pointer-events: none; }
+.qa-input, .qa-select, .qa-textarea {
+    width: 100%; font-family: inherit; font-size: 16px; color: var(--qa-ink);
+    background: #fff; border: 1px solid var(--qa-line2); border-radius: 8px;
+    padding: 0 12px; min-height: 44px; outline: none;
+}
+.qa-search .qa-input { padding-left: 38px; }
+.qa-textarea { padding: 12px; min-height: 150px; line-height: 1.5; resize: vertical; display: block; }
+.qa-input:focus, .qa-select:focus, .qa-textarea:focus { border-color: var(--qa-blue); }
+.qa-select { appearance: none; -webkit-appearance: none; padding-right: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23737373' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; }
+.qa-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 700px) { .qa-filter-row { grid-template-columns: repeat(4, 1fr); } }
+.qa-filter-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--qa-muted); margin: 2px 0 12px; }
+.qa-link { color: var(--qa-blue); font-weight: 600; text-decoration: none; font-size: 13px; }
+.qa-link:hover { text-decoration: underline; }
+
+/* ---------- Question cards ---------- */
+.qa-list { display: grid; gap: 12px; }
+.qa-card { border: 1px solid var(--qa-line); border-radius: 12px; background: #fff; padding: 16px; }
+.qa-q:hover { background: var(--qa-soft); }
+.qa-q-title { font-size: 17px; line-height: 1.35; font-weight: 600; margin: 10px 0 6px; overflow-wrap: anywhere; }
+.qa-q-title a { text-decoration: none; }
+.qa-q-title a:hover { color: var(--qa-blue); }
+.qa-q-topic { font-size: 13px; color: var(--qa-muted); margin-bottom: 6px; }
+.qa-q-excerpt { font-size: 15px; line-height: 1.55; color: var(--qa-body); overflow-wrap: anywhere; }
+.qa-q-foot {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--qa-line);
+}
+.qa-q-stats { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--qa-muted); white-space: nowrap; }
+.qa-iconbtn {
+    background: none; border: none; cursor: pointer; color: var(--qa-muted);
+    width: 40px; height: 40px; border-radius: 8px; font-size: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.qa-iconbtn:hover { background: #f1f1f1; color: var(--qa-ink); }
+.qa-iconbtn.saved { color: var(--qa-blue); }
+
+.qa-empty { text-align: center; padding: 48px 16px; color: var(--qa-muted); border: 1px dashed var(--qa-line2); border-radius: 12px; }
+.qa-empty i { font-size: 30px; color: #b5b5b5; margin-bottom: 12px; display: block; }
+.qa-empty p { font-size: 15px; margin-bottom: 14px; }
+
+/* ---------- Pagination ---------- */
+.qa-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; font-size: 14px; color: var(--qa-muted); }
+.qa-pager .qa-btn[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+
+/* ---------- Question page ---------- */
+.qa-post-title { font-size: 22px; line-height: 1.3; font-weight: 700; margin: 12px 0; overflow-wrap: anywhere; }
+@media (min-width: 600px) { .qa-post-title { font-size: 26px; } }
+.qa-prose { font-size: 16px; line-height: 1.7; color: var(--qa-body); overflow-wrap: anywhere; }
+.qa-prose p { margin-bottom: 12px; }
+.qa-prose p:last-child { margin-bottom: 0; }
+.qa-media { margin-top: 14px; }
+.qa-image { display: block; max-width: 100%; max-height: 420px; border-radius: 10px; border: 1px solid var(--qa-line); cursor: zoom-in; }
+.qa-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--qa-line); }
+.qa-actions .qa-grow { flex: 1; }
+
+/* ---------- Answers ---------- */
+.qa-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 24px 0 12px; }
+.qa-section-head h2 { font-size: 18px; font-weight: 700; }
+.qa-section-head .qa-select { width: auto; min-height: 38px; font-size: 14px; }
+
+.qa-answer { border: 1px solid var(--qa-line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.qa-answer + .qa-answer { margin-top: 12px; }
+.qa-answer.accepted { background: var(--qa-green-bg); border-color: var(--qa-green-line); }
+.qa-answer-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.qa-accepted-banner { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--qa-green); margin-bottom: 10px; }
+.qa-answer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.qa-like { font-size: 13px; color: var(--qa-muted); background: none; border: none; cursor: pointer; min-height: 36px; padding: 0 8px; border-radius: 8px; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+.qa-like:hover { background: rgba(0, 0, 0, .05); }
+.qa-like.liked { color: #e0245e; }
+
+.qa-edit-form { display: none; margin-top: 10px; }
+.qa-edit-form.open { display: block; }
+.qa-edit-form .qa-textarea { min-height: 110px; }
+.qa-edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.qa-reports { margin-top: 12px; padding: 10px 12px; background: var(--qa-red-bg); border: 1px solid #f0c4c4; border-radius: 8px; font-size: 13px; color: #7a1f1f; }
+.qa-reports ul { margin: 6px 0 8px 18px; }
+.qa-reports form { display: inline; }
+
+/* ---------- Overflow menu (pure <details>) ---------- */
+.qa-menu { position: relative; }
+.qa-menu > summary { list-style: none; cursor: pointer; }
+.qa-menu > summary::-webkit-details-marker { display: none; }
+.qa-menu-panel {
+    position: absolute; right: 0; top: 42px; z-index: 50; min-width: 190px;
+    background: #fff; border: 1px solid var(--qa-line2); border-radius: 10px; padding: 6px;
+}
+.qa-menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px;
+    background: none; border: none; border-radius: 8px; text-align: left; cursor: pointer;
+    font-family: inherit; font-size: 14px; color: var(--qa-ink); text-decoration: none;
+}
+.qa-menu-item:hover { background: var(--qa-soft); }
+.qa-menu-item.danger { color: var(--qa-red); }
+.qa-menu-item[disabled] { color: var(--qa-muted); cursor: default; }
+.qa-menu-panel form { margin: 0; }
+
+/* ---------- Forms ---------- */
+.qa-form-card { border: 1px solid var(--qa-line); border-radius: 12px; padding: 18px 16px; }
+@media (min-width: 600px) { .qa-form-card { padding: 24px; } }
+.qa-field { margin-bottom: 18px; }
+.qa-field > label, .qa-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.qa-req { color: var(--qa-red); }
+.qa-opt { color: var(--qa-muted); font-weight: 400; }
+.qa-hint { font-size: 12px; color: var(--qa-muted); margin-top: 6px; }
+.qa-count { text-align: right; }
+.qa-count.warn { color: var(--qa-amber); }
+.qa-err { display: none; font-size: 13px; color: var(--qa-red); margin-top: 6px; }
+.qa-field.invalid .qa-err { display: block; }
+.qa-field.invalid .qa-input, .qa-field.invalid .qa-select, .qa-field.invalid .qa-textarea { border-color: var(--qa-red); }
+.qa-two { display: grid; gap: 0 14px; }
+@media (min-width: 600px) { .qa-two { grid-template-columns: 1fr 1fr; } }
+.qa-tips { background: var(--qa-soft); border: 1px solid var(--qa-line); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 14px; color: var(--qa-body); }
+.qa-tips summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; }
+.qa-tips ul { margin: 8px 0 2px 18px; line-height: 1.6; }
+.qa-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+@media (max-width: 480px) { .qa-form-actions { flex-direction: column-reverse; } .qa-form-actions .qa-btn { width: 100%; } }
+
+.qa-file {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border: 1px dashed var(--qa-line2); border-radius: 10px; padding: 12px;
+}
+/* Native file input (keyboard + screen-reader friendly), styled button part */
+.qa-file input[type=file] { font-size: 14px; max-width: 100%; color: var(--qa-muted); }
+.qa-file input[type=file]::file-selector-button {
+    min-height: 38px; padding: 0 14px; margin-right: 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--qa-line2); background: #fff; color: var(--qa-ink); font-weight: 600; font-family: inherit; font-size: 13px;
+}
+.qa-file-preview { display: none; width: 100%; }
+.qa-file-preview.show { display: block; }
+.qa-file-preview img { display: block; max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid var(--qa-line); }
+.qa-file-preview audio { width: 100%; }
+.qa-file-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--qa-muted); }
+.qa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; min-height: 36px; margin-top: 8px; }
+.qa-check input { width: 18px; height: 18px; }
+
+/* ---------- Answer composer / recorder ---------- */
+.qa-composer { border: 1px solid var(--qa-line); border-radius: 12px; padding: 14px 16px; margin-top: 24px; scroll-margin-top: 80px; }
+.qa-composer h2 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.qa-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.media-btn {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px;
+    background: #fff; border: 1px solid var(--qa-line2); border-radius: 8px;
+    font-size: 13px; font-weight: 600; color: var(--qa-ink); cursor: pointer; font-family: inherit;
+}
+.media-btn:hover { background: var(--qa-soft); }
+.media-btn.recording { background: var(--qa-red-bg); color: var(--qa-red); border-color: #f0c4c4; animation: qa-pulse 1s infinite; }
+@keyframes qa-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+.recording-timer { font-size: 13px; font-weight: 600; color: var(--qa-red); }
+.preview-container { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.media-preview { position: relative; display: inline-block; }
+.preview-img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--qa-line2); display: block; }
+.remove-media {
+    position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%;
+    border: none; background: #262626; color: #fff; cursor: pointer; font-size: 14px; line-height: 1;
+}
+.qa-composer-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 480px) { .qa-composer-foot .qa-btn { width: 100%; } }
+
+/* ---------- Audio player (preserved from the original page) ---------- */
+.audio-mini {
+    background: var(--qa-soft); border: 1px solid var(--qa-line2); border-radius: 999px;
+    padding: 6px 14px 6px 8px; display: inline-flex; align-items: center; gap: 10px;
+    max-width: 100%; width: 320px;
+}
+.play-audio-btn {
+    background: var(--qa-blue); border: none; width: 36px; height: 36px; border-radius: 50%;
+    color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.waveform-bars { flex: 1; display: flex; gap: 3px; align-items: center; height: 30px; min-width: 0; overflow: hidden; }
+.wave-bar { width: 3px; background: var(--qa-blue); border-radius: 2px; flex-shrink: 0; }
+.audio-time { font-size: 12px; color: var(--qa-muted); font-family: ui-monospace, Menlo, monospace; min-width: 36px; }
+
+/* ---------- Modals (report, confirm, image viewer) ---------- */
+.qa-modal {
+    position: fixed; inset: 0; z-index: 4000; display: none; align-items: flex-end; justify-content: center;
+    background: rgba(0, 0, 0, .5);
+}
+.qa-modal.open { display: flex; }
+.qa-modal-box { background: #fff; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 18px 18px 22px; }
+@media (min-width: 600px) {
+    .qa-modal { align-items: center; padding: 16px; }
+    .qa-modal-box { border-radius: 14px; }
+}
+.qa-modal-box h3 { font-size: 18px; margin-bottom: 6px; }
+.qa-modal-box p { font-size: 14px; color: var(--qa-muted); margin-bottom: 14px; line-height: 1.5; }
+.qa-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+@media (max-width: 480px) { .qa-modal-actions { flex-direction: column-reverse; } .qa-modal-actions .qa-btn { width: 100%; } }
+.qa-radio { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; cursor: pointer; }
+.qa-radio input { width: 18px; height: 18px; }
+
+.qa-lightbox { position: fixed; inset: 0; z-index: 4500; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, .88); padding: 16px; }
+.qa-lightbox.open { display: flex; }
+.qa-lightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; }
+.qa-lightbox button { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: none; background: rgba(255, 255, 255, .15); color: #fff; font-size: 20px; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+    .qa-progress.on, .qa-toast { transition: none; }
+    .qa-spin, .media-btn.recording { animation: none; }
+}
+
+/* ---------- Question modal (ask / edit) ---------- */
+.qa-modal-box.wide { max-width: 560px; }
+.qa-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.qa-modal-head h3 { margin: 0; }
+@media (max-width: 599px) { .qa-modal-box.wide { max-height: 96vh; } }
+</style>
+
 </head>
 <body>
 
 {% include 'sidebar.html' %}
 
-<div class="detail-container">
-    <!-- Back Button -->
-    <a href="{% url 'chat_room' %}" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i> Back to Discussion
+<div class="qa-page">
+<div class="qa-wrap">
+
+    <a class="qa-back" href="{% url 'chat_room' %}" data-progress>
+        <i class="fa-solid fa-arrow-left"></i> Student Q&amp;A Centre
     </a>
 
-    <!-- Main Post -->
-    <div class="post-card">
-        <div class="post-header">
-            <img src="{{ post.author.profile.get_picture_url }}" alt="{{ post.author.username }}" class="avatar">
-            <div class="author-info">
-                <div class="author-name">
-                    {{ post.author.get_full_name|default:post.author.username }}
-                    {% if post.is_resolved %}
-                    <span class="status-badge badge-resolved"><i class="fa-solid fa-check-circle"></i> Resolved</span>
-                    {% else %}
-                    <span class="status-badge badge-open"><i class="fa-regular fa-circle-question"></i> Open</span>
-                    {% endif %}
-                </div>
-                <div class="post-meta">
-                    <i class="fa-regular fa-clock"></i> {{ post.created_at|date:"F j, Y, g:i a" }}
-                    {% if post.subject %}
-                    • <i class="fa-regular fa-folder-open"></i> {{ post.subject }}
-                    {% endif %}
-                </div>
-            </div>
-            {% if request.user == post.author %}
-            <button class="resolve-post-btn {% if post.is_resolved %}resolved{% endif %}" onclick="toggleResolved('{{ post.post_id }}')">
-                {% if post.is_resolved %}<i class="fa-solid fa-check-circle"></i> Resolved{% else %}<i class="fa-regular fa-check-circle"></i> Mark Resolved{% endif %}
-            </button>
-            {% endif %}
-        </div>
-        
-        <h1 class="post-title">{{ post.title }}</h1>
-        
-        <div class="post-content">
-            {{ post.content|linebreaks }}
-            {% if post.image %}
-            <div>
-                <img src="{{ post.get_image_url }}" alt="Question image" class="post-image" onclick="openImageModal(this.src)">
-            </div>
-            {% endif %}
-        </div>
-        
-        <div class="post-stats">
-            <span><i class="fa-regular fa-heart"></i> <span id="likeCount">{{ post.total_likes }}</span> likes</span>
-            <span><i class="fa-regular fa-comments"></i> <span id="replyCount">{{ total_comments }}</span> replies</span>
-            <span><i class="fa-regular fa-eye"></i> {{ post.view }} views</span>
-        </div>
-        
-        <div class="action-buttons">
-            <button class="action-btn like-btn" onclick="likePost('{{ post.post_id }}')">
-                <i class="{% if request.user in post.like.all %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
-                Like
-            </button>
-            <button class="action-btn" onclick="scrollToCommentForm()">
-                <i class="fa-regular fa-comment"></i> Reply
-            </button>
-        </div>
+    {% if messages %}
+    <div class="qa-msgs">
+        {% for m in messages %}<div class="qa-msg {{ m.tags }}">{{ m }}</div>{% endfor %}
     </div>
+    {% endif %}
 
-    <!-- Comments Section -->
-    <div class="comments-wrapper">
-        <div class="comments-header">
-            <i class="fa-regular fa-comments"></i> <span id="commentCountHeader">{{ total_comments }}</span> Discussion Replies
+    <!-- ===================== QUESTION ===================== -->
+    <article class="qa-card" id="question">
+        <div class="qa-badges">
+            {% if post.is_resolved %}
+            <span class="qa-badge resolved"><i class="fa-solid fa-circle-check"></i> Resolved</span>
+            {% elif total_answers %}
+            <span class="qa-badge answered">Answered</span>
+            {% else %}
+            <span class="qa-badge unanswered">Unanswered</span>
+            {% endif %}
+            {% if post.subject %}<span class="qa-badge subject">{{ post.subject }}</span>{% endif %}
+            {% if post.class_level %}<span class="qa-badge level">{{ post.class_level }}</span>{% endif %}
         </div>
-        
-        <!-- Comment Form -->
-        <form id="commentForm" method="POST" action="{% url 'chat_post_comment' post.post_id %}" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="comment-form-row">
-                <img src="{{ request.user.profile.get_picture_url }}" alt="{{ request.user.username }}" class="comment-avatar-sm">
-                <div class="comment-input-area">
-                    <textarea name="comment" class="comment-textarea" placeholder="Write your reply... You can also add an image or record audio" rows="3"></textarea>
-                    
-                    <div class="media-toolbar">
-                        <label class="media-btn">
-                            <i class="fa-solid fa-image"></i> Add Image
-                            <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;" onchange="previewMedia(this, 'image')">
-                        </label>
-                        <button type="button" class="media-btn" id="recordAudioBtn">
-                            <i class="fa-solid fa-microphone"></i> Record Audio
-                        </button>
-                        <span id="recordingTimer" class="recording-timer" style="display: none;">0:00</span>
+
+        <h1 class="qa-post-title">{{ post.title }}</h1>
+        {% if post.topic %}<div class="qa-q-topic">Topic: {{ post.topic }}</div>{% endif %}
+
+        <div class="qa-answer-top" style="margin-top:12px;">
+            <div class="qa-person">
+                <img class="qa-avatar" src="{{ post.author.profile.get_picture_url }}" alt="">
+                <div>
+                    <div class="qa-person-name">
+                        {{ post.author.get_full_name|default:post.author.username }}
+                        {% if post.author.is_staff or post.author.is_superuser %}
+                        <span class="qa-badge teacher"><i class="fa-solid fa-chalkboard-user"></i> Teacher</span>
+                        {% endif %}
                     </div>
-                    
-                    <div id="media-preview" class="preview-container"></div>
+                    <div class="qa-person-sub">Asked {{ post.created_at|date:"j M Y, g:i a" }}</div>
                 </div>
-                <button type="submit" class="submit-comment" id="submitCommentBtn">
-                    <i class="fa-regular fa-paper-plane"></i> Post Reply
+            </div>
+
+            {% if can_edit_post or can_delete_post or can_report_post %}
+            <details class="qa-menu">
+                <summary class="qa-iconbtn" aria-label="More options"><i class="fa-solid fa-ellipsis"></i></summary>
+                <div class="qa-menu-panel">
+                    {% if can_edit_post %}
+                    <button type="button" class="qa-menu-item" onclick="openQuestionModal()"><i class="fa-regular fa-pen-to-square"></i> Edit question</button>
+                    {% endif %}
+                    {% if can_delete_post %}
+                    <form method="post" action="{% url 'delete_class_post' post.post_id %}" data-loading
+                          data-confirm="Delete this question and all of its answers? This cannot be undone." data-confirm-label="Delete">
+                        {% csrf_token %}
+                        <button type="submit" class="qa-menu-item danger"><i class="fa-regular fa-trash-can"></i> Delete question</button>
+                    </form>
+                    {% endif %}
+                    {% if can_report_post %}
+                        {% if user_reported %}
+                        <button type="button" class="qa-menu-item" disabled><i class="fa-regular fa-flag"></i> Reported</button>
+                        {% else %}
+                        <button type="button" class="qa-menu-item" onclick="qaReport('{% url 'report_content' 'post' post.post_id %}')"><i class="fa-regular fa-flag"></i> Report question</button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </details>
+            {% endif %}
+        </div>
+
+        <div class="qa-prose" style="margin-top:14px;">{{ post.content|linebreaks }}</div>
+
+        {% if post.image %}
+        <div class="qa-media">
+            <img src="{{ post.get_image_url }}" alt="Image attached to the question" class="qa-image" onclick="openImageModal(this.src)">
+        </div>
+        {% endif %}
+        {% if post.audio %}
+        <div class="qa-media">
+            <div class="audio-mini" data-audio-url="{{ post.get_audio_url }}">
+                <button type="button" class="play-audio-btn" aria-label="Play audio"><i class="fa-solid fa-play"></i></button>
+                <div class="waveform-bars"></div>
+                <span class="audio-time">0:00</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="qa-actions">
+            <a class="qa-btn" href="#answer-form" onclick="qaFocusComposer(event)"><i class="fa-regular fa-comment-dots"></i> Write an answer</a>
+
+            <button type="button" class="qa-btn qa-btn-ghost {% if is_saved %}is-on{% endif %}"
+                    data-url="{% url 'bookmark_post' post.post_id %}" onclick="qaBookmark(this)"
+                    aria-pressed="{% if is_saved %}true{% else %}false{% endif %}">
+                <i class="{% if is_saved %}fa-solid{% else %}fa-regular{% endif %} fa-bookmark"></i>
+                <span class="qa-label-text">{% if is_saved %}Saved{% else %}Save{% endif %}</span>
+            </button>
+
+            {% if can_resolve %}
+            <form method="post" action="{% url 'resolve_post' post.post_id %}" data-loading>
+                {% csrf_token %}
+                <button type="submit" class="qa-btn qa-btn-ghost" data-loading-text="Updating…">
+                    {% if post.is_resolved %}<i class="fa-solid fa-rotate-left"></i> Re-open{% else %}<i class="fa-regular fa-circle-check"></i> Mark resolved{% endif %}
+                </button>
+            </form>
+            {% endif %}
+
+            <span class="qa-grow"></span>
+
+            <button type="button" class="qa-like {% if user_liked %}liked{% endif %}"
+                    data-url="{% url 'chat_post_like' post.post_id %}" onclick="qaLike(this)"
+                    aria-label="Like this question" aria-pressed="{% if user_liked %}true{% else %}false{% endif %}">
+                <i class="{% if user_liked %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                <span class="qa-like-count">{{ like_total }}</span>
+            </button>
+        </div>
+
+        {% if is_teacher and post_reports %}
+        <div class="qa-reports">
+            <strong><i class="fa-solid fa-flag"></i> {{ post_reports|length }} open report{{ post_reports|length|pluralize }} on this question</strong>
+            <ul>
+                {% for r in post_reports %}
+                <li>{{ r.get_reason_display }}{% if r.details %}: &ldquo;{{ r.details }}&rdquo;{% endif %} &mdash; {{ r.reporter.get_full_name|default:r.reporter.username }}</li>
+                {% endfor %}
+            </ul>
+            <form method="post" action="{% url 'clear_reports' 'post' post.post_id %}" data-loading>
+                {% csrf_token %}
+                <button type="submit" class="qa-btn qa-btn-ghost qa-btn-sm">Dismiss reports</button>
+            </form>
+            <span style="font-size:12px;">To remove it, use <em>Delete question</em> in the menu above.</span>
+        </div>
+        {% endif %}
+    </article>
+
+    <!-- ===================== ANSWERS ===================== -->
+    <section id="answers">
+        <div class="qa-section-head">
+            <h2>{{ total_answers }} answer{{ total_answers|pluralize }}</h2>
+            {% if total_answers > 1 %}
+            <form method="get" action="" id="answerSortForm">
+                <select class="qa-select" name="sort" aria-label="Sort answers">
+                    {% for value, label in answer_sort_options %}
+                    <option value="{{ value }}" {% if value == answer_sort %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+
+        {% for c in answers %}
+        <article class="qa-answer {% if c.is_accepted %}accepted{% endif %}" id="comment-{{ c.comment_id }}">
+            {% if c.is_accepted %}
+            <div class="qa-accepted-banner"><i class="fa-solid fa-circle-check"></i> Accepted answer</div>
+            {% endif %}
+
+            <div class="qa-answer-top">
+                <div class="qa-person">
+                    <img class="qa-avatar" src="{{ c.commentator.profile.get_picture_url }}" alt="" loading="lazy">
+                    <div>
+                        <div class="qa-person-name">
+                            {{ c.commentator.get_full_name|default:c.commentator.username }}
+                            {% if c.commentator.is_staff or c.commentator.is_superuser %}
+                            <span class="qa-badge teacher"><i class="fa-solid fa-chalkboard-user"></i> Teacher</span>
+                            {% endif %}
+                        </div>
+                        <div class="qa-person-sub">{{ c.created_at|timesince }} ago</div>
+                    </div>
+                </div>
+
+                {% if c.can_edit or c.can_delete or c.can_report %}
+                <details class="qa-menu">
+                    <summary class="qa-iconbtn" aria-label="More options"><i class="fa-solid fa-ellipsis"></i></summary>
+                    <div class="qa-menu-panel">
+                        {% if c.can_edit %}
+                        <button type="button" class="qa-menu-item" onclick="qaEdit('{{ c.comment_id }}')"><i class="fa-regular fa-pen-to-square"></i> Edit answer</button>
+                        {% endif %}
+                        {% if c.can_delete %}
+                        <form method="post" action="{% url 'delete_class_comment' c.comment_id %}" data-loading
+                              data-confirm="Delete this answer? This cannot be undone." data-confirm-label="Delete">
+                            {% csrf_token %}
+                            <button type="submit" class="qa-menu-item danger"><i class="fa-regular fa-trash-can"></i> Delete answer</button>
+                        </form>
+                        {% endif %}
+                        {% if c.can_report %}
+                            {% if c.user_reported %}
+                            <button type="button" class="qa-menu-item" disabled><i class="fa-regular fa-flag"></i> Reported</button>
+                            {% else %}
+                            <button type="button" class="qa-menu-item" onclick="qaReport('{% url 'report_content' 'comment' c.comment_id %}')"><i class="fa-regular fa-flag"></i> Report answer</button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </details>
+                {% endif %}
+            </div>
+
+            {% if c.comment %}
+            <div class="qa-prose" id="ans-text-{{ c.comment_id }}">{{ c.comment|linebreaks }}</div>
+            {% endif %}
+
+            {% if c.can_edit %}
+            <form class="qa-edit-form" id="edit-{{ c.comment_id }}" method="post" data-loading
+                  action="{% url 'edit_class_comment' c.comment_id %}">
+                {% csrf_token %}
+                <textarea class="qa-textarea" name="comment" maxlength="{{ max_answer_chars }}" aria-label="Edit your answer">{{ c.comment|default_if_none:"" }}</textarea>
+                <div class="qa-edit-actions">
+                    <button type="submit" class="qa-btn qa-btn-sm" data-loading-text="Saving…">Save</button>
+                    <button type="button" class="qa-btn qa-btn-ghost qa-btn-sm" onclick="qaEdit('{{ c.comment_id }}')">Cancel</button>
+                </div>
+            </form>
+            {% endif %}
+
+            {% if c.get_image_url %}
+            <div class="qa-media">
+                <img src="{{ c.get_image_url }}" alt="Image in this answer" class="qa-image" loading="lazy" onclick="openImageModal(this.src)">
+            </div>
+            {% endif %}
+            {% if c.get_audio_url %}
+            <div class="qa-media">
+                <div class="audio-mini" data-audio-url="{{ c.get_audio_url }}">
+                    <button type="button" class="play-audio-btn" aria-label="Play audio"><i class="fa-solid fa-play"></i></button>
+                    <div class="waveform-bars"></div>
+                    <span class="audio-time">0:00</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="qa-answer-actions">
+                {% if c.can_vote %}
+                <button type="button" class="qa-btn qa-btn-ghost qa-btn-sm {% if c.user_helpful %}is-on{% endif %}"
+                        data-url="{% url 'helpful_vote' c.comment_id %}" onclick="qaHelpful(this)"
+                        aria-pressed="{% if c.user_helpful %}true{% else %}false{% endif %}">
+                    <i class="{% if c.user_helpful %}fa-solid{% else %}fa-regular{% endif %} fa-thumbs-up"></i>
+                    Helpful <span class="qa-helpful-count">{{ c.helpful_total }}</span>
+                </button>
+                {% else %}
+                <span class="qa-like" style="cursor:default;"><i class="fa-regular fa-thumbs-up"></i> {{ c.helpful_total }} found this helpful</span>
+                {% endif %}
+
+                {% if c.can_accept %}
+                <form method="post" action="{% url 'accept_answer' c.comment_id %}" data-loading>
+                    {% csrf_token %}
+                    <button type="submit" class="qa-btn {% if c.is_accepted %}qa-btn-ghost{% endif %} qa-btn-sm" data-loading-text="Updating…">
+                        {% if c.is_accepted %}<i class="fa-solid fa-xmark"></i> Remove accepted{% else %}<i class="fa-solid fa-check"></i> Accept answer{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+
+                <span class="qa-grow" style="flex:1;"></span>
+
+                <button type="button" class="qa-like {% if c.user_liked %}liked{% endif %}"
+                        data-url="{% url 'chat_comment_like' c.comment_id %}" onclick="qaLike(this)"
+                        aria-label="Like this answer" aria-pressed="{% if c.user_liked %}true{% else %}false{% endif %}">
+                    <i class="{% if c.user_liked %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                    <span class="qa-like-count">{{ c.like_total }}</span>
                 </button>
             </div>
+
+            {% if is_teacher and c.open_reports %}
+            <div class="qa-reports">
+                <strong><i class="fa-solid fa-flag"></i> {{ c.open_reports|length }} open report{{ c.open_reports|length|pluralize }} on this answer</strong>
+                <ul>
+                    {% for r in c.open_reports %}
+                    <li>{{ r.get_reason_display }}{% if r.details %}: &ldquo;{{ r.details }}&rdquo;{% endif %} &mdash; {{ r.reporter.get_full_name|default:r.reporter.username }}</li>
+                    {% endfor %}
+                </ul>
+                <form method="post" action="{% url 'clear_reports' 'comment' c.comment_id %}" data-loading>
+                    {% csrf_token %}
+                    <button type="submit" class="qa-btn qa-btn-ghost qa-btn-sm">Dismiss reports</button>
+                </form>
+                <span style="font-size:12px;">To remove it, use <em>Delete answer</em> in the menu.</span>
+            </div>
+            {% endif %}
+        </article>
+        {% empty %}
+        <div class="qa-empty">
+            <i class="fa-regular fa-comments"></i>
+            <p>{% if is_asker %}No answers yet. You will be notified when someone answers.{% else %}No answers yet. Be the first to help!{% endif %}</p>
+        </div>
+        {% endfor %}
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="qa-pager" aria-label="Answer pages">
+            {% if page_obj.has_previous %}
+            <a class="qa-btn qa-btn-ghost" data-progress href="?sort={{ answer_sort }}&amp;page={{ page_obj.previous_page_number }}#answers"><i class="fa-solid fa-chevron-left"></i> Previous</a>
+            {% else %}
+            <span class="qa-btn qa-btn-ghost" aria-disabled="true"><i class="fa-solid fa-chevron-left"></i> Previous</span>
+            {% endif %}
+            <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+            <a class="qa-btn qa-btn-ghost" data-progress href="?sort={{ answer_sort }}&amp;page={{ page_obj.next_page_number }}#answers">Next <i class="fa-solid fa-chevron-right"></i></a>
+            {% else %}
+            <span class="qa-btn qa-btn-ghost" aria-disabled="true">Next <i class="fa-solid fa-chevron-right"></i></span>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </section>
+
+    <!-- ===================== ANSWER FORM ===================== -->
+    <section class="qa-composer" id="answer-form">
+        <h2>Your answer</h2>
+        <form id="commentForm" method="post" enctype="multipart/form-data" novalidate
+              action="{% url 'chat_post_comment' post.post_id %}">
+            {% csrf_token %}
+            <textarea class="qa-textarea comment-textarea" name="comment" rows="4" maxlength="{{ max_answer_chars }}"
+                      aria-label="Write your answer" placeholder="Explain the answer step by step. You can also add an image or record audio."></textarea>
+
+            <div class="qa-toolbar">
+                <label class="media-btn">
+                    <i class="fa-solid fa-image"></i> Add image
+                    <input type="file" name="image" id="answerImage" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+                </label>
+                <button type="button" class="media-btn" id="recordAudioBtn">
+                    <i class="fa-solid fa-microphone"></i> Record audio
+                </button>
+                <span id="recordingTimer" class="recording-timer" style="display:none;">0:00</span>
+            </div>
+
+            <div id="media-preview" class="preview-container"></div>
+
+            <div class="qa-composer-foot">
+                <button type="submit" class="qa-btn" id="submitCommentBtn"><i class="fa-regular fa-paper-plane"></i> Post answer</button>
+            </div>
         </form>
-        
-        <!-- Comments List -->
-        <div class="comments-list" id="commentsList">
-            {% for comment in comments %}
-            <div class="comment-item" id="comment-{{ comment.comment_id }}">
-                <img src="{{ comment.commentator.profile.get_picture_url }}" alt="{{ comment.commentator.username }}" class="comment-avatar-mini">
-                <div class="comment-body">
-                    <div class="comment-author-name">{{ comment.commentator.get_full_name|default:comment.commentator.username }}</div>
-                    
-                    {% if comment.comment %}
-                    <div class="comment-text">{{ comment.comment|linebreaksbr }}</div>
-                    {% endif %}
-                    
-                    {% if comment.get_image_url %}
-                    <div class="comment-media">
-                        <img src="{{ comment.get_image_url }}" alt="Comment image" class="comment-image" onclick="openImageModal(this.src)">
-                    </div>
-                    {% endif %}
-                    
-                    {% if comment.get_audio_url %}
-                    <div class="comment-media">
-                        <div class="audio-mini" data-audio-url="{{ comment.get_audio_url }}">
-                            <button class="play-audio-btn">
-                                <i class="fa-solid fa-play"></i>
-                            </button>
-                            <div class="waveform-bars"></div>
-                            <span class="audio-time">0:00</span>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="comment-meta-row">
-                        <span><i class="fa-regular fa-clock"></i> {{ comment.created_at|timesince }} ago</span>
-                        <button class="comment-like-btn comment-like-btn-{{ comment.comment_id }}" onclick="likeComment('{{ comment.comment_id }}')">
-                            <i class="{% if request.user in comment.like.all %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
-                            <span class="comment-like-count-{{ comment.comment_id }}">{{ comment.total_likes }}</span> Likes
-                        </button>
-                    </div>
+    </section>
+
+</div>
+</div>
+
+<!-- Report dialog -->
+<div class="qa-modal" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+    <div class="qa-modal-box">
+        <h3 id="reportTitle">Report this content</h3>
+        <p>Tell the teachers what is wrong. They will review it.</p>
+        <form method="post" id="reportForm" data-loading>
+            {% csrf_token %}
+            {% for value, label in report_reasons %}
+            <label class="qa-radio"><input type="radio" name="reason" value="{{ value }}" {% if forloop.first %}required{% endif %}> {{ label }}</label>
+            {% endfor %}
+            <div class="qa-field" style="margin:10px 0 0;">
+                <label for="reportDetails">More details <span class="qa-opt">(optional)</span></label>
+                <textarea class="qa-textarea" style="min-height:80px;" id="reportDetails" name="details" maxlength="300"></textarea>
+            </div>
+            <div class="qa-modal-actions">
+                <button type="button" class="qa-btn qa-btn-ghost" data-qa-close>Cancel</button>
+                <button type="submit" class="qa-btn" data-loading-text="Sending…">Send report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- Edit your question dialog -->
+<div class="qa-modal" id="questionModal" role="dialog" aria-modal="true" aria-labelledby="qModalTitle">
+    <div class="qa-modal-box wide">
+        <div class="qa-modal-head">
+            <h3 id="qModalTitle">Edit your question</h3>
+            <button type="button" class="qa-iconbtn" data-qa-close aria-label="Close">&times;</button>
+        </div>
+        <form id="qaQuestionForm" method="post" enctype="multipart/form-data" novalidate action="{% url 'edit_class_post' post.post_id %}">
+            {% csrf_token %}
+
+            <div class="qa-field" data-field="title">
+                <label for="qTitle">Question title <span class="qa-req">*</span></label>
+                <input class="qa-input" type="text" id="qTitle" name="title" maxlength="{{ limits.title_max }}" value="{{ post.title }}" autocomplete="off"
+                       placeholder="e.g. How do I solve quadratic equations using the formula?">
+                <div class="qa-hint qa-count" id="titleCount">0 / {{ limits.title_max }}</div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-two">
+                <div class="qa-field" data-field="subject">
+                    <label for="qSubject">Subject <span class="qa-req">*</span></label>
+                    <select class="qa-select" id="qSubject" name="subject">
+                        <option value="">Choose a subject</option>
+                        {% for s in form_subjects %}<option value="{{ s }}" {% if s == post.subject %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                    </select>
+                    <div class="qa-err"></div>
+                </div>
+                <div class="qa-field" data-field="class_level">
+                    <label for="qLevel">Class level <span class="qa-opt">(optional)</span></label>
+                    <select class="qa-select" id="qLevel" name="class_level">
+                        <option value="">Not specified</option>
+                        {% for l in level_options %}<option value="{{ l }}" {% if l == post.class_level %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                    <div class="qa-err"></div>
                 </div>
             </div>
-            {% empty %}
-            <div class="empty-comments" id="emptyComments">
-                <i class="fa-regular fa-message"></i>
-                <p>No replies yet. Be the first to answer!</p>
-                <p style="font-size: 13px; margin-top: 10px;">💬 Add text, 📷 image, or 🎙️ audio to your reply</p>
+
+            <div class="qa-field" data-field="topic">
+                <label for="qTopic">Topic <span class="qa-opt">(optional)</span></label>
+                <input class="qa-input" type="text" id="qTopic" name="topic" maxlength="{{ limits.topic_max }}" value="{{ post.topic }}" autocomplete="off" placeholder="e.g. Quadratic equations">
+                <div class="qa-err"></div>
             </div>
-            {% endfor %}
+
+            <div class="qa-field" data-field="content">
+                <label for="qContent">Explain your question <span class="qa-req">*</span></label>
+                <textarea class="qa-textarea" id="qContent" name="content" maxlength="{{ limits.body_max }}"
+                          placeholder="Describe what you are struggling with and what you have tried so far…">{{ post.content }}</textarea>
+                <div class="qa-hint qa-count" id="contentCount">0 / {{ limits.body_max }}</div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-field" data-field="image">
+                <span class="qa-label">Image <span class="qa-opt">(optional)</span></span>
+            {% if post.image %}
+            <div class="qa-file-preview show" style="margin-bottom:10px;">
+                <img src="{{ post.get_image_url }}" alt="Current image">
+                <label class="qa-check"><input type="checkbox" name="remove_image" value="1"> Remove the current image</label>
+            </div>
+            {% endif %}
+                <div class="qa-file">
+                    <input type="file" id="qImage" name="image" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Choose an image">
+                    <div class="qa-hint" style="margin:0;">JPG, PNG, WEBP or GIF. Maximum 5 MB.</div>
+                    <div class="qa-file-preview" id="imgPreview">
+                        <img id="imgPreviewImg" alt="Selected image preview">
+                        <div class="qa-file-row"><span id="imgName"></span>
+                            <button type="button" class="qa-btn qa-btn-ghost qa-btn-sm" id="imgRemove">Remove</button></div>
+                    </div>
+                </div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-field" data-field="audio">
+                <span class="qa-label">Audio explanation <span class="qa-opt">(optional)</span></span>
+            {% if post.audio %}
+            <div class="qa-file-preview show" style="margin-bottom:10px;">
+                <audio controls preload="none" src="{{ post.get_audio_url }}"></audio>
+                <label class="qa-check"><input type="checkbox" name="remove_audio" value="1"> Remove the current audio</label>
+            </div>
+            {% endif %}
+                <div class="qa-file">
+                    <input type="file" id="qAudio" name="audio" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/webm,.mp3,.wav,.ogg,.m4a,.aac,.webm" aria-label="Choose an audio file">
+                    <div class="qa-hint" style="margin:0;">MP3, WAV, OGG, M4A or WEBM. Maximum 10 MB.</div>
+                    <div class="qa-file-preview" id="audPreview">
+                        <audio id="audPreviewEl" controls></audio>
+                        <div class="qa-file-row"><span id="audName"></span>
+                            <button type="button" class="qa-btn qa-btn-ghost qa-btn-sm" id="audRemove">Remove</button></div>
+                    </div>
+                </div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-form-actions">
+                <button type="button" class="qa-btn qa-btn-ghost" data-qa-close>Cancel</button>
+                <button type="submit" class="qa-btn" id="qSubmitBtn"><i class="fa-solid fa-paper-plane"></i> Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Shared UI pieces: confirm dialog, image viewer, toast, progress bar -->
+<div class="qa-progress" id="qaProgress"></div>
+<div class="qa-toast" id="qaToast" role="status" aria-live="polite"></div>
+
+<div class="qa-modal" id="qaConfirm" role="dialog" aria-modal="true" aria-labelledby="qaConfirmTitle">
+    <div class="qa-modal-box">
+        <h3 id="qaConfirmTitle">Are you sure?</h3>
+        <p id="qaConfirmText"></p>
+        <div class="qa-modal-actions">
+            <button type="button" class="qa-btn qa-btn-ghost" data-qa-close>Cancel</button>
+            <button type="button" class="qa-btn qa-btn-danger" id="qaConfirmYes">Delete</button>
         </div>
     </div>
 </div>
 
+<div class="qa-lightbox" id="qaLightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button type="button" id="qaLightboxClose" aria-label="Close image">&times;</button>
+    <img id="qaLightboxImg" src="" alt="">
+</div>
+
 <script>
-    // CSRF Token helper
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    const QA_CSRF = '{{ csrf_token }}';
+
+    /* ---- progress bar + toast ---- */
+    function qaProgress(on) {
+        const bar = document.getElementById('qaProgress');
+        if (!bar) return;
+        if (on) { bar.classList.add('on'); }
+        else { bar.classList.remove('on'); bar.style.width = '0'; }
     }
-    
-    // ============================================
-    // CUSTOM AUDIO PLAYER WITH WAVEFORM
-    // ============================================
-    
+
+    let qaToastTimer = null;
+    function qaToast(message, type) {
+        const t = document.getElementById('qaToast');
+        t.textContent = message;
+        t.className = 'qa-toast show' + (type === 'error' ? ' error' : '');
+        clearTimeout(qaToastTimer);
+        qaToastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    /* ---- POST helper (CSRF + JSON errors) ---- */
+    async function qaPost(url, formData) {
+        const res = await fetch(url, {
+            method: 'POST',
+            body: formData || new FormData(),
+            credentials: 'same-origin',
+            headers: { 'X-CSRFToken': QA_CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = null;
+        try { data = await res.json(); } catch (e) { /* not JSON */ }
+        if (!res.ok || !data || data.success === false) {
+            throw new Error((data && data.error) || 'Something went wrong. Please try again.');
+        }
+        return data;
+    }
+
+    /* ---- modals ---- */
+    function qaOpenModal(el) { el.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function qaCloseModals() {
+        document.querySelectorAll('.qa-modal.open, .qa-lightbox.open').forEach(m => m.classList.remove('open'));
+        document.body.style.overflow = '';
+    }
+
+    function qaConfirm(message, yesLabel, onYes) {
+        document.getElementById('qaConfirmText').textContent = message;
+        const yes = document.getElementById('qaConfirmYes');
+        yes.textContent = yesLabel || 'Confirm';
+        yes.onclick = function () { qaCloseModals(); onYes(); };
+        qaOpenModal(document.getElementById('qaConfirm'));
+        yes.focus();
+    }
+
+    function openImageModal(src) {
+        document.getElementById('qaLightboxImg').src = src;
+        qaOpenModal(document.getElementById('qaLightbox'));
+    }
+
+    document.addEventListener('click', function (e) {
+        // close buttons / click on the dark backdrop
+        if (e.target.closest('[data-qa-close]') || e.target.classList.contains('qa-modal') ||
+            e.target.id === 'qaLightbox' || e.target.id === 'qaLightboxClose') {
+            qaCloseModals();
+        }
+        // close any open ⋯ menu when clicking elsewhere
+        document.querySelectorAll('details.qa-menu[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+        // progress bar for normal navigation links
+        const a = e.target.closest('a[data-progress]');
+        if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey) qaProgress(true);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            qaCloseModals();
+            document.querySelectorAll('details.qa-menu[open]').forEach(d => d.removeAttribute('open'));
+        }
+    });
+
+    /* ---- forms: confirm dialogs + loading state ---- */
+    document.addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return;            // a page-level validator said no
+        const f = e.target;
+        if (!(f instanceof HTMLFormElement)) return;
+
+        if (f.dataset.confirm && !f.dataset.confirmed) {
+            e.preventDefault();
+            qaConfirm(f.dataset.confirm, f.dataset.confirmLabel || 'Confirm', function () {
+                f.dataset.confirmed = '1';
+                if (f.requestSubmit) f.requestSubmit(); else f.submit();
+            });
+            return;
+        }
+        if (f.hasAttribute('data-loading')) {
+            const b = f.querySelector('button[type="submit"]');
+            if (b) {
+                b.dataset.html = b.innerHTML;
+                b.innerHTML = '<span class="qa-spin"></span> ' + (b.dataset.loadingText || 'Please wait…');
+                b.classList.add('is-loading');
+                // disable on the next tick so the form value still posts
+                setTimeout(() => { b.disabled = true; }, 0);
+            }
+            qaProgress(true);
+        }
+    });
+
+    // Coming back with the Back button must not leave buttons stuck in "loading".
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        qaProgress(false);
+        document.querySelectorAll('button.is-loading').forEach(b => {
+            b.disabled = false; b.classList.remove('is-loading');
+            if (b.dataset.html) b.innerHTML = b.dataset.html;
+        });
+        document.querySelectorAll('form[data-confirmed]').forEach(f => delete f.dataset.confirmed);
+    });
+
+    /* ---- bookmark toggle (list cards and question page) ---- */
+    async function qaBookmark(btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+            const d = await qaPost(btn.dataset.url);
+            btn.classList.toggle('saved', d.saved);
+            btn.classList.toggle('is-on', d.saved);
+            btn.setAttribute('aria-pressed', d.saved ? 'true' : 'false');
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = (d.saved ? 'fa-solid' : 'fa-regular') + ' fa-bookmark';
+            const label = btn.querySelector('.qa-label-text');
+            if (label) label.textContent = d.saved ? 'Saved' : 'Save';
+            qaToast(d.saved ? 'Saved to your list' : 'Removed from your saved questions');
+        } catch (err) {
+            qaToast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+<script>
+/* Ask / edit question dialog */
+(function () {
+    const LIM = {
+        titleMin: {{ limits.title_min }}, titleMax: {{ limits.title_max }},
+        bodyMin: {{ limits.body_min }}, bodyMax: {{ limits.body_max }},
+        imageBytes: 5 * 1024 * 1024, audioBytes: 10 * 1024 * 1024
+    };
+    const modal = document.getElementById('questionModal');
+    const form = document.getElementById('qaQuestionForm');
+    const $ = id => document.getElementById(id);
+
+    window.openQuestionModal = function () {
+        document.querySelectorAll('details.qa-menu[open]').forEach(d => d.removeAttribute('open'));
+        qaOpenModal(modal);
+        setTimeout(() => $('qTitle').focus(), 80);
+    };
+
+    function counter(inputId, countId, max) {
+        const input = $(inputId), out = $(countId);
+        const update = () => { out.textContent = input.value.length + ' / ' + max; out.classList.toggle('warn', input.value.length > max * 0.9); };
+        input.addEventListener('input', update); update();
+    }
+    counter('qTitle', 'titleCount', LIM.titleMax);
+    counter('qContent', 'contentCount', LIM.bodyMax);
+
+    function setError(name, message) {
+        const field = form.querySelector('[data-field="' + name + '"]');
+        if (!field) return;
+        field.classList.toggle('invalid', !!message);
+        field.querySelector('.qa-err').textContent = message || '';
+    }
+    function fileError(file, kind) {
+        if (!file) return '';
+        if (kind === 'image') {
+            if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) return 'Image must be a JPG, PNG, WEBP or GIF file.';
+            if (file.size > LIM.imageBytes) return 'Image must be 5 MB or smaller.';
+        } else {
+            if (file.type.indexOf('audio/') !== 0 || !/\.(mp3|wav|ogg|oga|m4a|mp4|aac|webm)$/i.test(file.name)) return 'Audio must be an MP3, WAV, OGG, M4A or WEBM file.';
+            if (file.size > LIM.audioBytes) return 'Audio must be 10 MB or smaller.';
+        }
+        return '';
+    }
+
+    let imgUrl = null;
+    $('qImage').addEventListener('change', function () {
+        const file = this.files[0], err = fileError(file, 'image');
+        setError('image', err);
+        if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+        if (!file || err) { this.value = ''; $('imgPreview').classList.remove('show'); return; }
+        imgUrl = URL.createObjectURL(file);
+        $('imgPreviewImg').src = imgUrl; $('imgName').textContent = file.name;
+        $('imgPreview').classList.add('show');
+    });
+    $('imgRemove').addEventListener('click', function () {
+        $('qImage').value = ''; $('imgPreview').classList.remove('show');
+        if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+    });
+
+    let audUrl = null;
+    $('qAudio').addEventListener('change', function () {
+        const file = this.files[0], err = fileError(file, 'audio');
+        setError('audio', err);
+        if (audUrl) { URL.revokeObjectURL(audUrl); audUrl = null; }
+        if (!file || err) { this.value = ''; $('audPreview').classList.remove('show'); return; }
+        audUrl = URL.createObjectURL(file);
+        $('audPreviewEl').src = audUrl; $('audName').textContent = file.name;
+        $('audPreview').classList.add('show');
+    });
+    $('audRemove').addEventListener('click', function () {
+        const el = $('audPreviewEl'); el.pause(); el.removeAttribute('src'); el.load();
+        $('qAudio').value = ''; $('audPreview').classList.remove('show');
+        if (audUrl) { URL.revokeObjectURL(audUrl); audUrl = null; }
+    });
+
+    ['title:qTitle', 'subject:qSubject', 'class_level:qLevel', 'topic:qTopic', 'content:qContent'].forEach(function (pair) {
+        const parts = pair.split(':');
+        ['input', 'change'].forEach(ev => $(parts[1]).addEventListener(ev, () => setError(parts[0], '')));
+    });
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = $('qSubmitBtn');
+        if (btn.disabled) return;
+        const title = $('qTitle').value.trim().replace(/\s+/g, ' ');
+        const content = $('qContent').value.trim();
+        let first = null;
+        const fail = (name, msg, id) => { setError(name, msg); if (!first) first = $(id); };
+        if (title.length < LIM.titleMin) fail('title', 'Enter a clear title (at least ' + LIM.titleMin + ' characters).', 'qTitle'); else setError('title', '');
+        if (!$('qSubject').value) fail('subject', 'Choose a subject.', 'qSubject'); else setError('subject', '');
+        if (content.length < LIM.bodyMin) fail('content', 'Explain your question a little more (at least ' + LIM.bodyMin + ' characters).', 'qContent'); else setError('content', '');
+        const ie = fileError($('qImage').files[0], 'image'); if (ie) fail('image', ie, 'qImage'); else setError('image', '');
+        const ae = fileError($('qAudio').files[0], 'audio'); if (ae) fail('audio', ae, 'qAudio'); else setError('audio', '');
+        if (first) { first.focus(); first.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="qa-spin"></span> Saving…';
+        qaProgress(true);
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST', body: new FormData(form), credentials: 'same-origin',
+                headers: { 'X-CSRFToken': QA_CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            let data = null;
+            try { data = await res.json(); } catch (err) { /* not JSON */ }
+            if (data && data.success) { window.location.href = data.redirect; return; }
+            qaProgress(false);
+            if (data && data.errors) {
+                let firstKey = null;
+                Object.keys(data.errors).forEach(function (k) { setError(k, data.errors[k]); if (!firstKey) firstKey = k; });
+                const f = form.querySelector('[data-field="' + firstKey + '"]');
+                if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                qaToast('Something went wrong. Please try again.', 'error');
+            }
+        } catch (err) {
+            qaProgress(false);
+            qaToast('Network problem. Please try again.', 'error');
+        }
+        btn.disabled = false;
+        btn.innerHTML = original;
+    });
+})();
+</script>
+
+<script>
+    const MAX_ANSWER = {{ max_answer_chars }};
+    const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+
+    /* ============================================
+       Likes, helpful votes
+       ============================================ */
+    async function qaLike(btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+            const d = await qaPost(btn.dataset.url);
+            btn.classList.toggle('liked', d.liked);
+            btn.setAttribute('aria-pressed', d.liked ? 'true' : 'false');
+            btn.querySelector('i').className = (d.liked ? 'fa-solid' : 'fa-regular') + ' fa-heart';
+            btn.querySelector('.qa-like-count').textContent = d.total_likes;
+        } catch (err) { qaToast(err.message, 'error'); }
+        finally { btn.disabled = false; }
+    }
+
+    async function qaHelpful(btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+            const d = await qaPost(btn.dataset.url);
+            btn.classList.toggle('is-on', d.voted);
+            btn.setAttribute('aria-pressed', d.voted ? 'true' : 'false');
+            btn.querySelector('i').className = (d.voted ? 'fa-solid' : 'fa-regular') + ' fa-thumbs-up';
+            btn.querySelector('.qa-helpful-count').textContent = d.total_helpful;
+            qaToast(d.voted ? 'Marked as helpful' : 'Vote removed');
+        } catch (err) { qaToast(err.message, 'error'); }
+        finally { btn.disabled = false; }
+    }
+
+    /* ============================================
+       Menus, edit box, report dialog
+       ============================================ */
+    function qaCloseMenus() {
+        document.querySelectorAll('details.qa-menu[open]').forEach(d => d.removeAttribute('open'));
+    }
+
+    function qaEdit(id) {
+        qaCloseMenus();
+        const form = document.getElementById('edit-' + id);
+        const text = document.getElementById('ans-text-' + id);
+        const open = form.classList.toggle('open');
+        if (text) text.style.display = open ? 'none' : '';
+        if (open) { const ta = form.querySelector('textarea'); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }
+
+    function qaReport(url) {
+        qaCloseMenus();
+        const form = document.getElementById('reportForm');
+        form.reset();
+        form.action = url;
+        qaOpenModal(document.getElementById('reportModal'));
+    }
+
+    function qaFocusComposer(e) {
+        e.preventDefault();
+        const box = document.getElementById('answer-form');
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => document.querySelector('.comment-textarea').focus({ preventScroll: true }), 350);
+    }
+
+    const sortForm = document.getElementById('answerSortForm');
+    if (sortForm) {
+        sortForm.querySelector('select').addEventListener('change', function () {
+            qaProgress(true);
+            sortForm.submit();
+        });
+    }
+
+    /* ============================================
+       Audio player (waveform) — unchanged behaviour
+       ============================================ */
+    let qaCurrentPlayer = null;
+
     class CustomAudioPlayer {
         constructor(container) {
             this.container = container;
@@ -749,37 +1195,32 @@
             this.timeDisplay = container.querySelector('.audio-time');
             this.init();
         }
-        
+
         init() {
-            this.audio = new Audio(this.audioUrl);
+            this.audio = new Audio();
+            this.audio.preload = 'none';
+            this.audio.src = this.audioUrl;
             this.generateWaveBars();
-            
             this.playBtn.addEventListener('click', () => this.togglePlay());
             this.audio.addEventListener('timeupdate', () => this.updateTimeDisplay());
             this.audio.addEventListener('ended', () => this.stopPlayback());
+            this.audio.addEventListener('error', () => { this.stopPlayback(); qaToast('This audio could not be played.', 'error'); });
         }
-        
+
         generateWaveBars() {
             this.waveformContainer.innerHTML = '';
             this.waveBars = [];
             for (let i = 0; i < 20; i++) {
                 const bar = document.createElement('div');
                 bar.className = 'wave-bar';
-                bar.style.height = '4px';
+                bar.style.height = (4 + (i * 7) % 11) + 'px';
                 this.waveformContainer.appendChild(bar);
                 this.waveBars.push(bar);
             }
         }
-        
+
         animateWaveform() {
-            if (!this.isPlaying) {
-                this.waveBars.forEach(bar => {
-                    bar.style.height = Math.floor(Math.random() * 12) + 3 + 'px';
-                });
-                return;
-            }
             if (this.animationId) cancelAnimationFrame(this.animationId);
-            
             const tick = () => {
                 if (!this.isPlaying) return;
                 this.waveBars.forEach((bar, index) => {
@@ -790,475 +1231,193 @@
             };
             this.animationId = requestAnimationFrame(tick);
         }
-        
-        togglePlay() {
-            if (this.isPlaying) this.pause();
-            else this.play();
-        }
-        
+
+        togglePlay() { if (this.isPlaying) this.pause(); else this.play(); }
+
         play() {
-            this.audio.play();
+            if (qaCurrentPlayer && qaCurrentPlayer !== this) qaCurrentPlayer.pause();
+            qaCurrentPlayer = this;
+            const p = this.audio.play();
+            if (p && p.catch) p.catch(() => { this.stopPlayback(); });
             this.isPlaying = true;
             this.playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
             this.animateWaveform();
         }
-        
+
         pause() {
             this.audio.pause();
-            this.isPlaying = false;
-            this.playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-            if (this.animationId) cancelAnimationFrame(this.animationId);
+            this.stopPlayback();
         }
-        
+
         stopPlayback() {
             this.isPlaying = false;
             this.playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
             if (this.animationId) cancelAnimationFrame(this.animationId);
         }
-        
+
         updateTimeDisplay() {
-            const minutes = Math.floor(this.audio.currentTime / 60);
-            const seconds = Math.floor(this.audio.currentTime % 60);
-            this.timeDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const m = Math.floor(this.audio.currentTime / 60);
+            const s = Math.floor(this.audio.currentTime % 60);
+            this.timeDisplay.textContent = m + ':' + String(s).padStart(2, '0');
         }
     }
-    
-    function initAudioPlayers() {
-        document.querySelectorAll('.audio-mini').forEach(container => {
-            if (!container.dataset.initialized) {
-                container.dataset.initialized = 'true';
-                new CustomAudioPlayer(container);
-            }
-        });
-    }
-    
-    // ============================================
-    // AUDIO RECORDING
-    // ============================================
-    
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecording = false;
-    let recordingStartTime = null;
-    let recordingTimer = null;
-    let recordedAudioBlob = null;
-    
+
+    document.querySelectorAll('.audio-mini[data-audio-url]').forEach(function (el) { new CustomAudioPlayer(el); });
+
+    /* ============================================
+       Answer form: image preview, audio recording, AJAX submit
+       ============================================ */
+    const form = document.getElementById('commentForm');
+    const preview = document.getElementById('media-preview');
+    const imageInput = document.getElementById('answerImage');
     const recordBtn = document.getElementById('recordAudioBtn');
     const timerSpan = document.getElementById('recordingTimer');
-    
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+
+    // ---- image ----
+    imageInput.addEventListener('change', function () {
+        const old = document.getElementById('preview-image');
+        if (old) old.remove();
+        const file = this.files[0];
+        if (!file) return;
+        if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) { this.value = ''; qaToast('Use a JPG, PNG, GIF or WEBP image.', 'error'); return; }
+        if (file.size > MAX_IMAGE_BYTES) { this.value = ''; qaToast('Image must be 5 MB or smaller.', 'error'); return; }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'media-preview'; wrap.id = 'preview-image';
+        const img = document.createElement('img');
+        img.className = 'preview-img'; img.alt = 'Selected image';
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'remove-media'; rm.setAttribute('aria-label', 'Remove image'); rm.textContent = '×';
+        rm.onclick = function () { imageInput.value = ''; URL.revokeObjectURL(url); wrap.remove(); };
+        wrap.appendChild(img); wrap.appendChild(rm);
+        preview.appendChild(wrap);
+    });
+
+    // ---- audio recording ----
+    let recorder = null, stream = null, chunks = [], recording = false;
+    let recStart = 0, recTick = null, recordedBlob = null, recordedUrl = null, pendingStop = null;
+
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) {
+        recordBtn.style.display = 'none';      // browser cannot record
     }
-    
-    function updateTimer() {
-        if (recordingStartTime) {
-            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-            timerSpan.textContent = formatTime(elapsed);
-        }
+
+    function fmt(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+
+    function removeAudioPreview() {
+        const old = document.getElementById('preview-audio');
+        if (old) old.remove();
+        if (recordedUrl) { URL.revokeObjectURL(recordedUrl); recordedUrl = null; }
+        recordedBlob = null;
     }
-    
+
+    function showAudioPreview() {
+        removeAudioPreview();
+        recordedBlob = new Blob(chunks, { type: (recorder && recorder.mimeType) || 'audio/webm' });
+        recordedUrl = URL.createObjectURL(recordedBlob);
+        const wrap = document.createElement('div');
+        wrap.className = 'media-preview'; wrap.id = 'preview-audio';
+        const audio = document.createElement('audio');
+        audio.controls = true; audio.src = recordedUrl; audio.style.maxWidth = '100%';
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'remove-media'; rm.setAttribute('aria-label', 'Remove recording'); rm.textContent = '×';
+        rm.onclick = removeAudioPreview;
+        wrap.appendChild(audio); wrap.appendChild(rm);
+        preview.appendChild(wrap);
+    }
+
+    function resetRecordUi() {
+        clearInterval(recTick);
+        timerSpan.style.display = 'none';
+        recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Record audio';
+        recordBtn.classList.remove('recording');
+    }
+
     async function startRecording() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
-            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-            audioChunks = [];
-            
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) audioChunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = () => {
-                stream.getTracks().forEach(track => track.stop());
-                recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-                const audioUrl = URL.createObjectURL(recordedAudioBlob);
-                createAudioPreview(audioUrl, recordedAudioBlob);
-                if (recordingTimer) clearInterval(recordingTimer);
-                timerSpan.style.display = 'none';
-                recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Record Audio';
-                recordBtn.classList.remove('recording');
-            };
-            
-            mediaRecorder.start();
-            isRecording = true;
-            recordingStartTime = Date.now();
-            timerSpan.style.display = 'inline-block';
-            timerSpan.textContent = '0:00';
-            recordingTimer = setInterval(updateTimer, 1000);
-            recordBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop Recording';
-            recordBtn.classList.add('recording');
-        } catch (error) {
-            alert('Unable to access microphone. Please check permissions.');
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err) {
+            qaToast('Unable to use the microphone. Please check your browser permissions.', 'error');
+            return;
         }
-    }
-    
-    function stopRecording() {
-        if (mediaRecorder && isRecording) {
-            mediaRecorder.stop();
-            isRecording = false;
-        }
-    }
-    
-    function toggleRecording() {
-        if (isRecording) stopRecording();
-        else startRecording();
-    }
-    
-    if (recordBtn) recordBtn.addEventListener('click', toggleRecording);
-    
-    function createAudioPreview(audioUrl, blob) {
-        const previewDiv = document.getElementById('media-preview');
-        const existing = document.getElementById('preview-audio');
-        if (existing) existing.remove();
-        
-        const previewContainer = document.createElement('div');
-        previewContainer.className = 'media-preview';
-        previewContainer.id = 'preview-audio';
-        
-        const playerContainer = document.createElement('div');
-        playerContainer.className = 'audio-mini';
-        
-        const playBtn = document.createElement('button');
-        playBtn.className = 'play-audio-btn';
-        playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-        
-        const waveformDiv = document.createElement('div');
-        waveformDiv.className = 'waveform-bars';
-        
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'audio-time';
-        timeSpan.textContent = '0:00';
-        
-        playerContainer.appendChild(playBtn);
-        playerContainer.appendChild(waveformDiv);
-        playerContainer.appendChild(timeSpan);
-        previewContainer.appendChild(playerContainer);
-        
-        for (let i = 0; i < 20; i++) {
-            const bar = document.createElement('div');
-            bar.className = 'wave-bar';
-            bar.style.height = '4px';
-            waveformDiv.appendChild(bar);
-        }
-        
-        const removeBtn = document.createElement('button');
-        removeBtn.innerHTML = '×';
-        removeBtn.className = 'remove-media';
-        removeBtn.onclick = () => {
-            if (previewAudio) previewAudio.pause();
-            URL.revokeObjectURL(audioUrl);
-            previewContainer.remove();
-            recordedAudioBlob = null;
-            const audioInput = document.querySelector('input[name="audio"]');
-            if (audioInput) audioInput.value = '';
+        const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+        recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+        chunks = [];
+        recorder.ondataavailable = ev => { if (ev.data.size > 0) chunks.push(ev.data); };
+        recorder.onstop = function () {
+            stream.getTracks().forEach(t => t.stop());
+            resetRecordUi();
+            showAudioPreview();
+            if (pendingStop) { const done = pendingStop; pendingStop = null; done(); }
         };
-        previewContainer.appendChild(removeBtn);
-        previewDiv.appendChild(previewContainer);
-        
-        const previewAudio = new Audio(audioUrl);
-        let isPreviewPlaying = false;
-        let previewAnimationId = null;
-        const previewWaveBars = waveformDiv.querySelectorAll('.wave-bar');
-        
-        function animatePreview() {
-            if (isPreviewPlaying) {
-                previewWaveBars.forEach((bar, idx) => {
-                    const height = Math.sin(Date.now() / 200 + idx * 0.3) * 10 + 14;
-                    bar.style.height = Math.max(4, Math.min(28, height)) + 'px';
-                });
-                previewAnimationId = requestAnimationFrame(animatePreview);
-            }
-        }
-        
-        playBtn.addEventListener('click', () => {
-            if (isPreviewPlaying) {
-                previewAudio.pause();
-                isPreviewPlaying = false;
-                playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-                if (previewAnimationId) cancelAnimationFrame(previewAnimationId);
-            } else {
-                previewAudio.play();
-                isPreviewPlaying = true;
-                playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-                animatePreview();
-            }
+        recorder.start();
+        recording = true;
+        recStart = Date.now();
+        timerSpan.style.display = 'inline-block';
+        timerSpan.textContent = '0:00';
+        recTick = setInterval(() => { timerSpan.textContent = fmt(Math.floor((Date.now() - recStart) / 1000)); }, 500);
+        recordBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop recording';
+        recordBtn.classList.add('recording');
+    }
+
+    function stopRecording() {
+        return new Promise(function (resolve) {
+            if (!recorder || !recording) { resolve(); return; }
+            recording = false;
+            pendingStop = resolve;
+            recorder.stop();
         });
-        
-        previewAudio.addEventListener('timeupdate', () => {
-            const minutes = Math.floor(previewAudio.currentTime / 60);
-            const seconds = Math.floor(previewAudio.currentTime % 60);
-            timeSpan.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        });
-        
-        previewAudio.addEventListener('ended', () => {
-            isPreviewPlaying = false;
-            playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-            if (previewAnimationId) cancelAnimationFrame(previewAnimationId);
-        });
-        
-        const audioFile = new File([blob], `audio_${Date.now()}.webm`, { type: blob.type || 'audio/webm' });
-        let audioInput = document.querySelector('input[name="audio"]');
-        if (!audioInput) {
-            audioInput = document.createElement('input');
-            audioInput.type = 'file';
-            audioInput.name = 'audio';
-            audioInput.style.display = 'none';
-            document.getElementById('commentForm').appendChild(audioInput);
-        }
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(audioFile);
-        audioInput.files = dataTransfer.files;
     }
-    
-    // ============================================
-    // IMAGE PREVIEW
-    // ============================================
-    
-    function previewMedia(input, type) {
-        const previewDiv = document.getElementById('media-preview');
-        if (input.files && input.files[0]) {
-            const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const existing = document.getElementById(`preview-${type}`);
-                if (existing) existing.remove();
-                
-                const previewContainer = document.createElement('div');
-                previewContainer.className = 'media-preview';
-                previewContainer.id = `preview-${type}`;
-                
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.className = 'preview-img';
-                previewContainer.appendChild(img);
-                
-                const removeBtn = document.createElement('button');
-                removeBtn.innerHTML = '×';
-                removeBtn.className = 'remove-media';
-                removeBtn.onclick = () => {
-                    input.value = '';
-                    previewContainer.remove();
-                    const imageInput = document.querySelector('input[name="image"]');
-                    if (imageInput) imageInput.value = '';
-                };
-                previewContainer.appendChild(removeBtn);
-                previewDiv.appendChild(previewContainer);
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-    
-    // ============================================
-    // IMAGE MODAL
-    // ============================================
-    
-    function openImageModal(imageSrc) {
-        let modal = document.getElementById('imageModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'imageModal';
-            modal.className = 'image-modal';
-            modal.innerHTML = `<span class="modal-close">&times;</span><img class="modal-img" src="">`;
-            document.body.appendChild(modal);
-            modal.onclick = (e) => {
-                if (e.target === modal || e.target.classList.contains('modal-close')) {
-                    modal.classList.remove('active');
-                }
-            };
-        }
-        modal.querySelector('img').src = imageSrc;
-        modal.classList.add('active');
-    }
-    
-    // ============================================
-    // LIKE & RESOLVE FUNCTIONS
-    // ============================================
-    
-    function likePost(postId) {
-        fetch(`/chat/post/${postId}/like/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const likeBtn = document.querySelector('.like-btn');
-                const icon = likeBtn.querySelector('i');
-                const likeCount = document.getElementById('likeCount');
-                if (data.liked) {
-                    icon.className = 'fa-solid fa-heart';
-                    likeBtn.classList.add('liked');
-                } else {
-                    icon.className = 'fa-regular fa-heart';
-                    likeBtn.classList.remove('liked');
-                }
-                likeCount.textContent = data.total_likes;
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    function likeComment(commentId) {
-        fetch(`/chat/comment/${commentId}/like/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const likeBtn = document.querySelector(`.comment-like-btn-${commentId}`);
-                const icon = likeBtn.querySelector('i');
-                const likeCountSpan = document.querySelector(`.comment-like-count-${commentId}`);
-                if (data.liked) {
-                    icon.className = 'fa-solid fa-heart';
-                    likeBtn.classList.add('liked');
-                } else {
-                    icon.className = 'fa-regular fa-heart';
-                    likeBtn.classList.remove('liked');
-                }
-                likeCountSpan.textContent = data.total_likes;
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    function toggleResolved(postId) {
-        fetch(`/chat/post/${postId}/resolve/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-        })
-        .catch(error => console.error('Error:', error));
-    }
-    
-    function scrollToCommentForm() {
-        document.querySelector('.comment-textarea').focus();
-        document.querySelector('.comment-textarea').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // ============================================
-    // FORM SUBMISSION (AJAX)
-    // ============================================
-    
-    document.getElementById('commentForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (isRecording) {
-            stopRecording();
-            setTimeout(() => submitForm(), 500);
-        } else {
-            submitForm();
-        }
+
+    recordBtn.addEventListener('click', function () {
+        if (recording) stopRecording(); else startRecording();
     });
-    
-    function submitForm() {
-        const submitBtn = document.getElementById('submitCommentBtn');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<span class="loading-spinner"></span> Posting...';
-        submitBtn.disabled = true;
-        
-        const formData = new FormData(document.getElementById('commentForm'));
-        
-        fetch(document.getElementById('commentForm').action, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-            
-            if (data.success) {
-                const commentsList = document.getElementById('commentsList');
-                const emptyDiv = commentsList.querySelector('#emptyComments');
-                if (emptyDiv) emptyDiv.remove();
-                
-                let mediaHtml = '';
-                if (data.image_url) {
-                    mediaHtml += `<div class="comment-media"><img src="${data.image_url}" alt="Comment image" class="comment-image" onclick="openImageModal(this.src)"></div>`;
-                }
-                if (data.audio_url) {
-                    mediaHtml += `<div class="comment-media"><div class="audio-mini" data-audio-url="${data.audio_url}"><button class="play-audio-btn"><i class="fa-solid fa-play"></i></button><div class="waveform-bars"></div><span class="audio-time">0:00</span></div></div>`;
-                }
-                
-                const newComment = `
-                    <div class="comment-item" id="comment-${data.comment_id}">
-                        <img src="${data.avatar_url}" alt="${data.username}" class="comment-avatar-mini">
-                        <div class="comment-body">
-                            <div class="comment-author-name">${escapeHtml(data.username)}</div>
-                            ${data.comment ? `<div class="comment-text">${escapeHtml(data.comment).replace(/\n/g, '<br>')}</div>` : ''}
-                            ${mediaHtml}
-                            <div class="comment-meta-row">
-                                <span><i class="fa-regular fa-clock"></i> ${data.created_at}</span>
-                                <button class="comment-like-btn comment-like-btn-${data.comment_id}" onclick="likeComment('${data.comment_id}')">
-                                    <i class="fa-regular fa-heart"></i>
-                                    <span class="comment-like-count-${data.comment_id}">0</span> Likes
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                if (commentsList.firstChild) {
-                    commentsList.insertAdjacentHTML('afterbegin', newComment);
-                } else {
-                    commentsList.innerHTML = newComment;
-                }
-                
-                const newAudioPlayer = commentsList.querySelector('.audio-mini');
-                if (newAudioPlayer) new CustomAudioPlayer(newAudioPlayer);
-                
-                document.querySelector('.comment-textarea').value = '';
-                document.getElementById('media-preview').innerHTML = '';
-                const imageInput = document.querySelector('input[name="image"]');
-                const audioInput = document.querySelector('input[name="audio"]');
-                if (imageInput) imageInput.value = '';
-                if (audioInput) audioInput.value = '';
-                recordedAudioBlob = null;
-                
-                const commentCountHeader = document.getElementById('commentCountHeader');
-                const replyCountSpan = document.getElementById('replyCount');
-                let currentCount = parseInt(commentCountHeader.textContent) || 0;
-                let newCount = currentCount + 1;
-                commentCountHeader.textContent = newCount;
-                if (replyCountSpan) replyCountSpan.textContent = newCount;
-            } else if (data.error) {
-                alert(data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-            alert('An error occurred. Please try again.');
-        });
+
+    function audioFileName(mime) {
+        if (/mp4|aac/.test(mime)) return 'answer_audio.m4a';
+        if (/ogg/.test(mime)) return 'answer_audio.ogg';
+        return 'answer_audio.webm';
     }
-    
-    // Initialize audio players on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        initAudioPlayers();
+
+    // ---- submit (AJAX, so a rejected upload keeps the typed answer) ----
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitCommentBtn');
+        if (btn.disabled) return;
+
+        if (recording) await stopRecording();
+
+        const text = form.querySelector('.comment-textarea').value.trim();
+        if (!text && !imageInput.files[0] && !recordedBlob) { qaToast('Write an answer, or attach an image or audio.', 'error'); return; }
+        if (text.length > MAX_ANSWER) { qaToast('Your answer is too long.', 'error'); return; }
+        if (recordedBlob && recordedBlob.size > MAX_AUDIO_BYTES) { qaToast('Recording is too large (10 MB maximum).', 'error'); return; }
+
+        const fd = new FormData(form);
+        if (recordedBlob) {
+            const mime = (recordedBlob.type || 'audio/webm').split(';')[0].replace(/^video\//, 'audio/');
+            fd.set('audio', new File([recordedBlob], audioFileName(mime), { type: mime }));
+        }
+
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="qa-spin"></span> Posting…';
+        qaProgress(true);
+        try {
+            const data = await qaPost(form.action, fd);
+            const target = new URL(data.redirect, window.location.href);
+            if (target.pathname === window.location.pathname && target.search === window.location.search) {
+                window.location.hash = target.hash;
+                window.location.reload();
+            } else {
+                window.location.href = target.href;
+            }
+        } catch (err) {
+            qaProgress(false);
+            btn.disabled = false;
+            btn.innerHTML = original;
+            qaToast(err.message, 'error');
+        }
     });
 </script>
 

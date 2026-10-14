@@ -34,13 +34,24 @@ urlpatterns = [
     path('live/<str:room_name>/start/', views.start_live_room, name='start_live_room'),
 
     # ── Chat Room / Class Discussion URLs ─────────────────────────
+    # (Student Q&A Centre)
     path('chat/', views.chat_room, name='chat_room'),
     path('chat/create/', views.create_class_post, name='create_class_post'),
     path('chat/post/<uuid:post_id>/', views.chat_post_detail, name='chat_post_detail'),
+    path('chat/post/<uuid:post_id>/edit/', views.edit_class_post, name='edit_class_post'),
+    path('chat/post/<uuid:post_id>/delete/', views.delete_class_post, name='delete_class_post'),
     path('chat/post/<uuid:post_id>/comment/', views.chat_post_comment, name='chat_post_comment'),
     path('chat/post/<uuid:post_id>/like/', views.chat_post_like, name='chat_post_like'),
-    path('chat/comment/<uuid:comment_id>/like/', views.chat_comment_like, name='chat_comment_like'),
+    path('chat/post/<uuid:post_id>/bookmark/', views.bookmark_post, name='bookmark_post'),
     path('chat/post/<uuid:post_id>/resolve/', views.resolve_post, name='resolve_post'),
+    path('chat/comment/<uuid:comment_id>/like/', views.chat_comment_like, name='chat_comment_like'),
+    path('chat/comment/<uuid:comment_id>/helpful/', views.helpful_vote, name='helpful_vote'),
+    path('chat/comment/<uuid:comment_id>/accept/', views.accept_answer, name='accept_answer'),
+    path('chat/comment/<uuid:comment_id>/edit/', views.edit_class_comment, name='edit_class_comment'),
+    path('chat/comment/<uuid:comment_id>/delete/', views.delete_class_comment, name='delete_class_comment'),
+    # kind is 'post' (a question) or 'comment' (an answer)
+    path('chat/<str:kind>/<uuid:obj_id>/report/', views.report_content, name='report_content'),
+    path('chat/<str:kind>/<uuid:obj_id>/report/clear/', views.clear_reports, name='clear_reports'),
 
     # ── Admin dashboard (staff only) ──
     path('dashboard/', views.dashboard_home, name='admin_dashboard'),
@@ -63,6 +74,8 @@ urlpatterns = [
     path('edit-profile/', views.edit_profile, name='awa_edit_profile'),
     path('subjects/update/', views.update_subjects, name='update_subjects'),
     path('results/print/<str:username>/', views.print_test_results, name='print_test_results'),
+    path('id-card/', views.id_card, name='id_card'),
+    path('id-card/<str:username>/', views.id_card, name='id_card_user'),
     path('<str:username>', views.profile, name='profile'),
 ]
 

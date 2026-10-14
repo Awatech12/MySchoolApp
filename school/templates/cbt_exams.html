@@ -5,7 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TopMark – CBT Practice Exam</title>
+<title>TopMark – Test Practice</title>
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1246,16 +1246,16 @@
 
     <!-- Info banner -->
     <div class="sel-banner">
-      To start studying free online past questions, please select the subjects to be examined on.<br>
-      English Language is compulsory so you are allowed to select <strong>3 other subjects</strong> of your choice below.<br>
-      After selection, submit to enter the test hall.
+      To start practising free online past questions, choose the subjects you want to be tested on.<br>
+      No subject is compulsory — pick up to <strong>4 subjects</strong> of your choice, whether or not you registered for them.<br>
+      After selection, tap Proceed to enter the test hall.
     </div>
 
     <!-- Heading row -->
     <div class="sel-head-row">
       <div>
-        <div class="selection-title">Customize your CBT</div>
-        <div class="selection-sub">Select 3 other subjects of your choice and your preferred test mode</div>
+        <div class="selection-title">Customize your Test Practice</div>
+        <div class="selection-sub">Select up to 4 subjects of your choice and your preferred test mode</div>
       </div>
       <button class="proceed-btn" id="startBtn" disabled onclick="startExam()">Proceed &nbsp;→</button>
     </div>
@@ -1270,22 +1270,13 @@
         <!-- Counter badge -->
         <div class="slot-count-bar">
           <span>📚</span>
-          <span class="slot-count-text" id="slotCountText">1 subject selected...</span>
+          <span class="slot-count-text" id="slotCountText">No subject selected yet...</span>
         </div>
-        <p id="preselectHint" style="display:none;margin:8px 2px 0;font-size:12px;color:var(--gray3);">
-          ✅ Your registered subjects were selected for you. Tap a subject to change it.
+        <p id="preselectHint" style="margin:8px 2px 0;font-size:12px;color:var(--gray3);">
+          Tap a slot to choose any subject you like. Tap ✕ to remove one.
         </p>
 
-        <!-- English locked card -->
-        <div class="eng-card">
-          <div class="eng-card-title">📚 English Language &nbsp;<span style="font-size:11px;font-weight:600;color:var(--gray3);">🔒 Compulsory</span></div>
-          <label class="eng-checkbox-row" onclick="toggleComp()">
-            <div class="eng-checkbox checked" id="cbComp">✓</div>
-            <span class="eng-checkbox-label">Include English comprehension questions</span>
-          </label>
-        </div>
-
-        <!-- pick-able slots (built in JS: one per registered subject, minimum 3) -->
+        <!-- pick-able slots (built in JS: up to MAX_SUBJECTS, any subject) -->
         <div id="slotsList" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
 
@@ -1347,7 +1338,7 @@
 <!-- ===== SCREEN 2: LOADING ===== -->
 <div id="loadingScreen" class="screen">
   <div class="loading-spinner"></div>
-  <div class="loading-text">Generating Your Exam</div>
+  <div class="loading-text">Preparing Your Test</div>
   <div class="loading-sub" id="loadingSub">Building personalized questions for:</div>
   <div class="loading-subjects" id="loadingSubjects"></div>
 </div>
@@ -1480,7 +1471,7 @@
     <div class="rpt-letterhead">
       <div class="rpt-school" id="rptSchool"></div>
       <div class="rpt-addr" id="rptAddr"></div>
-      <div class="rpt-title">CBT Practice Exam — Student Result Slip</div>
+      <div class="rpt-title">Test Practice — Student Result Slip</div>
     </div>
 
     <!-- Student details -->
@@ -1496,11 +1487,11 @@
     <div class="results-meta" id="resultsMeta"></div>
     <div class="results-meta" id="resSaveStatus" style="margin-top:4px"></div>
 
-    <div class="rpt-sign"><div>Student's Signature</div><div>Exam Officer / Date</div></div>
+    <div class="rpt-sign"><div>Student's Signature</div><div>Teacher / Date</div></div>
     <div class="rpt-foot" id="rptFoot"></div>
 
     <div class="results-actions">
-      <button class="results-btn" onclick="location.reload()">↩ New Exam</button>
+      <button class="results-btn" onclick="location.reload()">↩ New Test</button>
       <button class="results-btn print-btn" onclick="printResult()">🖨️ Print / Save PDF</button>
       <button class="results-btn primary" onclick="reviewAnswers()">Review Answers</button>
     </div>
@@ -1509,9 +1500,7 @@
 
 <script src="{% static 'js/question_bank.js' %}"></script>
 
-{{ preselected_subjects|json_script:"preselectedSubjects" }}
 {{ student_info|json_script:"studentInfo" }}
-{{ allowed_subjects|json_script:"allowedSubjects" }}
 <script>
 // ===== SUBJECTS CONFIG =====
 const SUBJECTS = [
@@ -1562,12 +1551,11 @@ let currentGlobal   = 0;  // current index into flatQuestions
 let isReviewMode    = false;
 
 // ===== SELECTION STATE =====
-const ENGLISH_ID = 'english';
-let extraSlots    = [];                // pick-able subject slots (English is separate)
+const MAX_SUBJECTS = 4;                // a student may pick up to 4 subjects (none compulsory)
+let extraSlots    = [];                // subject slots (any subject, nothing is compulsory)
 let activePicker  = -1;                // which slot is being picked
 let testMode      = 35;                // 35 or 120
 let testYear      = 'All Years';
-let includeComp   = true;
 
 // ===== INIT SELECTION UI =====
 function buildSlots(n) {
@@ -1582,42 +1570,11 @@ function buildSlots(n) {
   }
 }
 
-// Subject ids this student may sit (registered subjects + English). null = unrestricted (staff).
-// Display-only guard: the server re-checks every result in cbt_submit and refuses the rest.
-let ALLOWED_IDS = null;
-try { ALLOWED_IDS = JSON.parse(document.getElementById('allowedSubjects').textContent); } catch (e) {}
-function isAllowedSubject(id) { return ALLOWED_IDS === null || ALLOWED_IDS.includes(id); }
-
-function applyPreselectedSubjects() {
-  let ids = [];
-  try { ids = JSON.parse(document.getElementById('preselectedSubjects').textContent) || []; } catch (e) {}
-  const picked = [];
-  ids.forEach(id => {
-    const sub = SUBJECTS.find(s => s.id === id);
-    if (sub && id !== ENGLISH_ID && !picked.includes(sub)) picked.push(sub);
-  });
-  // One slot per registered subject (minimum 3), never more than the subjects available
-  const pickable = SUBJECTS.filter(s => s.id !== ENGLISH_ID && isAllowedSubject(s.id)).length;
-  const n = ALLOWED_IDS === null
-    ? Math.min(Math.max(3, picked.length), SUBJECTS.length - 1)
-    : Math.max(1, Math.min(picked.length, pickable));
-  buildSlots(n);
-  picked.slice(0, n).forEach((sub, i) => { extraSlots[i] = sub; renderSlot(i); });
-  if (picked.length > 0) {
-    const hint = document.getElementById('preselectHint');
-    hint.textContent = `✅ Your ${picked.length + 1} registered subjects (including English) were selected for you. Tap a subject to change it, or ✕ to leave it out.`;
-    hint.style.display = 'block';
-  } else if (ALLOWED_IDS !== null) {
-    const hint = document.getElementById('preselectHint');
-    hint.innerHTML = 'You have not registered any subjects yet. Add your subjects on your <a href="' +
-      document.body.dataset.profileUrl + '#performance">profile</a> to take CBT exams.';
-    hint.style.display = 'block';
-  }
-}
+// Students may practise ANY subject, regardless of the subjects they registered.
 
 function initSelectionUI() {
   buildModeCards();
-  applyPreselectedSubjects();
+  buildSlots(MAX_SUBJECTS);
   updateSlotCountBadge();
   updateProceedBtn();
 }
@@ -1677,14 +1634,6 @@ function pickYear(yr) {
   document.getElementById('yearTrigger').classList.remove('active');
 }
 
-// ── Checkboxes ──
-function toggleComp() {
-  includeComp = !includeComp;
-  const cb = document.getElementById('cbComp');
-  cb.classList.toggle('checked', includeComp);
-  cb.textContent = includeComp ? '✓' : '';
-}
-
 // ── Slots ──
 function renderSlot(idx) {
   const el = document.getElementById('slot' + (idx + 1));
@@ -1715,27 +1664,26 @@ function removeSlot(e, idx) {
 }
 
 function updateSlotCountBadge() {
-  const filled = extraSlots.filter(Boolean).length + 1; // +1 for English
-  document.getElementById('slotCountText').textContent = `${filled} of ${extraSlots.length + 1} subjects selected...`;
+  const filled = extraSlots.filter(Boolean).length;
+  document.getElementById('slotCountText').textContent = filled
+    ? `${filled} of ${extraSlots.length} subjects selected...`
+    : 'No subject selected yet...';
 }
 
 function updateProceedBtn() {
-  const ready = extraSlots.some(Boolean); // English + at least one more subject
+  const ready = extraSlots.some(Boolean); // at least one subject of their choice
   document.getElementById('startBtn').disabled = !ready;
 }
 
 // ── Picker modal ──
 function openPicker(slotIdx) {
   activePicker = slotIdx;
-  const excluded = [ENGLISH_ID, ...extraSlots.filter(Boolean).map(s => s.id)];
-  const available = SUBJECTS.filter(s => s.id !== ENGLISH_ID && !excluded.includes(s.id) || extraSlots[slotIdx]?.id === s.id);
-
-  // Build available: exclude english + already-picked (but allow re-picking same slot)
+  // Every subject is available except ones already picked in another slot
   const currentSlot = extraSlots[slotIdx];
-  const usedIds = new Set([ENGLISH_ID, ...extraSlots.map(s => s?.id).filter(Boolean)]);
+  const usedIds = new Set(extraSlots.map(s => s?.id).filter(Boolean));
   if (currentSlot) usedIds.delete(currentSlot.id); // allow re-selection of current
 
-  const chips = SUBJECTS.filter(s => s.id !== ENGLISH_ID && !usedIds.has(s.id) && isAllowedSubject(s.id));
+  const chips = SUBJECTS.filter(s => !usedIds.has(s.id));
 
   const grid = document.getElementById('pickerChipsGrid');
   grid.innerHTML = chips.map(s => `
@@ -1761,7 +1709,6 @@ function filterChips(val) {
 }
 
 function pickSubject(id) {
-  if (!isAllowedSubject(id)) return;
   const sub = SUBJECTS.find(s => s.id === id);
   extraSlots[activePicker] = sub;
   renderSlot(activePicker);
@@ -1770,15 +1717,25 @@ function pickSubject(id) {
   document.getElementById('pickerOverlay').classList.remove('open');
 }
 
-// ── Get all selected subject IDs (English always first) ──
+// ── Get all selected subject IDs ──
 function getSelectedSubjectIds() {
-  return [ENGLISH_ID, ...extraSlots.filter(Boolean).map(s => s.id)];
+  return extraSlots.filter(Boolean).map(s => s.id);
 }
 
 // ===== START EXAM =====
 function startExam() {
-  selectedSubjects = getSelectedSubjectIds().filter(isAllowedSubject);
-  if (selectedSubjects.length < 2) return;   // English + at least one registered subject
+  selectedSubjects = getSelectedSubjectIds();
+  if (selectedSubjects.length < 1) return;   // at least one subject of their choice
+
+  // A subject with no questions loaded yet can't be practised – tell the student instead of
+  // starting an empty test.
+  const bankReady = (typeof QUESTION_BANK !== 'undefined') ? QUESTION_BANK : {};
+  const noQs = selectedSubjects.filter(id => !(bankReady[id] || []).length);
+  if (noQs.length) {
+    const names = noQs.map(id => SUBJECTS.find(x => x.id === id).name).join(', ');
+    alert('Questions for ' + names + ' are not available yet. Please remove it or choose another subject.');
+    return;
+  }
   showScreen('loadingScreen');
 
   const yearLabel = testYear === 'All Years' ? 'All Years (randomized)' : `${testYear} past questions`;
@@ -2266,7 +2223,7 @@ function fillStudentCard(now, timeUsedSec, totalQuestions) {
     ['Gender',           STUDENT.gender],
     ['Department',      STUDENT.specialization],
     ['School',           STUDENT.school],
-    ['Exam Date',        dateStr + ', ' + timeStr],
+    ['Test Date',        dateStr + ', ' + timeStr],
     ['Time Used',        fmtDuration(timeUsedSec) + ' of ' + testMode + ' min'],
     ['Subjects / Questions', selectedSubjects.length + ' subject(s) · ' + totalQuestions + ' questions'],
   ];

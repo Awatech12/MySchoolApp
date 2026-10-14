@@ -6,12 +6,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject
-from django.db.models import Q
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport
+from django.db.models import Q, F, Max, DateTimeField
+from django.db.models.functions import Coalesce
 import uuid, json, re, logging
 from datetime import date as date_type
 from datetime import datetime as datetime_type, time as time_type
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.views.decorators.cache import never_cache
 import csv, io, secrets
 from collections import Counter
@@ -24,6 +25,7 @@ from django.core.validators import validate_email
 from django.db.models import Avg, Count
 from django.http import HttpResponse, Http404, HttpResponseBadRequest
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.utils.timezone import localtime
 from django.views.decorators.http import require_GET
 
@@ -683,6 +685,40 @@ def print_test_results(request, username):
 
 
 @login_required
+@never_cache
+@require_GET
+def id_card(request, username=None):
+    """
+    Printable Student ID card (front and back, CR80 / 85.6 x 54 mm).
+
+    Students open their own card at /id-card/. Staff may open any student's card
+    at /id-card/<username>/. Everyone else is refused (same privacy rule as the
+    profile's private details).
+    """
+    target = request.user if username is None else get_object_or_404(User, username=username)
+    if not _can_view_private(request, target):
+        raise PermissionDenied
+
+    profile = get_object_or_404(Profile, user=target)
+    dob = profile.date_of_birth
+    subjects = list(
+        RegisteredSubject.objects.filter(student=target).values_list('subject_name', flat=True)
+    )
+
+    return render(request, 'id_card.html', {
+        'student':          target,
+        'profile':          profile,
+        'full_name':        target.get_full_name() or target.username,
+        'admission_number': profile.admission_number,
+        'class_level':      _normalize_class_level(profile.class_level) or profile.class_level,
+        'dob':              dob,
+        'issue_year':       profile.created_at.year if profile.created_at else timezone.now().year,
+        'subjects':         subjects,
+        'autoprint':        request.GET.get('autoprint') == '1',
+    })
+
+
+@login_required
 def update_profile(request, username):
     """Classic (non-AJAX) profile form. Students may only edit their own profile."""
     if request.user.username != username:
@@ -906,22 +942,8 @@ def start_live_room(request, room_name):
 
 # ── CBT Exam Views ───────────────────────────────────────────────
 
-# RegisteredSubject.subject_name  ->  subject id used by the picker in cbt_exams.html
-REGISTERED_TO_CBT_ID = {
-    'Mathematics': 'maths', 'English Language': 'english', 'Physics': 'physics',
-    'Chemistry': 'chemistry', 'Biology': 'biology', 'Economics': 'economics',
-    'Government': 'government', 'Literature in English': 'literature',
-    'Geography': 'geography', 'Further Mathematics': 'furthermaths',
-    'Agricultural Science': 'agric', 'Accounting': 'accounting', 'Commerce': 'commerce',
-    'Christian Religious Studies': 'crk', 'Islamic Religious Studies': 'irk',
-    'Civic Education': 'civicedu', 'Computer Studies': 'computer', 'French': 'french',
-    'Technical Drawing': 'techdrawing',
-}
-
-
-# CBT subjects every student may take whether or not they ticked them at registration
-# (the picker in cbt_exams.html always includes English as the compulsory subject).
-COMPULSORY_CBT_SUBJECTS = {'english'}
+# Test Practice: every student may practise ANY subject, whether or not they registered for it,
+# and no subject is compulsory. (Registered subjects are still used elsewhere, e.g. on the profile.)
 _CBT_ID_ALIASES = {'maths': 'mathematics'}   # picker id -> CBTExam.subject key
 
 
@@ -929,48 +951,10 @@ def _cbt_key(picker_id):
     return _CBT_ID_ALIASES.get(picker_id, picker_id)
 
 
-def _allowed_cbt_subjects(user):
-    """
-    CBTExam.subject keys this user may sit: the subjects they registered for plus the
-    compulsory ones. Returns None (no restriction) for staff, who are never students.
-    This is the single source of truth: cbt_submit and every CBT page view call it.
-    """
-    if user.is_staff or user.is_superuser:
-        return None
-    names = RegisteredSubject.objects.filter(student=user).values_list('subject_name', flat=True)
-    allowed = {_cbt_key(REGISTERED_TO_CBT_ID[n]) for n in names if n in REGISTERED_TO_CBT_ID}
-    return allowed | COMPULSORY_CBT_SUBJECTS
-
-
-def cbt_subject_required(subject_key):
-    """Decorator: redirect a student away from a CBT page for a subject they did not register."""
-    def decorator(view):
-        @wraps(view)
-        def wrapper(request, *args, **kwargs):
-            allowed = _allowed_cbt_subjects(request.user)
-            if allowed is not None and subject_key not in allowed:
-                messages.error(request, 'You have not registered for that subject. '
-                                        'Add it to your subjects on your profile first.')
-                return redirect('cbt_exams')
-            return view(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-
 @login_required
 @ensure_csrf_cookie
 def cbt_subjects(request):
-    """Render the CBT subject picker page, limited to the student's registered subjects."""
-    allowed = _allowed_cbt_subjects(request.user)
-    names = RegisteredSubject.objects.filter(student=request.user).values_list('subject_name', flat=True)
-    preselected = [REGISTERED_TO_CBT_ID[n] for n in names if n in REGISTERED_TO_CBT_ID]
-
-    # Picker ids the student may choose from (None = unrestricted, i.e. staff).
-    # Display only: the server re-checks every submitted result in cbt_submit.
-    allowed_ids = None if allowed is None else sorted(
-        {i for i in REGISTERED_TO_CBT_ID.values() if _cbt_key(i) in allowed} | {'english'}
-    )
-
+    """Render the Test Practice subject picker. Students can choose any subjects they like."""
     # Student details printed on the result slip (passport, name, admission no, etc.)
     user = request.user
     profile = Profile.objects.filter(user=user).first()
@@ -984,17 +968,14 @@ def cbt_subjects(request):
         'specialization': (profile.specialization if profile else '') or '',
     }
     return render(request, 'cbt_exams.html', {
-        'preselected_subjects': preselected,
-        'allowed_subjects': allowed_ids,
         'profile_url': reverse('profile', args=[user.username]),
         'student_info': student_info,
     })
 
 
 @login_required
-@cbt_subject_required('mathematics')
 def cbt_mathematics(request):
-    """Render the CBT exam page (Mathematics default)."""
+    """Render the practice test page (Mathematics default)."""
     return render(request, 'cbt_mathematics.html')
 
 
@@ -1003,32 +984,27 @@ cbt_exam = cbt_mathematics
 
 
 @login_required
-@cbt_subject_required('physics')
 def cbt_physics(request):
-    """Render the original Physics CBT exam page (unchanged)."""
+    """Render the original Physics practice test page (unchanged)."""
     return render(request, 'cbt_physics.html')
 
 
 @login_required
-@cbt_subject_required('english')
 def cbt_english(request):
     return render(request, 'cbt_english.html')
 
 
 @login_required
-@cbt_subject_required('chemistry')
 def cbt_chemistry(request):
     return render(request, 'cbt_chemistry.html')
 
 
 @login_required
-@cbt_subject_required('physics')
 def cbt_physics_topics(request):
     return render(request, 'cbt_physics_topics.html')
 
 
 @login_required
-@cbt_subject_required('mathematics')
 def cbt_mathematics_topics(request):
     return render(request, 'cbt_mathematics_topics.html')
 
@@ -1059,7 +1035,6 @@ def cbt_submit(request):
         return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
 
     valid_subjects = {k for k, _ in CBTExam.SUBJECT_CHOICES}
-    allowed_subjects = _allowed_cbt_subjects(request.user)   # None = unrestricted (staff)
 
     items = data.get('results')
     if not isinstance(items, list):
@@ -1081,12 +1056,6 @@ def cbt_submit(request):
             continue
         if subject not in valid_subjects or total < 1 or total > 500:
             continue
-        # A student may only save results for subjects they registered for. The whole
-        # submission is refused (nothing saved) so a tampered payload cannot be partly accepted.
-        if allowed_subjects is not None and subject not in allowed_subjects:
-            return JsonResponse({'ok': False,
-                                 'error': 'You can only take exams for the subjects you registered.'},
-                                status=403)
         score = max(0, min(score, total))
         pct = round(score / total * 100)
         rows.append(CBTExam(student=request.user, subject=subject, score=score, total=total,
@@ -1108,305 +1077,780 @@ def cbt_submit(request):
     })
 
 
-# ── Chat Room / Class Discussion Views ──────────────────────────────
+# ── Student Q&A Centre (chat room) ──────────────────────────────────
+#
+# Roles: the project has no separate Teacher model. Staff (is_staff) and
+# superusers are the teachers/administrators — the same rule the admin
+# dashboard already uses — so `_is_teacher()` follows that.
+#
+# Subjects and class levels come from the lists already used for student
+# registration and profiles (SENIOR_SECONDARY_SUBJECTS / CLASS_LEVEL_CHOICES).
+
+QA_PAGE_SIZE        = 10
+QA_ANSWER_PAGE_SIZE = 20
+QA_TITLE_MIN, QA_TITLE_MAX = 5, 300
+QA_BODY_MIN,  QA_BODY_MAX  = 10, 5000
+QA_ANSWER_MAX       = 5000
+QA_TOPIC_MAX        = 150
+QA_MAX_IMAGE_BYTES  = 5 * 1024 * 1024
+QA_MAX_AUDIO_BYTES  = 10 * 1024 * 1024
+QA_ALLOWED_AUDIO_TYPES = (
+    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg',
+    'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/webm',
+)
+QA_ALLOWED_AUDIO_EXTS = ('.mp3', '.wav', '.ogg', '.oga', '.m4a', '.mp4', '.aac', '.webm')
+
+QA_FORM_LIMITS = {
+    'title_min': QA_TITLE_MIN, 'title_max': QA_TITLE_MAX,
+    'body_min': QA_BODY_MIN, 'body_max': QA_BODY_MAX, 'topic_max': QA_TOPIC_MAX,
+}
+
+QA_STATUS_CHOICES = [
+    ('',           'All statuses'),
+    ('unanswered', 'Unanswered'),
+    ('answered',   'Answered'),
+    ('resolved',   'Resolved'),
+]
+QA_SORT_CHOICES = [
+    ('latest',  'Newest'),
+    ('active',  'Recently active'),
+    ('answers', 'Most answers'),
+    ('oldest',  'Oldest'),
+]
+QA_ANSWER_SORT_CHOICES = [
+    ('helpful', 'Most helpful'),
+    ('oldest',  'Oldest first'),
+    ('newest',  'Newest first'),
+]
+
+
+def _is_teacher(user):
+    """Teachers/administrators = staff or superusers (existing role system)."""
+    return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+
+
+def _wants_json(request):
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
+def _display_name(user):
+    return user.get_full_name() or user.username
+
+
+def _qa_fail(request, message, fallback_url, status=400):
+    """Error response that suits both AJAX (JSON) and normal form posts (message + redirect)."""
+    if _wants_json(request):
+        return JsonResponse({'success': False, 'error': message}, status=status)
+    messages.error(request, message)
+    return redirect(fallback_url)
+
+
+def _back_or(request, fallback_name, *args):
+    """Redirect to the page the user came from (same host only), else a named URL."""
+    ref = request.META.get('HTTP_REFERER')
+    if ref and url_has_allowed_host_and_scheme(
+            ref, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(ref)
+    return redirect(fallback_name, *args)
+
+
+def _qa_subject_names():
+    """Canonical subject choices for new questions: registered subject list + General."""
+    return sorted(SENIOR_SECONDARY_SUBJECTS) + ['General']
+
+
+def _qa_filter_subjects():
+    """Subjects for the filter bar: the canonical list plus any legacy values already used on old questions."""
+    names = _qa_subject_names()
+    legacy = (ClassPost.objects.exclude(subject='').exclude(subject__in=names)
+              .values_list('subject', flat=True).distinct())
+    return names + sorted(set(legacy))
+
+
+def _default_class_level(user):
+    """The student's own class level (SS1/SS2/SS3) from their profile, if known."""
+    try:
+        level = _normalize_class_level(user.profile.class_level)
+    except Exception:
+        level = None
+    level = (level or '')[:3]
+    return level if level in CLASS_LEVEL_CHOICES else ''
+
+
+def _clean_question_fields(data, allowed_subjects):
+    """Server-side validation for the question form. Returns (cleaned, errors)."""
+    errors = {}
+    title   = ' '.join((data.get('title') or '').split())
+    content = (data.get('content') or '').strip()
+    subject = (data.get('subject') or '').strip()
+    level   = (data.get('class_level') or '').strip().upper()
+    topic   = ' '.join((data.get('topic') or '').split())
+
+    if len(title) < QA_TITLE_MIN:
+        errors['title'] = f'Enter a clear title (at least {QA_TITLE_MIN} characters).'
+    elif len(title) > QA_TITLE_MAX:
+        errors['title'] = f'The title is too long (maximum {QA_TITLE_MAX} characters).'
+
+    by_lower = {s.lower(): s for s in allowed_subjects}
+    if not subject:
+        errors['subject'] = 'Choose a subject.'
+    elif subject.lower() not in by_lower:
+        errors['subject'] = 'Choose a subject from the list.'
+    else:
+        subject = by_lower[subject.lower()]
+
+    if level and level not in CLASS_LEVEL_CHOICES:
+        errors['class_level'] = 'Choose SS1, SS2 or SS3.'
+
+    if len(topic) > QA_TOPIC_MAX:
+        errors['topic'] = f'The topic is too long (maximum {QA_TOPIC_MAX} characters).'
+
+    if len(content) < QA_BODY_MIN:
+        errors['content'] = f'Explain your question a little more (at least {QA_BODY_MIN} characters).'
+    elif len(content) > QA_BODY_MAX:
+        errors['content'] = f'The explanation is too long (maximum {QA_BODY_MAX} characters).'
+
+    cleaned = {'title': title, 'content': content, 'subject': subject,
+               'class_level': level, 'topic': topic}
+    return cleaned, errors
+
+
+def _check_image_upload(upload):
+    """Return an error string if an uploaded image is unacceptable, else None."""
+    if upload.content_type not in ALLOWED_PICTURE_TYPES:
+        return 'Image must be a JPG, PNG, WEBP or GIF file.'
+    if upload.size > QA_MAX_IMAGE_BYTES:
+        return 'Image must be 5 MB or smaller.'
+    try:
+        from PIL import Image
+        Image.open(upload).verify()
+        upload.seek(0)
+    except ImportError:
+        pass
+    except Exception:
+        return 'That file is not a valid image.'
+    return None
+
+
+def _looks_like_audio(upload):
+    """Check the file's first bytes against common audio containers (the content type is client-supplied)."""
+    try:
+        head = upload.read(16)
+        upload.seek(0)
+    except Exception:
+        return False
+    return bool(
+        head[:3] == b'ID3'                                   # MP3 with ID3 tag
+        or (len(head) > 1 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0)   # MP3 / AAC frame sync
+        or (head[:4] == b'RIFF' and head[8:12] == b'WAVE')   # WAV
+        or head[:4] == b'OggS'                               # Ogg
+        or head[:4] == b'\x1a\x45\xdf\xa3'                   # WebM / Matroska
+        or head[4:8] == b'ftyp'                              # MP4 / M4A
+    )
+
+
+def _check_audio_upload(upload):
+    """Return an error string if an uploaded audio file is unacceptable, else None."""
+    name = (upload.name or '').lower()
+    if upload.content_type not in QA_ALLOWED_AUDIO_TYPES or not name.endswith(QA_ALLOWED_AUDIO_EXTS):
+        return 'Audio must be an MP3, WAV, OGG, M4A or WEBM file.'
+    if upload.size > QA_MAX_AUDIO_BYTES:
+        return 'Audio must be 10 MB or smaller.'
+    if not _looks_like_audio(upload):
+        return 'That file is not a valid audio recording.'
+    return None
+
+
+def _notify(user_id, post, message):
+    Notification.objects.create(user_id=user_id, class_post=post, message=message)
+
+
+# ── Question list ───────────────────────────────────────────────────
 
 @login_required
 def chat_room(request):
-    """
-    Main chat room page — supports sort, subject/status filters,
-    trending posts, live stats, and a lightweight count-polling endpoint
-    for the new-posts banner.
-    """
-    from django.db.models import Count
-    from django.utils import timezone
-    import datetime
+    """Student Q&A Centre: searchable, filterable, paginated list of questions."""
+    q       = (request.GET.get('q') or '').strip()[:100]
+    subject = (request.GET.get('subject') or '').strip()
+    level   = (request.GET.get('level') or '').strip().upper()
+    status  = (request.GET.get('status') or '').strip()
+    sort    = (request.GET.get('sort') or 'latest').strip()
+    scope   = (request.GET.get('scope') or '').strip()      # '' | 'mine' | 'saved'
 
-    # ── Count-only polling endpoint (for the new-posts banner) ────
-    # Called by JS every 60s with ?_count=1 to check if new posts exist.
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' and request.GET.get('_count'):
-        filter_subject = request.GET.get('subject', '')
-        filter_status  = request.GET.get('status', '')
-        qs = ClassPost.objects.all()
-        if filter_subject:
-            qs = qs.filter(subject__iexact=filter_subject)
-        if filter_status == 'resolved':
-            qs = qs.filter(is_resolved=True)
-        elif filter_status == 'unresolved':
-            qs = qs.filter(is_resolved=False)
-        return JsonResponse({'count': qs.count()})
+    # Links created before the redesign used these values.
+    if sort == 'unanswered':
+        sort, status = 'latest', status or 'unanswered'
+    if status == 'unresolved':
+        status = 'open'
+    if sort not in dict(QA_SORT_CHOICES):
+        sort = 'latest'
+    if status not in ('open',) + tuple(k for k, _ in QA_STATUS_CHOICES if k):
+        status = ''
+    if level not in CLASS_LEVEL_CHOICES:
+        level = ''
+    if scope not in ('mine', 'saved'):
+        scope = ''
 
-    # ── Query params ───────────────────────────────────────────────
-    filter_subject = request.GET.get('subject', '')
-    filter_status  = request.GET.get('status', '')
-    sort_by        = request.GET.get('sort', 'latest')   # latest | popular | unanswered
+    posts = ClassPost.objects.select_related('author', 'author__profile')
 
-    # ── Subject list for filter chips ─────────────────────────────
-    subjects = ClassPost.objects.values_list('subject', flat=True).distinct()
-    subject_list = sorted([s for s in subjects if s])
-
-    # ── Base queryset ──────────────────────────────────────────────
-    posts = ClassPost.objects.select_related(
-        'author', 'author__profile'
-    ).prefetch_related('like', 'class_comments')
-
-    if filter_subject:
-        posts = posts.filter(subject__iexact=filter_subject)
-    if filter_status == 'resolved':
-        posts = posts.filter(is_resolved=True)
-    elif filter_status == 'unresolved':
-        posts = posts.filter(is_resolved=False)
-
-    # ── Sort ───────────────────────────────────────────────────────
-    if sort_by == 'popular':
-        # Rank by likes first, then views
-        posts = posts.annotate(like_count=Count('like')).order_by('-like_count', '-view')
-    elif sort_by == 'unanswered':
-        # Only posts with zero replies, newest first
-        posts = posts.annotate(reply_count=Count('class_comments')).filter(reply_count=0).order_by('-created_at')
-    else:
-        # Default: latest
-        posts = posts.order_by('-created_at')
-
-    # ── Stats for the stats bar ────────────────────────────────────
-    all_posts      = ClassPost.objects.all()
-    resolved_count = all_posts.filter(is_resolved=True).count()
-
-    today_start  = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    active_today = all_posts.filter(created_at__gte=today_start).count()
-
-    # ── Trending strip (top 6 by engagement in last 7 days) ───────
-    seven_days_ago = timezone.now() - datetime.timedelta(days=7)
-    trending_posts = (
-        ClassPost.objects
-        .filter(created_at__gte=seven_days_ago)
-        .annotate(
-            like_count=Count('like'),
-            reply_count=Count('class_comments'),
+    if scope == 'mine':
+        posts = posts.filter(author=request.user)
+    elif scope == 'saved':
+        posts = posts.filter(bookmarked_by=request.user)
+    if subject:
+        posts = posts.filter(subject__iexact=subject)
+    if level:
+        posts = posts.filter(class_level=level)
+    for term in q.split()[:5]:
+        posts = posts.filter(
+            Q(title__icontains=term) | Q(content__icontains=term) |
+            Q(topic__icontains=term) | Q(subject__icontains=term)
         )
-        .order_by('-like_count', '-reply_count', '-view')
-        [:6]
+
+    posts = posts.annotate(
+        answer_total=Count('class_comments', distinct=True),
+        last_activity_at=Coalesce(
+            Max('class_comments__created_at'), F('created_at'),
+            output_field=DateTimeField(),
+        ),
     )
 
+    if status == 'unanswered':
+        posts = posts.filter(answer_total=0)
+    elif status == 'answered':
+        posts = posts.filter(answer_total__gt=0, is_resolved=False)
+    elif status == 'resolved':
+        posts = posts.filter(is_resolved=True)
+    elif status == 'open':
+        posts = posts.filter(is_resolved=False)
+
+    order = {
+        'latest':  ('-created_at',),
+        'oldest':  ('created_at',),
+        'active':  ('-last_activity_at', '-created_at'),
+        'answers': ('-answer_total', '-created_at'),
+    }[sort]
+    posts = posts.order_by(*order)
+
+    page_obj = Paginator(posts, QA_PAGE_SIZE).get_page(request.GET.get('page'))
+
+    # One extra query: which of these questions has the user saved?
+    page_ids = [p.pk for p in page_obj.object_list]
+    saved_ids = set(
+        ClassPost.objects.filter(pk__in=page_ids, bookmarked_by=request.user).values_list('pk', flat=True)
+    )
+    for p in page_obj.object_list:
+        p.is_saved = p.pk in saved_ids
+
+    params = {k: v for k, v in (('q', q), ('subject', subject), ('level', level),
+                                ('status', status if status != 'open' else ''),
+                                ('sort', sort if sort != 'latest' else ''), ('scope', scope)) if v}
     context = {
-        'posts':           posts,
-        'subjects':        subject_list,
-        'current_subject': filter_subject,
-        'current_status':  filter_status,
-        'current_sort':    sort_by,
-        'resolved_count':  resolved_count,
-        'active_today':    active_today,
-        'trending_posts':  trending_posts,
+        'page_obj':        page_obj,
+        'total_found':     page_obj.paginator.count,
+        'q':               q,
+        'current_subject': subject,
+        'current_level':   level,
+        'current_status':  status,
+        'current_sort':    sort,
+        'current_scope':   scope,
+        'subject_options': _qa_filter_subjects(),
+        'level_options':   CLASS_LEVEL_CHOICES,
+        'form_subjects':   _qa_subject_names(),          # ask-a-question modal
+        'default_level':   _default_class_level(request.user),
+        'limits':          QA_FORM_LIMITS,
+        'status_options':  QA_STATUS_CHOICES,
+        'sort_options':    QA_SORT_CHOICES,
+        'has_filters':     bool(q or subject or level or status),
+        'querystring':     urlencode(params),   # used by pagination links
     }
     return render(request, 'chat_room.html', context)
 
 
+# ── Ask / edit / delete a question ──────────────────────────────────
+
 @login_required
 def create_class_post(request):
-    """Create a new question/post in the chat room"""
-    if request.method == 'POST':
-        title   = request.POST.get('title', '').strip()
-        content = request.POST.get('content', '').strip()
-        subject = request.POST.get('subject', '').strip()
-        image   = request.FILES.get('image')
+    """Save a new question. The form is the modal on the Q&A Centre page."""
+    if request.method != 'POST':
+        return redirect('chat_room')
 
-        if not title or not content:
-            messages.error(request, 'Please provide both title and content for your question.')
-            return redirect('chat_room')
+    cleaned, errors = _clean_question_fields(request.POST, _qa_subject_names())
+    image = request.FILES.get('image')
+    audio = request.FILES.get('audio')
+    if image:
+        err = _check_image_upload(image)
+        if err:
+            errors['image'] = err
+    if audio:
+        err = _check_audio_upload(audio)
+        if err:
+            errors['audio'] = err
 
-        post = ClassPost.objects.create(
-            author=request.user,
-            title=title,
-            content=content,
-            subject=subject if subject else 'General',
-        )
+    if errors:
+        if _wants_json(request):
+            return JsonResponse({'success': False, 'errors': errors}, status=400)
+        messages.error(request, ' '.join(errors.values()))
+        return redirect('chat_room')
 
-        if image:
-            post.image = image
-            post.save()
+    post = ClassPost.objects.create(
+        author=request.user, image=image or None, audio=audio or None, **cleaned
+    )
+    messages.success(request, 'Your question has been posted.')
 
-        messages.success(request, 'Your question has been posted!')
+    url = reverse('chat_post_detail', args=[post.post_id])
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'post_id': str(post.post_id), 'redirect': url})
+    return redirect(url)
 
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'post_id': str(post.post_id),
-                'redirect': f'/chat/post/{post.post_id}/'
-            })
 
-        return redirect('chat_post_detail', post_id=post.post_id)
+@login_required
+def edit_class_post(request, post_id):
+    """Save edits to your own question (the form is the Edit modal on the question page)."""
+    post = get_object_or_404(ClassPost, post_id=post_id)
+    if post.author_id != request.user.pk:
+        raise PermissionDenied
+    detail_url = reverse('chat_post_detail', args=[post.post_id])
+    if request.method != 'POST':
+        return redirect(detail_url)
 
+    allowed = _qa_subject_names() + ([post.subject] if post.subject else [])
+    cleaned, errors = _clean_question_fields(request.POST, allowed)
+    image = request.FILES.get('image')
+    audio = request.FILES.get('audio')
+    if image:
+        err = _check_image_upload(image)
+        if err:
+            errors['image'] = err
+    if audio:
+        err = _check_audio_upload(audio)
+        if err:
+            errors['audio'] = err
+    if errors:
+        if _wants_json(request):
+            return JsonResponse({'success': False, 'errors': errors}, status=400)
+        messages.error(request, ' '.join(errors.values()))
+        return redirect(detail_url)
+
+    for field, value in cleaned.items():
+        setattr(post, field, value)
+    if image:
+        post.image = image
+    elif request.POST.get('remove_image'):
+        post.image = None
+    if audio:
+        post.audio = audio
+    elif request.POST.get('remove_audio'):
+        post.audio = None
+    post.save()
+
+    messages.success(request, 'Your question has been updated.')
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'redirect': detail_url})
+    return redirect(detail_url)
+
+
+@login_required
+@require_POST
+def delete_class_post(request, post_id):
+    """Delete a question: its author, or a teacher/admin moderating it."""
+    post = get_object_or_404(ClassPost, post_id=post_id)
+    if not (post.author_id == request.user.pk or _is_teacher(request.user)):
+        raise PermissionDenied
+    post.delete()
+    messages.success(request, 'The question has been deleted.')
     return redirect('chat_room')
 
 
+# ── Question page ───────────────────────────────────────────────────
+
 @login_required
 def chat_post_detail(request, post_id):
-    """View a single post with its comments/replies"""
-    post           = get_object_or_404(ClassPost, post_id=post_id)
-    comments       = ClassPostComment.objects.filter(post=post)
-    total_comments = comments.count()
+    """A single question with its accepted answer and paginated answers."""
+    post = get_object_or_404(
+        ClassPost.objects.select_related('author', 'author__profile'), post_id=post_id
+    )
+    user    = request.user
+    teacher = _is_teacher(user)
 
-    post.view += 1
-    post.save()
+    # Count the view without touching updated_at.
+    ClassPost.objects.filter(pk=post.pk).update(view=F('view') + 1)
+
+    sort = request.GET.get('sort', 'helpful')
+    if sort not in dict(QA_ANSWER_SORT_CHOICES):
+        sort = 'helpful'
+
+    base = (ClassPostComment.objects.filter(post=post)
+            .select_related('commentator', 'commentator__profile')
+            .annotate(helpful_total=Count('helpful', distinct=True),
+                      like_total=Count('like', distinct=True)))
+
+    accepted = base.filter(pk=post.accepted_answer_id).first() if post.accepted_answer_id else None
+    others = base.exclude(pk=accepted.pk) if accepted else base
+    others = others.order_by(*{
+        'helpful': ('-helpful_total', 'created_at'),
+        'oldest':  ('created_at',),
+        'newest':  ('-created_at',),
+    }[sort])
+
+    page_obj = Paginator(others, QA_ANSWER_PAGE_SIZE).get_page(request.GET.get('page'))
+    visible = ([accepted] if accepted else []) + list(page_obj.object_list)
+    ids = [c.pk for c in visible]
+
+    # Per-user state for the visible answers, in a handful of queries.
+    liked    = set(ClassPostComment.objects.filter(pk__in=ids, like=user).values_list('pk', flat=True))
+    helpful  = set(ClassPostComment.objects.filter(pk__in=ids, helpful=user).values_list('pk', flat=True))
+    reported = set(ClassPostReport.objects.filter(reporter=user, comment_id__in=ids)
+                   .values_list('comment_id', flat=True))
+
+    is_asker   = post.author_id == user.pk
+    can_accept = is_asker or teacher
+
+    # Open reports are only shown to teachers/admins.
+    post_reports, comment_reports = [], {}
+    if teacher:
+        open_reports = (ClassPostReport.objects.filter(is_handled=False)
+                        .filter(Q(post=post) | Q(comment_id__in=ids))
+                        .select_related('reporter'))
+        for r in open_reports:
+            if r.post_id:
+                post_reports.append(r)
+            else:
+                comment_reports.setdefault(r.comment_id, []).append(r)
+
+    for c in visible:
+        c.user_liked    = c.pk in liked
+        c.user_helpful  = c.pk in helpful
+        c.user_reported = c.pk in reported
+        c.is_mine       = c.commentator_id == user.pk
+        c.can_edit      = c.is_mine
+        c.can_delete    = c.is_mine or teacher
+        c.can_vote      = not c.is_mine
+        c.can_report    = not c.is_mine
+        c.can_accept    = can_accept and c.commentator_id != post.author_id
+        c.is_accepted   = c.pk == post.accepted_answer_id
+        c.open_reports  = comment_reports.get(c.pk, [])   # (not `reports`: that is the reverse relation name)
 
     context = {
-        'post':           post,
-        'comments':       comments,
-        'total_comments': total_comments,
+        'post':             post,
+        'accepted':         accepted,
+        'answers':          visible,          # accepted answer first (every page), then this page's answers
+        'page_obj':         page_obj,
+        'total_answers':    post.class_comments.count(),
+        'answer_sort':      sort,
+        'answer_sort_options': QA_ANSWER_SORT_CHOICES,
+        'like_total':       post.like.count(),
+        'user_liked':       post.like.filter(pk=user.pk).exists(),
+        'is_saved':         post.bookmarked_by.filter(pk=user.pk).exists(),
+        'user_reported':    ClassPostReport.objects.filter(reporter=user, post=post).exists(),
+        'is_asker':         is_asker,
+        'is_teacher':       teacher,
+        'can_edit_post':    is_asker,
+        'can_delete_post':  is_asker or teacher,
+        'can_resolve':      is_asker or teacher,
+        'can_report_post':  not is_asker,
+        'post_reports':     post_reports,
+        'report_reasons':   ClassPostReport.REASON_CHOICES,
+        'max_answer_chars': QA_ANSWER_MAX,
+        'form_subjects':    _qa_subject_names() + ([post.subject] if post.subject and post.subject not in _qa_subject_names() else []),
+        'level_options':    CLASS_LEVEL_CHOICES,
+        'limits':           QA_FORM_LIMITS,
     }
     return render(request, 'chat_post_detail.html', context)
 
 
+# ── Answers ─────────────────────────────────────────────────────────
+
 @login_required
+@require_POST
 def chat_post_comment(request, post_id):
-    """Add a comment/reply to a chat post with optional image/audio attachments"""
-    if request.method == 'POST':
-        post = get_object_or_404(ClassPost, post_id=post_id)
-        comment_text = request.POST.get('comment', '').strip()
-        image_file = request.FILES.get('image')
-        audio_file = request.FILES.get('audio')
+    """Post an answer (text, image and/or audio). Everything is validated before anything is saved."""
+    post = get_object_or_404(ClassPost, post_id=post_id)
+    detail_url = reverse('chat_post_detail', args=[post.post_id])
 
-        # Validate: at least one of text, image, or audio is provided
-        if not comment_text and not image_file and not audio_file:
-            messages.error(request, 'Please provide a comment, image, or audio.')
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': 'No content provided'}, status=400)
-            return redirect('chat_post_detail', post_id=post_id)
+    text  = (request.POST.get('comment') or '').strip()
+    image = request.FILES.get('image')
+    audio = request.FILES.get('audio')
 
-        # Create the comment
-        comment = ClassPostComment.objects.create(
-            post=post,
-            commentator=request.user,
-            comment=comment_text if comment_text else ''
-        )
+    if not (text or image or audio):
+        return _qa_fail(request, 'Write an answer, or attach an image or audio.', detail_url)
+    if len(text) > QA_ANSWER_MAX:
+        return _qa_fail(request, f'Your answer is too long (maximum {QA_ANSWER_MAX} characters).', detail_url)
+    if image:
+        err = _check_image_upload(image)
+        if err:
+            return _qa_fail(request, err, detail_url)
+    if audio:
+        err = _check_audio_upload(audio)
+        if err:
+            return _qa_fail(request, err, detail_url)
 
-        # Handle image upload
-        if image_file:
-            allowed_image_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-            if image_file.content_type in allowed_image_types:
-                comment.image = image_file
-            else:
-                messages.warning(request, 'Unsupported image format. Please use JPEG, PNG, GIF, or WEBP.')
+    comment = ClassPostComment.objects.create(
+        post=post, commentator=request.user, comment=text,
+        image=image or None, audio=audio or None,
+    )
 
-        # Handle audio upload
-        if audio_file:
-            allowed_audio_types = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus']
-            if audio_file.content_type in allowed_audio_types:
-                if audio_file.size > 10 * 1024 * 1024:
-                    messages.warning(request, 'Audio file too large. Maximum size is 10MB.')
-                else:
-                    comment.audio = audio_file
-            else:
-                messages.warning(request, 'Unsupported audio format. Please use MP3, WAV, or OGG.')
+    # Notify the asker and anyone who saved the question (never the person answering).
+    me = request.user
+    recipients = set(post.bookmarked_by.exclude(pk=me.pk).values_list('pk', flat=True))
+    asker_gets = post.author_id != me.pk
+    if asker_gets:
+        recipients.add(post.author_id)
+    title = post.title[:50]
+    notes = []
+    for uid in recipients:
+        if uid == post.author_id:
+            msg = f'{_display_name(me)} answered your question: "{title}"'
+        else:
+            msg = f'New answer on a question you saved: "{title}"'
+        notes.append(Notification(user_id=uid, class_post=post, message=msg))
+    if notes:
+        Notification.objects.bulk_create(notes)
 
-        comment.save()
-
-        # Create notification for post author
-        if post.author != request.user:
-            notification_message = f'{request.user.username} replied to your question: "{post.title[:50]}"'
-            if image_file and not comment_text:
-                notification_message = f'{request.user.username} added an image to your question: "{post.title[:50]}"'
-            elif audio_file and not comment_text:
-                notification_message = f'{request.user.username} added audio to your question: "{post.title[:50]}"'
-
-            Notification.objects.create(
-                user=post.author,
-                class_post=post,
-                message=notification_message
-            )
-
-        messages.success(request, 'Reply added!')
-
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            response_data = {
-                'success': True,
-                'comment_id': str(comment.comment_id),
-                'username': request.user.get_full_name() or request.user.username,
-                'comment': comment.comment,
-                'created_at': comment.created_at.strftime('%d %b %Y, %I:%M %p'),
-                'avatar_url': request.user.profile.get_picture_url,
-                'has_media': comment.has_media,
-            }
-
-            if comment.get_image_url:
-                response_data['image_url'] = comment.get_image_url
-
-            if comment.get_audio_url:
-                response_data['audio_url'] = comment.get_audio_url
-
-            return JsonResponse(response_data)
-
-    return redirect('chat_post_detail', post_id=post_id)
+    messages.success(request, 'Your answer has been posted.')
+    # Newest first, so the answer the user just wrote is on the first page.
+    redirect_url = f'{detail_url}?sort=newest#comment-{comment.comment_id}'
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'comment_id': str(comment.comment_id), 'redirect': redirect_url})
+    return redirect(redirect_url)
 
 
 @login_required
+@require_POST
+def edit_class_comment(request, comment_id):
+    """Edit the text of your own answer."""
+    comment = get_object_or_404(ClassPostComment.objects.select_related('post'), comment_id=comment_id)
+    if comment.commentator_id != request.user.pk:
+        raise PermissionDenied
+    anchor = f"{reverse('chat_post_detail', args=[comment.post_id])}#comment-{comment.comment_id}"
+
+    text = (request.POST.get('comment') or '').strip()
+    if not text and not comment.has_media:
+        return _qa_fail(request, 'An answer cannot be empty.', anchor)
+    if len(text) > QA_ANSWER_MAX:
+        return _qa_fail(request, f'Your answer is too long (maximum {QA_ANSWER_MAX} characters).', anchor)
+
+    comment.comment = text
+    comment.save(update_fields=['comment'])
+    messages.success(request, 'Your answer has been updated.')
+    return redirect(anchor)
+
+
+@login_required
+@require_POST
+def delete_class_comment(request, comment_id):
+    """Delete an answer: its author, or a teacher/admin moderating it."""
+    comment = get_object_or_404(ClassPostComment.objects.select_related('post'), comment_id=comment_id)
+    if not (comment.commentator_id == request.user.pk or _is_teacher(request.user)):
+        raise PermissionDenied
+    post = comment.post
+    if post.accepted_answer_id == comment.pk:
+        ClassPost.objects.filter(pk=post.pk).update(accepted_answer=None, is_resolved=False)
+    comment.delete()
+    messages.success(request, 'The answer has been deleted.')
+    return redirect('chat_post_detail', post_id=post.post_id)
+
+
+@login_required
+@require_POST
+def accept_answer(request, comment_id):
+    """
+    Mark one answer as the accepted answer (or un-accept it).
+    Allowed for the student who asked the question and for teachers/admins.
+    """
+    comment = get_object_or_404(ClassPostComment.objects.select_related('post'), comment_id=comment_id)
+    post = comment.post
+    detail_url = reverse('chat_post_detail', args=[post.post_id])
+
+    if not (post.author_id == request.user.pk or _is_teacher(request.user)):
+        return _qa_fail(request, 'Only the student who asked, or a teacher, can accept an answer.',
+                        detail_url, status=403)
+    if comment.commentator_id == post.author_id:
+        return _qa_fail(request, "You can't accept an answer written by the person who asked the question.",
+                        detail_url)
+
+    if post.accepted_answer_id == comment.pk:
+        ClassPost.objects.filter(pk=post.pk).update(accepted_answer=None, is_resolved=False)
+        messages.success(request, 'Accepted answer removed.')
+        accepted = False
+    else:
+        ClassPost.objects.filter(pk=post.pk).update(accepted_answer=comment, is_resolved=True)
+        messages.success(request, 'Answer accepted. The question is now resolved.')
+        accepted = True
+        if comment.commentator_id != request.user.pk:
+            _notify(comment.commentator_id, post,
+                    f'Your answer was accepted on "{post.title[:50]}"')
+
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'accepted': accepted})
+    return redirect(f'{detail_url}#comment-{comment.comment_id}')
+
+
+@login_required
+@require_POST
+def helpful_vote(request, comment_id):
+    """Toggle a "helpful" vote on an answer (not on your own answer)."""
+    comment = get_object_or_404(ClassPostComment.objects.select_related('post'), comment_id=comment_id)
+    detail_url = reverse('chat_post_detail', args=[comment.post_id])
+    if comment.commentator_id == request.user.pk:
+        return _qa_fail(request, "You can't vote on your own answer.", detail_url)
+
+    if comment.helpful.filter(pk=request.user.pk).exists():
+        comment.helpful.remove(request.user)
+        voted = False
+    else:
+        comment.helpful.add(request.user)
+        voted = True
+
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'voted': voted, 'total_helpful': comment.helpful.count()})
+    return _back_or(request, 'chat_post_detail', comment.post_id)
+
+
+# ── Likes, bookmarks, resolve ───────────────────────────────────────
+
+@login_required
+@require_POST
 def chat_post_like(request, post_id):
-    """Like/unlike a chat post"""
+    """Like/unlike a question."""
     post = get_object_or_404(ClassPost, post_id=post_id)
 
-    if request.user in post.like.all():
+    if post.like.filter(pk=request.user.pk).exists():
         post.like.remove(request.user)
         liked = False
     else:
         post.like.add(request.user)
         liked = True
-        if post.author != request.user:
-            Notification.objects.create(
-                user=post.author,
-                class_post=post,
-                message=f'{request.user.username} liked your question "{post.title[:50]}"'
-            )
+        if post.author_id != request.user.pk:
+            msg = f'{_display_name(request.user)} liked your question "{post.title[:50]}"'
+            if not Notification.objects.filter(user_id=post.author_id, class_post=post,
+                                               message=msg, is_read=False).exists():
+                _notify(post.author_id, post, msg)
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'liked': liked,
-            'total_likes': post.like.count()
-        })
-
-    return redirect(request.META.get('HTTP_REFERER', 'chat_room'))
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'liked': liked, 'total_likes': post.like.count()})
+    return _back_or(request, 'chat_room')
 
 
 @login_required
+@require_POST
 def chat_comment_like(request, comment_id):
-    """Like/unlike a comment/reply"""
+    """Like/unlike an answer."""
     comment = get_object_or_404(ClassPostComment, comment_id=comment_id)
 
-    if request.user in comment.like.all():
+    if comment.like.filter(pk=request.user.pk).exists():
         comment.like.remove(request.user)
         liked = False
     else:
         comment.like.add(request.user)
         liked = True
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'liked': liked,
-            'total_likes': comment.like.count()
-        })
-
-    return redirect(request.META.get('HTTP_REFERER', 'chat_room'))
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'liked': liked, 'total_likes': comment.like.count()})
+    return _back_or(request, 'chat_room')
 
 
 @login_required
+@require_POST
+def bookmark_post(request, post_id):
+    """Save/unsave a question so it can be found under "Saved"."""
+    post = get_object_or_404(ClassPost, post_id=post_id)
+    if post.bookmarked_by.filter(pk=request.user.pk).exists():
+        post.bookmarked_by.remove(request.user)
+        saved = False
+    else:
+        post.bookmarked_by.add(request.user)
+        saved = True
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'saved': saved})
+    return _back_or(request, 'chat_room')
+
+
+@login_required
+@require_POST
 def resolve_post(request, post_id):
-    """Mark a question as resolved or unresolved"""
-    post = get_object_or_404(ClassPost, post_id=post_id, author=request.user)
+    """Mark a question resolved/unresolved: the asker or a teacher/admin."""
+    post = get_object_or_404(ClassPost, post_id=post_id)
+    if not (post.author_id == request.user.pk or _is_teacher(request.user)):
+        raise PermissionDenied
 
     post.is_resolved = not post.is_resolved
+    if not post.is_resolved:
+        post.accepted_answer = None     # re-opening a question clears its accepted answer
     post.save()
 
-    status = "resolved" if post.is_resolved else "unresolved"
-    messages.success(request, f'Question marked as {status}!')
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'is_resolved': post.is_resolved
-        })
-
+    messages.success(request, 'Question marked as resolved.' if post.is_resolved
+                     else 'Question re-opened.')
+    if _wants_json(request):
+        return JsonResponse({'success': True, 'is_resolved': post.is_resolved})
     return redirect('chat_post_detail', post_id=post_id)
-    
+
+
+# ── Reporting and moderation ────────────────────────────────────────
+
+def _report_target(kind, obj_id):
+    """(post, target, filter-kwargs, owner_id) for a reportable question or answer."""
+    if kind == 'post':
+        target = get_object_or_404(ClassPost, post_id=obj_id)
+        return target, target, {'post': target}, target.author_id
+    if kind == 'comment':
+        target = get_object_or_404(ClassPostComment.objects.select_related('post'), comment_id=obj_id)
+        return target.post, target, {'comment': target}, target.commentator_id
+    raise Http404
+
+
+@login_required
+@require_POST
+def report_content(request, kind, obj_id):
+    """Report a question or an answer to the teachers."""
+    post, target, flt, owner_id = _report_target(kind, obj_id)
+    detail_url = reverse('chat_post_detail', args=[post.post_id])
+
+    reason = (request.POST.get('reason') or '').strip()
+    details = ' '.join((request.POST.get('details') or '').split())[:300]
+    if reason not in dict(ClassPostReport.REASON_CHOICES):
+        return _qa_fail(request, 'Choose a reason for your report.', detail_url)
+    if owner_id == request.user.pk:
+        return _qa_fail(request, "You can't report your own content.", detail_url)
+    if ClassPostReport.objects.filter(reporter=request.user, **flt).exists():
+        messages.info(request, 'You have already reported this. A teacher will review it.')
+        return redirect(detail_url)
+
+    already_flagged = ClassPostReport.objects.filter(is_handled=False, **flt).exists()
+    try:
+        with transaction.atomic():
+            ClassPostReport.objects.create(reporter=request.user, reason=reason, details=details, **flt)
+    except IntegrityError:
+        messages.info(request, 'You have already reported this. A teacher will review it.')
+        return redirect(detail_url)
+
+    # Tell the teachers once per flagged item; the report itself is shown on the question page.
+    if not already_flagged:
+        what = 'question' if kind == 'post' else 'answer'
+        teachers = (User.objects.filter(is_active=True).filter(Q(is_staff=True) | Q(is_superuser=True))
+                    .exclude(pk=request.user.pk).values_list('pk', flat=True))
+        Notification.objects.bulk_create([
+            Notification(user_id=uid, class_post=post,
+                         message=f'A {what} was reported on "{post.title[:50]}"')
+            for uid in teachers
+        ])
+
+    messages.success(request, 'Thank you. Your report has been sent to the teachers.')
+    return redirect(detail_url)
+
+
+@login_required
+@require_POST
+def clear_reports(request, kind, obj_id):
+    """Teachers/admins: dismiss the open reports on a question or answer."""
+    if not _is_teacher(request.user):
+        raise PermissionDenied
+    post, target, flt, owner_id = _report_target(kind, obj_id)
+    ClassPostReport.objects.filter(is_handled=False, **flt).update(is_handled=True)
+    messages.success(request, 'Reports dismissed.')
+    return redirect('chat_post_detail', post_id=post.post_id)
+
+
 # ════════════════════════════════════════════════════════════════════
 #  ADMIN DASHBOARD (staff only)
 # ════════════════════════════════════════════════════════════════════

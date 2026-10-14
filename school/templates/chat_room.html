@@ -1,4 +1,3 @@
-{% load humanize %}
 {% load static %}
 {% include 'header.html' %}
 <!DOCTYPE html>
@@ -7,1061 +6,914 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <title>awaClass | Discussion Room</title>
+    <title>awaClass | Student Q&amp;A Centre</title>
     <style>
-        /* ============================================
-           CLEAN DESIGN — NO SHADOWS, NO LEFT BORDERS
-        ============================================ */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            color: #262626;
-        }
-
-        .awaClass-chat-container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 32px 24px 100px;
-        }
-
-        @media (min-width: 768px) {
-            .awaClass-chat-container {
-                margin-left: 280px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .awaClass-chat-container {
-                padding: 20px 16px;
-            }
-        }
-
-        /* Header */
-        .awaClass-chat-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #efefef;
-        }
-
-        .awaClass-chat-title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin: 0 0 4px;
-            color: #262626;
-        }
-
-        .awaClass-chat-title p {
-            font-size: 14px;
-            color: #737373;
-            margin: 0;
-        }
-
-        .awaClass-new-post-btn {
-            background: #0095f6;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .awaClass-new-post-btn:hover {
-            background: #0074cc;
-        }
-
-        /* New Posts Banner */
-        .awa-new-posts-banner {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: #0095f6;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 16px;
-            border: none;
-            width: fit-content;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .awa-new-posts-banner.visible {
-            display: flex;
-        }
-
-        /* Search + Sort Bar */
-        .awa-control-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 16px;
-            align-items: center;
-        }
-
-        .awa-search-wrap {
-            flex: 1;
-            min-width: 200px;
-            position: relative;
-        }
-
-        .awa-search-wrap i {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #8e8e8e;
-            font-size: 13px;
-        }
-
-        .awa-search-input {
-            width: 100%;
-            padding: 9px 12px 9px 34px;
-            border: 1px solid #dbdbdb;
-            border-radius: 30px;
-            font-size: 13px;
-            background: white;
-        }
-
-        .awa-search-input:focus {
-            outline: none;
-            border-color: #0095f6;
-        }
-
-        .awa-sort-tabs {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-
-        .awa-sort-tab {
-            padding: 7px 14px;
-            border: 1px solid #dbdbdb;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            background: white;
-            color: #737373;
-        }
-
-        .awa-sort-tab.active,
-        .awa-sort-tab:hover {
-            background: #0095f6;
-            border-color: #0095f6;
-            color: white;
-        }
-
-        /* Filter Bar */
-        .awaClass-filter-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding: 10px 14px;
-            background: #fafafa;
-            border: 1px solid #efefef;
-            border-radius: 12px;
-            align-items: center;
-        }
-
-        .awaClass-filter-label {
-            font-size: 12px;
-            font-weight: 700;
-            color: #737373;
-            text-transform: uppercase;
-        }
-
-        .awa-subject-chips {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            flex: 1;
-        }
-
-        .awa-chip {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid #dbdbdb;
-            background: white;
-            color: #737373;
-        }
-
-        .awa-chip:hover {
-            border-color: #0095f6;
-            color: #0095f6;
-        }
-
-        .awa-chip.active {
-            background: #0095f6;
-            border-color: #0095f6;
-            color: white;
-        }
-
-        .awaClass-filter-select {
-            padding: 6px 12px;
-            border: 1px solid #dbdbdb;
-            border-radius: 20px;
-            background: white;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .awaClass-filter-clear {
-            color: #0095f6;
-            text-decoration: none;
-            font-size: 13px;
-            margin-left: auto;
-            white-space: nowrap;
-        }
-
-        /* Posts Grid */
-        .awaClass-posts-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        /* Post Card — NO left border stripe */
-        .awaClass-post-card {
-            background: white;
-            border: 1px solid #efefef;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .awaClass-post-resolved-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 700;
-            margin-left: 8px;
-        }
-
-        .badge-resolved {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .badge-unresolved {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-
-        .awaClass-post-header {
-            padding: 14px 16px 8px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .awaClass-post-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid #dbdbdb;
-            flex-shrink: 0;
-        }
-
-        .awaClass-post-meta {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .awaClass-post-author {
-            font-weight: 600;
-            font-size: 14px;
-            color: #262626;
-            margin: 0 0 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .awaClass-post-time {
-            font-size: 12px;
-            color: #737373;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .awaClass-post-subject {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 10px;
-            text-transform: uppercase;
-        }
-
-        .subj-color-Mathematics { background: #dbeafe; color: #1d4ed8; }
-        .subj-color-Physics     { background: #ede9fe; color: #6d28d9; }
-        .subj-color-General     { background: #f3f4f6; color: #374151; }
-
-        .awaClass-post-title {
-            padding: 0 16px 0 20px;
-            margin: 0 0 6px;
-            font-size: 17px;
-            font-weight: 700;
-            color: #262626;
-            line-height: 1.35;
-        }
-
-        .awaClass-post-title a {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .awaClass-post-title a:hover {
-            color: #0095f6;
-        }
-
-        .awaClass-post-content {
-            padding: 0 16px 10px 20px;
-            font-size: 14px;
-            color: #737373;
-            line-height: 1.55;
-        }
-
-        .awa-content-clamp {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .awa-content-clamp.expanded {
-            -webkit-line-clamp: unset;
-        }
-
-        .awa-expand-btn {
-            background: none;
-            border: none;
-            color: #0095f6;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            padding: 0 0 8px 20px;
-            display: block;
-        }
-
-        .awaClass-post-image {
-            max-width: calc(100% - 36px);
-            max-height: 260px;
-            border-radius: 10px;
-            margin: 6px 0 6px 20px;
-            cursor: pointer;
-            border: 1px solid #efefef;
-        }
-
-        .awaClass-post-stats {
-            padding: 10px 16px 10px 20px;
-            display: flex;
-            gap: 18px;
-            font-size: 12px;
-            color: #737373;
-            align-items: center;
-            border-top: 1px solid #efefef;
-            border-bottom: 1px solid #efefef;
-            background: #fafafa;
-        }
-
-        .awaClass-post-stats span {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        /* Actions Row */
-        .awaClass-post-actions {
-            padding: 8px 12px 8px 16px;
-            display: flex;
-            gap: 6px;
-            background: #ffffff;
-            flex-wrap: wrap;
-        }
-
-        .awaClass-action-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 13px;
-            color: #737373;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            text-decoration: none;
-        }
-
-        .awaClass-action-btn:hover {
-            background: #fafafa;
-            color: #262626;
-        }
-
-        .awaClass-action-btn.liked {
-            color: #0095f6;
-        }
-
-        /* Lightbox */
-        .awa-lightbox {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.92);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .awa-lightbox.active {
-            display: flex;
-        }
-
-        .awa-lightbox img {
-            max-width: 92vw;
-            max-height: 90vh;
-            border-radius: 10px;
-        }
-
-        .awa-lightbox-close {
-            position: absolute;
-            top: 18px;
-            right: 22px;
-            background: rgba(255, 255, 255, 0.15);
-            border: none;
-            color: white;
-            font-size: 22px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        /* Empty State */
-        .awaClass-empty {
-            text-align: center;
-            padding: 60px 20px;
-            color: #737373;
-            border: 1px solid #efefef;
-            border-radius: 12px;
-            background: #ffffff;
-        }
-
-        .awaClass-empty i {
-            font-size: 48px;
-            margin-bottom: 16px;
-            display: block;
-        }
-
-        /* Modal */
-        .awaClass-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .awaClass-modal.active {
-            display: flex;
-        }
-
-        .awaClass-modal-content {
-            background: white;
-            border: 1px solid #efefef;
-            border-radius: 20px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .awaClass-modal-header {
-            padding: 18px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #efefef;
-        }
-
-        .awaClass-modal-header h3 {
-            margin: 0;
-            font-size: 18px;
-        }
-
-        .awaClass-modal-close {
-            background: none;
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            color: #8e8e8e;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-        }
-
-        .awaClass-modal-close:hover {
-            background: #efefef;
-        }
-
-        .awaClass-modal-body {
-            padding: 20px;
-        }
-
-        .awa-tips-box {
-            background: #e8f4fd;
-            border: 1px solid #cfe7fa;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 12px;
-            color: #0074cc;
-            margin-bottom: 16px;
-            line-height: 1.6;
-        }
-
-        .awa-tips-box strong {
-            color: #0095f6;
-        }
-
-        .awaClass-form-group {
-            margin-bottom: 16px;
-        }
-
-        .awaClass-form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            font-size: 13px;
-            color: #737373;
-        }
-
-        .awaClass-form-group input,
-        .awaClass-form-group textarea,
-        .awaClass-form-group select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #dbdbdb;
-            border-radius: 10px;
-            font-size: 14px;
-            background: white;
-            font-family: inherit;
-        }
-
-        .awaClass-form-group input:focus,
-        .awaClass-form-group textarea:focus,
-        .awaClass-form-group select:focus {
-            outline: none;
-            border-color: #0095f6;
-        }
-
-        .awaClass-form-group textarea {
-            resize: vertical;
-            min-height: 110px;
-        }
-
-        .awa-char-counter {
-            font-size: 11px;
-            color: #8e8e8e;
-            text-align: right;
-            margin-top: 4px;
-        }
-
-        .awa-char-counter.warn {
-            color: #ef4444;
-        }
-
-        .awaClass-image-preview {
-            max-width: 100%;
-            max-height: 180px;
-            margin-top: 8px;
-            border-radius: 8px;
-            display: none;
-            border: 1px solid #efefef;
-        }
-
-        .awaClass-modal-footer {
-            padding: 16px 20px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            border-top: 1px solid #efefef;
-        }
-
-        .awaClass-btn-primary {
-            background: #0095f6;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .awaClass-btn-primary:hover {
-            background: #0074cc;
-        }
-
-        .awaClass-btn-primary:disabled {
-            opacity: 0.6;
-            cursor: default;
-        }
-
-        .awaClass-btn-secondary {
-            background: #efefef;
-            color: #737373;
-            border: 1px solid #dbdbdb;
-            padding: 10px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        /* No results */
-        .awa-no-results {
-            text-align: center;
-            padding: 40px 20px;
-            color: #737373;
-            display: none;
-        }
-
-        .awa-no-results i {
-            font-size: 36px;
-            margin-bottom: 12px;
-            display: block;
-        }
-
-        @media (max-width: 640px) {
-            .awaClass-chat-container {
-                padding: 20px 16px;
-            }
-            .awaClass-chat-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .awaClass-new-post-btn {
-                justify-content: center;
-            }
-            .awa-sort-tabs {
-                overflow-x: auto;
-                padding-bottom: 4px;
-            }
-            .awaClass-post-title {
-                font-size: 15px;
-            }
-        }
-    </style>
+/* ============================================================
+   Student Q&A Centre — shared styles (flat, mobile-first)
+   Included by chat_room.html, chat_post_detail.html and
+   chat_post_form.html
+   ============================================================ */
+:root {
+    --qa-blue: #0095f6;
+    --qa-blue-d: #0074cc;
+    --qa-ink: #262626;
+    --qa-body: #404040;
+    --qa-muted: #737373;
+    --qa-line: #efefef;
+    --qa-line2: #dbdbdb;
+    --qa-soft: #fafafa;
+    --qa-green: #1a7f37;
+    --qa-green-bg: #eef9f1;
+    --qa-green-line: #b9e3c6;
+    --qa-amber: #8a5a00;
+    --qa-amber-bg: #fff6e0;
+    --qa-red: #c62828;
+    --qa-red-bg: #fdeeee;
+    --qa-teacher: #0b5cab;
+    --qa-teacher-bg: #e7f1fb;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: var(--qa-ink);
+    -webkit-text-size-adjust: 100%;
+}
+
+/* ---------- Page shell ---------- */
+.qa-page { padding: 20px 16px 100px; }
+.qa-wrap { max-width: 820px; margin: 0 auto; }
+@media (min-width: 768px) {
+    .qa-page { margin-left: 280px; padding: 32px 24px 100px; }
+}
+
+a { color: inherit; }
+.qa-hidden { display: none !important; }
+
+/* ---------- Header ---------- */
+.qa-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.qa-head h1 { font-size: 24px; line-height: 1.25; font-weight: 700; }
+.qa-head p  { font-size: 14px; color: var(--qa-muted); margin-top: 4px; }
+@media (max-width: 480px) {
+    .qa-head > .qa-btn { width: 100%; }
+}
+
+.qa-back {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 40px;
+    color: var(--qa-muted); font-size: 14px; font-weight: 600; text-decoration: none;
+    margin-bottom: 8px;
+}
+.qa-back:hover { color: var(--qa-ink); }
+
+/* ---------- Buttons ---------- */
+.qa-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 42px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent;
+    font-size: 14px; font-weight: 600; font-family: inherit; line-height: 1;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+    background: var(--qa-blue); color: #fff;
+}
+.qa-btn:hover { background: var(--qa-blue-d); }
+.qa-btn:disabled, .qa-btn.is-loading { opacity: .65; cursor: not-allowed; }
+.qa-btn-ghost { background: #fff; color: var(--qa-ink); border-color: var(--qa-line2); }
+.qa-btn-ghost:hover { background: var(--qa-soft); }
+.qa-btn-danger { background: #fff; color: var(--qa-red); border-color: #f0c4c4; }
+.qa-btn-danger:hover { background: var(--qa-red-bg); }
+.qa-btn-sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.qa-btn.is-on { background: var(--qa-green-bg); color: var(--qa-green); border-color: var(--qa-green-line); }
+.qa-btn-ghost.is-on { background: var(--qa-green-bg); color: var(--qa-green); border-color: var(--qa-green-line); }
+
+.qa-spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
+    display: inline-block; animation: qa-rot .7s linear infinite;
+}
+@keyframes qa-rot { to { transform: rotate(360deg); } }
+
+/* ---------- Top progress bar (page loads / filter changes) ---------- */
+.qa-progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 3000;
+    background: var(--qa-blue); opacity: 0; pointer-events: none;
+}
+.qa-progress.on { opacity: 1; width: 85%; transition: width 8s cubic-bezier(.1, .6, .2, 1); }
+
+/* ---------- Messages & toasts ---------- */
+.qa-msgs { display: grid; gap: 8px; margin-bottom: 14px; }
+.qa-msg {
+    padding: 11px 14px; border-radius: 8px; font-size: 14px; line-height: 1.45;
+    background: var(--qa-soft); border: 1px solid var(--qa-line2); color: var(--qa-ink);
+}
+.qa-msg.success { background: var(--qa-green-bg); border-color: var(--qa-green-line); color: var(--qa-green); }
+.qa-msg.error   { background: var(--qa-red-bg); border-color: #f0c4c4; color: var(--qa-red); }
+.qa-msg.warning { background: var(--qa-amber-bg); border-color: #f1dca0; color: var(--qa-amber); }
+
+.qa-toast {
+    position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%) translateY(20px);
+    max-width: calc(100% - 32px); z-index: 3500; opacity: 0; pointer-events: none;
+    background: #262626; color: #fff; padding: 11px 16px; border-radius: 8px;
+    font-size: 14px; transition: opacity .2s, transform .2s;
+}
+.qa-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.qa-toast.error { background: var(--qa-red); }
+
+/* ---------- Badges ---------- */
+.qa-badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+    border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.3;
+    background: #f1f1f1; color: #4a4a4a; white-space: nowrap;
+}
+.qa-badge.resolved   { background: var(--qa-green-bg); color: var(--qa-green); }
+.qa-badge.unanswered { background: var(--qa-amber-bg); color: var(--qa-amber); }
+.qa-badge.answered   { background: #eaf4fe; color: #0b5cab; }
+.qa-badge.subject    { background: #f1f1f1; color: #3d3d3d; }
+.qa-badge.level      { background: #fff; color: var(--qa-muted); border: 1px solid var(--qa-line2); }
+.qa-badge.teacher    { background: var(--qa-teacher-bg); color: var(--qa-teacher); border: 1px solid #c5dcf3; }
+.qa-badge.accepted   { background: var(--qa-green); color: #fff; }
+.qa-badge.flag       { background: var(--qa-red-bg); color: var(--qa-red); }
+.qa-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* ---------- People ---------- */
+.qa-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; }
+.qa-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.qa-person-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.qa-person-sub { font-size: 12px; color: var(--qa-muted); }
+
+/* ---------- Tabs (All / My questions / Saved) ---------- */
+.qa-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--qa-line); margin-bottom: 14px; }
+.qa-tab {
+    flex: 1; text-align: center; padding: 12px 6px; font-size: 14px; font-weight: 600;
+    color: var(--qa-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.qa-tab.active { color: var(--qa-ink); border-bottom-color: var(--qa-ink); }
+@media (min-width: 600px) { .qa-tab { flex: 0 0 auto; padding: 12px 18px; } }
+
+/* ---------- Filters ---------- */
+.qa-filters { display: grid; gap: 10px; margin-bottom: 14px; }
+.qa-search { position: relative; }
+.qa-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8e8e8e; font-size: 14px; pointer-events: none; }
+.qa-input, .qa-select, .qa-textarea {
+    width: 100%; font-family: inherit; font-size: 16px; color: var(--qa-ink);
+    background: #fff; border: 1px solid var(--qa-line2); border-radius: 8px;
+    padding: 0 12px; min-height: 44px; outline: none;
+}
+.qa-search .qa-input { padding-left: 38px; }
+.qa-textarea { padding: 12px; min-height: 150px; line-height: 1.5; resize: vertical; display: block; }
+.qa-input:focus, .qa-select:focus, .qa-textarea:focus { border-color: var(--qa-blue); }
+.qa-select { appearance: none; -webkit-appearance: none; padding-right: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23737373' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; }
+.qa-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 700px) { .qa-filter-row { grid-template-columns: repeat(4, 1fr); } }
+.qa-filter-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--qa-muted); margin: 2px 0 12px; }
+.qa-link { color: var(--qa-blue); font-weight: 600; text-decoration: none; font-size: 13px; }
+.qa-link:hover { text-decoration: underline; }
+
+/* ---------- Question cards ---------- */
+.qa-list { display: grid; gap: 12px; }
+.qa-card { border: 1px solid var(--qa-line); border-radius: 12px; background: #fff; padding: 16px; }
+.qa-q:hover { background: var(--qa-soft); }
+.qa-q-title { font-size: 17px; line-height: 1.35; font-weight: 600; margin: 10px 0 6px; overflow-wrap: anywhere; }
+.qa-q-title a { text-decoration: none; }
+.qa-q-title a:hover { color: var(--qa-blue); }
+.qa-q-topic { font-size: 13px; color: var(--qa-muted); margin-bottom: 6px; }
+.qa-q-excerpt { font-size: 15px; line-height: 1.55; color: var(--qa-body); overflow-wrap: anywhere; }
+.qa-q-foot {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--qa-line);
+}
+.qa-q-stats { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--qa-muted); white-space: nowrap; }
+.qa-iconbtn {
+    background: none; border: none; cursor: pointer; color: var(--qa-muted);
+    width: 40px; height: 40px; border-radius: 8px; font-size: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.qa-iconbtn:hover { background: #f1f1f1; color: var(--qa-ink); }
+.qa-iconbtn.saved { color: var(--qa-blue); }
+
+.qa-empty { text-align: center; padding: 48px 16px; color: var(--qa-muted); border: 1px dashed var(--qa-line2); border-radius: 12px; }
+.qa-empty i { font-size: 30px; color: #b5b5b5; margin-bottom: 12px; display: block; }
+.qa-empty p { font-size: 15px; margin-bottom: 14px; }
+
+/* ---------- Pagination ---------- */
+.qa-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; font-size: 14px; color: var(--qa-muted); }
+.qa-pager .qa-btn[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+
+/* ---------- Question page ---------- */
+.qa-post-title { font-size: 22px; line-height: 1.3; font-weight: 700; margin: 12px 0; overflow-wrap: anywhere; }
+@media (min-width: 600px) { .qa-post-title { font-size: 26px; } }
+.qa-prose { font-size: 16px; line-height: 1.7; color: var(--qa-body); overflow-wrap: anywhere; }
+.qa-prose p { margin-bottom: 12px; }
+.qa-prose p:last-child { margin-bottom: 0; }
+.qa-media { margin-top: 14px; }
+.qa-image { display: block; max-width: 100%; max-height: 420px; border-radius: 10px; border: 1px solid var(--qa-line); cursor: zoom-in; }
+.qa-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--qa-line); }
+.qa-actions .qa-grow { flex: 1; }
+
+/* ---------- Answers ---------- */
+.qa-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 24px 0 12px; }
+.qa-section-head h2 { font-size: 18px; font-weight: 700; }
+.qa-section-head .qa-select { width: auto; min-height: 38px; font-size: 14px; }
+
+.qa-answer { border: 1px solid var(--qa-line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.qa-answer + .qa-answer { margin-top: 12px; }
+.qa-answer.accepted { background: var(--qa-green-bg); border-color: var(--qa-green-line); }
+.qa-answer-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.qa-accepted-banner { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--qa-green); margin-bottom: 10px; }
+.qa-answer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.qa-like { font-size: 13px; color: var(--qa-muted); background: none; border: none; cursor: pointer; min-height: 36px; padding: 0 8px; border-radius: 8px; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+.qa-like:hover { background: rgba(0, 0, 0, .05); }
+.qa-like.liked { color: #e0245e; }
+
+.qa-edit-form { display: none; margin-top: 10px; }
+.qa-edit-form.open { display: block; }
+.qa-edit-form .qa-textarea { min-height: 110px; }
+.qa-edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.qa-reports { margin-top: 12px; padding: 10px 12px; background: var(--qa-red-bg); border: 1px solid #f0c4c4; border-radius: 8px; font-size: 13px; color: #7a1f1f; }
+.qa-reports ul { margin: 6px 0 8px 18px; }
+.qa-reports form { display: inline; }
+
+/* ---------- Overflow menu (pure <details>) ---------- */
+.qa-menu { position: relative; }
+.qa-menu > summary { list-style: none; cursor: pointer; }
+.qa-menu > summary::-webkit-details-marker { display: none; }
+.qa-menu-panel {
+    position: absolute; right: 0; top: 42px; z-index: 50; min-width: 190px;
+    background: #fff; border: 1px solid var(--qa-line2); border-radius: 10px; padding: 6px;
+}
+.qa-menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px;
+    background: none; border: none; border-radius: 8px; text-align: left; cursor: pointer;
+    font-family: inherit; font-size: 14px; color: var(--qa-ink); text-decoration: none;
+}
+.qa-menu-item:hover { background: var(--qa-soft); }
+.qa-menu-item.danger { color: var(--qa-red); }
+.qa-menu-item[disabled] { color: var(--qa-muted); cursor: default; }
+.qa-menu-panel form { margin: 0; }
+
+/* ---------- Forms ---------- */
+.qa-form-card { border: 1px solid var(--qa-line); border-radius: 12px; padding: 18px 16px; }
+@media (min-width: 600px) { .qa-form-card { padding: 24px; } }
+.qa-field { margin-bottom: 18px; }
+.qa-field > label, .qa-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.qa-req { color: var(--qa-red); }
+.qa-opt { color: var(--qa-muted); font-weight: 400; }
+.qa-hint { font-size: 12px; color: var(--qa-muted); margin-top: 6px; }
+.qa-count { text-align: right; }
+.qa-count.warn { color: var(--qa-amber); }
+.qa-err { display: none; font-size: 13px; color: var(--qa-red); margin-top: 6px; }
+.qa-field.invalid .qa-err { display: block; }
+.qa-field.invalid .qa-input, .qa-field.invalid .qa-select, .qa-field.invalid .qa-textarea { border-color: var(--qa-red); }
+.qa-two { display: grid; gap: 0 14px; }
+@media (min-width: 600px) { .qa-two { grid-template-columns: 1fr 1fr; } }
+.qa-tips { background: var(--qa-soft); border: 1px solid var(--qa-line); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 14px; color: var(--qa-body); }
+.qa-tips summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; }
+.qa-tips ul { margin: 8px 0 2px 18px; line-height: 1.6; }
+.qa-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+@media (max-width: 480px) { .qa-form-actions { flex-direction: column-reverse; } .qa-form-actions .qa-btn { width: 100%; } }
+
+.qa-file {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border: 1px dashed var(--qa-line2); border-radius: 10px; padding: 12px;
+}
+/* Native file input (keyboard + screen-reader friendly), styled button part */
+.qa-file input[type=file] { font-size: 14px; max-width: 100%; color: var(--qa-muted); }
+.qa-file input[type=file]::file-selector-button {
+    min-height: 38px; padding: 0 14px; margin-right: 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--qa-line2); background: #fff; color: var(--qa-ink); font-weight: 600; font-family: inherit; font-size: 13px;
+}
+.qa-file-preview { display: none; width: 100%; }
+.qa-file-preview.show { display: block; }
+.qa-file-preview img { display: block; max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid var(--qa-line); }
+.qa-file-preview audio { width: 100%; }
+.qa-file-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--qa-muted); }
+.qa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; min-height: 36px; margin-top: 8px; }
+.qa-check input { width: 18px; height: 18px; }
+
+/* ---------- Answer composer / recorder ---------- */
+.qa-composer { border: 1px solid var(--qa-line); border-radius: 12px; padding: 14px 16px; margin-top: 24px; scroll-margin-top: 80px; }
+.qa-composer h2 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.qa-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.media-btn {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px;
+    background: #fff; border: 1px solid var(--qa-line2); border-radius: 8px;
+    font-size: 13px; font-weight: 600; color: var(--qa-ink); cursor: pointer; font-family: inherit;
+}
+.media-btn:hover { background: var(--qa-soft); }
+.media-btn.recording { background: var(--qa-red-bg); color: var(--qa-red); border-color: #f0c4c4; animation: qa-pulse 1s infinite; }
+@keyframes qa-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+.recording-timer { font-size: 13px; font-weight: 600; color: var(--qa-red); }
+.preview-container { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.media-preview { position: relative; display: inline-block; }
+.preview-img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--qa-line2); display: block; }
+.remove-media {
+    position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%;
+    border: none; background: #262626; color: #fff; cursor: pointer; font-size: 14px; line-height: 1;
+}
+.qa-composer-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 480px) { .qa-composer-foot .qa-btn { width: 100%; } }
+
+/* ---------- Audio player (preserved from the original page) ---------- */
+.audio-mini {
+    background: var(--qa-soft); border: 1px solid var(--qa-line2); border-radius: 999px;
+    padding: 6px 14px 6px 8px; display: inline-flex; align-items: center; gap: 10px;
+    max-width: 100%; width: 320px;
+}
+.play-audio-btn {
+    background: var(--qa-blue); border: none; width: 36px; height: 36px; border-radius: 50%;
+    color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.waveform-bars { flex: 1; display: flex; gap: 3px; align-items: center; height: 30px; min-width: 0; overflow: hidden; }
+.wave-bar { width: 3px; background: var(--qa-blue); border-radius: 2px; flex-shrink: 0; }
+.audio-time { font-size: 12px; color: var(--qa-muted); font-family: ui-monospace, Menlo, monospace; min-width: 36px; }
+
+/* ---------- Modals (report, confirm, image viewer) ---------- */
+.qa-modal {
+    position: fixed; inset: 0; z-index: 4000; display: none; align-items: flex-end; justify-content: center;
+    background: rgba(0, 0, 0, .5);
+}
+.qa-modal.open { display: flex; }
+.qa-modal-box { background: #fff; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 18px 18px 22px; }
+@media (min-width: 600px) {
+    .qa-modal { align-items: center; padding: 16px; }
+    .qa-modal-box { border-radius: 14px; }
+}
+.qa-modal-box h3 { font-size: 18px; margin-bottom: 6px; }
+.qa-modal-box p { font-size: 14px; color: var(--qa-muted); margin-bottom: 14px; line-height: 1.5; }
+.qa-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+@media (max-width: 480px) { .qa-modal-actions { flex-direction: column-reverse; } .qa-modal-actions .qa-btn { width: 100%; } }
+.qa-radio { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; cursor: pointer; }
+.qa-radio input { width: 18px; height: 18px; }
+
+.qa-lightbox { position: fixed; inset: 0; z-index: 4500; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, .88); padding: 16px; }
+.qa-lightbox.open { display: flex; }
+.qa-lightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; }
+.qa-lightbox button { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: none; background: rgba(255, 255, 255, .15); color: #fff; font-size: 20px; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+    .qa-progress.on, .qa-toast { transition: none; }
+    .qa-spin, .media-btn.recording { animation: none; }
+}
+
+/* ---------- Question modal (ask / edit) ---------- */
+.qa-modal-box.wide { max-width: 560px; }
+.qa-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.qa-modal-head h3 { margin: 0; }
+@media (max-width: 599px) { .qa-modal-box.wide { max-height: 96vh; } }
+</style>
+
 </head>
 <body>
 
 {% include 'sidebar.html' %}
 
-<div class="awaClass-chat-container">
+<div class="qa-page">
+<div class="qa-wrap">
 
-    <!-- Page Header (Stats bar removed) -->
-    <div class="awaClass-chat-header">
-        <div class="awaClass-chat-title">
-            <h1><i class="fa-regular fa-comments"></i> Discussion Room</h1>
-            <p>Ask questions, help others, and learn together</p>
+    {% if messages %}
+    <div class="qa-msgs">
+        {% for m in messages %}<div class="qa-msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="qa-head">
+        <div>
+            <h1>Student Q&amp;A Centre</h1>
+            <p>Ask a question, learn from classmates and teachers.</p>
         </div>
-        <button class="awaClass-new-post-btn" onclick="openNewPostModal()">
-            <i class="fa-solid fa-pen"></i> Ask a Question
+        <button type="button" class="qa-btn" onclick="openQuestionModal()">
+            <i class="fa-solid fa-plus"></i> Ask a question
         </button>
     </div>
 
-    <!-- New Posts Banner -->
-    <button class="awa-new-posts-banner" id="newPostsBanner" onclick="refreshPosts()">
-        <i class="fa-solid fa-arrow-up"></i>
-        <span id="newPostsBannerText">New posts available — tap to refresh</span>
-    </button>
+    <!-- Tabs -->
+    <nav class="qa-tabs" aria-label="Question lists">
+        <a class="qa-tab {% if not current_scope %}active{% endif %}" href="{% url 'chat_room' %}" data-progress>All questions</a>
+        <a class="qa-tab {% if current_scope == 'mine' %}active{% endif %}" href="{% url 'chat_room' %}?scope=mine" data-progress>My questions</a>
+        <a class="qa-tab {% if current_scope == 'saved' %}active{% endif %}" href="{% url 'chat_room' %}?scope=saved" data-progress>Saved</a>
+    </nav>
 
-    <!-- Search + Sort -->
-    <div class="awa-control-bar">
-        <div class="awa-search-wrap">
+    <!-- Search + filters + sort -->
+    <form class="qa-filters" method="get" action="{% url 'chat_room' %}" id="qaFilterForm">
+        {% if current_scope %}<input type="hidden" name="scope" value="{{ current_scope }}">{% endif %}
+
+        <div class="qa-search">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" class="awa-search-input" id="liveSearch" placeholder="Search questions…" autocomplete="off" oninput="liveSearchPosts(this.value)">
+            <input class="qa-input" type="search" name="q" value="{{ q }}" maxlength="100"
+                   placeholder="Search questions, topics or subjects" aria-label="Search questions" enterkeyhint="search">
         </div>
-        <div class="awa-sort-tabs">
-            <button class="awa-sort-tab {% if not current_sort or current_sort == 'latest' %}active{% endif %}" onclick="setSort('latest')">
-                <i class="fa-regular fa-clock"></i> Latest
-            </button>
-            <button class="awa-sort-tab {% if current_sort == 'popular' %}active{% endif %}" onclick="setSort('popular')">
-                <i class="fa-solid fa-fire"></i> Popular
-            </button>
-            <button class="awa-sort-tab {% if current_sort == 'unanswered' %}active{% endif %}" onclick="setSort('unanswered')">
-                <i class="fa-regular fa-question-circle"></i> Unanswered
-            </button>
-        </div>
-    </div>
 
-    <!-- Filter Bar -->
-    <div class="awaClass-filter-bar">
-        <span class="awaClass-filter-label">Subject:</span>
-        <div class="awa-subject-chips">
-            <button class="awa-chip {% if not current_subject %}active{% endif %}" onclick="setSubject('')">All</button>
-            <button class="awa-chip {% if current_subject == 'Mathematics' %}active{% endif %}" onclick="setSubject('Mathematics')">Mathematics</button>
-            <button class="awa-chip {% if current_subject == 'Physics' %}active{% endif %}" onclick="setSubject('Physics')">Physics</button>
+        <div class="qa-filter-row">
+            <select class="qa-select" name="subject" aria-label="Subject">
+                <option value="">All subjects</option>
+                {% for s in subject_options %}
+                <option value="{{ s }}" {% if s|lower == current_subject|lower %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+
+            <select class="qa-select" name="level" aria-label="Class level">
+                <option value="">All classes</option>
+                {% for l in level_options %}
+                <option value="{{ l }}" {% if l == current_level %}selected{% endif %}>{{ l }}</option>
+                {% endfor %}
+            </select>
+
+            <select class="qa-select" name="status" aria-label="Status">
+                {% for value, label in status_options %}
+                <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <select class="qa-select" name="sort" aria-label="Sort questions">
+                {% for value, label in sort_options %}
+                <option value="{{ value }}" {% if value == current_sort %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
         </div>
-        <select class="awaClass-filter-select" id="statusFilter" onchange="applyFilters()">
-            <option value="">All Status</option>
-            <option value="unresolved" {% if current_status == 'unresolved' %}selected{% endif %}>Unresolved</option>
-            <option value="resolved"   {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
-        </select>
-        {% if current_subject or current_status %}
-        <a href="{% url 'chat_room' %}" class="awaClass-filter-clear">
-            Clear <i class="fa-solid fa-times"></i>
-        </a>
+
+        <noscript><button type="submit" class="qa-btn qa-btn-sm">Apply filters</button></noscript>
+    </form>
+
+    <div class="qa-filter-foot">
+        <span>{{ total_found }} question{{ total_found|pluralize }}{% if has_filters %} found{% endif %}</span>
+        {% if has_filters %}
+        <a class="qa-link" data-progress href="{% url 'chat_room' %}{% if current_scope %}?scope={{ current_scope }}{% endif %}">Clear filters</a>
         {% endif %}
     </div>
 
-    <!-- Posts Grid -->
-    <div class="awaClass-posts-grid" id="postsGrid">
-        {% for post in posts %}
-        <div class="awaClass-post-card"
-             data-subject="{{ post.subject|default:'General' }}"
-             data-title="{{ post.title|lower }}"
-             data-content="{{ post.content|lower|truncatewords:30 }}"
-             data-replies="{{ post.total_comments }}"
-             data-post-id="{{ post.post_id }}">
+    <!-- Questions -->
+    <div class="qa-list">
+        {% for post in page_obj %}
+        <article class="qa-card qa-q">
+            <div class="qa-badges">
+                {% if post.is_resolved %}
+                <span class="qa-badge resolved"><i class="fa-solid fa-circle-check"></i> Resolved</span>
+                {% elif post.answer_total %}
+                <span class="qa-badge answered">Answered</span>
+                {% else %}
+                <span class="qa-badge unanswered">Unanswered</span>
+                {% endif %}
+                {% if post.subject %}<span class="qa-badge subject">{{ post.subject }}</span>{% endif %}
+                {% if post.class_level %}<span class="qa-badge level">{{ post.class_level }}</span>{% endif %}
+            </div>
 
-            <div class="awaClass-post-header">
-                <img src="{{ post.author.profile.get_picture_url }}" alt="{{ post.author.username }}" class="awaClass-post-avatar">
-                <div class="awaClass-post-meta">
-                    <div class="awaClass-post-author">
-                        {{ post.author.get_full_name|default:post.author.username }}
-                        {% if post.is_resolved %}
-                        <span class="awaClass-post-resolved-badge badge-resolved"><i class="fa-solid fa-check"></i> Resolved</span>
-                        {% else %}
-                        <span class="awaClass-post-resolved-badge badge-unresolved"><i class="fa-solid fa-circle-question"></i> Open</span>
-                        {% endif %}
-                    </div>
-                    <div class="awaClass-post-time">
-                        <i class="fa-regular fa-clock"></i> {{ post.created_at|timesince }} ago
-                        {% if post.subject %}
-                        <span class="awaClass-post-subject subj-color-{{ post.subject }}">
-                            {{ post.subject }}
-                        </span>
-                        {% endif %}
+            <h2 class="qa-q-title">
+                <a href="{% url 'chat_post_detail' post.post_id %}" data-progress>{{ post.title }}</a>
+            </h2>
+            {% if post.topic %}<div class="qa-q-topic">Topic: {{ post.topic }}</div>{% endif %}
+            <p class="qa-q-excerpt">{{ post.content|truncatewords:35 }}</p>
+
+            <div class="qa-q-foot">
+                <div class="qa-person">
+                    <img class="qa-avatar" src="{{ post.author.profile.get_picture_url }}" alt="" loading="lazy">
+                    <div>
+                        <div class="qa-person-name">
+                            {{ post.author.get_full_name|default:post.author.username }}
+                            {% if post.author.is_staff or post.author.is_superuser %}
+                            <span class="qa-badge teacher"><i class="fa-solid fa-chalkboard-user"></i> Teacher</span>
+                            {% endif %}
+                        </div>
+                        <div class="qa-person-sub">{{ post.created_at|timesince }} ago</div>
                     </div>
                 </div>
+                <div class="qa-q-stats">
+                    {% if post.image %}<i class="fa-regular fa-image" title="Includes an image" aria-label="Includes an image"></i>{% endif %}
+                    {% if post.audio %}<i class="fa-solid fa-microphone" title="Includes audio" aria-label="Includes audio"></i>{% endif %}
+                    <span title="Answers"><i class="fa-regular fa-comment"></i> {{ post.answer_total }}</span>
+                    <button type="button" class="qa-iconbtn {% if post.is_saved %}saved{% endif %}"
+                            data-url="{% url 'bookmark_post' post.post_id %}" onclick="qaBookmark(this)"
+                            aria-label="Save this question" aria-pressed="{% if post.is_saved %}true{% else %}false{% endif %}">
+                        <i class="{% if post.is_saved %}fa-solid{% else %}fa-regular{% endif %} fa-bookmark"></i>
+                    </button>
+                </div>
             </div>
-
-            <div class="awaClass-post-title">
-                <a href="{% url 'chat_post_detail' post.post_id %}">{{ post.title }}</a>
-            </div>
-
-            <div class="awaClass-post-content">
-                <div class="awa-content-clamp" id="content-{{ post.post_id }}">{{ post.content }}</div>
-            </div>
-            <button class="awa-expand-btn" id="expand-btn-{{ post.post_id }}" onclick="toggleExpand('{{ post.post_id }}')">
-                Show more <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
-            </button>
-
-            {% if post.image %}
-            <div>
-                <img src="{{ post.get_image_url }}" alt="Question image" class="awaClass-post-image" onclick="openLightbox(this.src)">
-            </div>
-            {% endif %}
-
-            <div class="awaClass-post-stats">
-                <span><i class="fa-regular fa-heart"></i> <b class="like-count-{{ post.post_id }}">{{ post.total_likes }}</b></span>
-                <span><i class="fa-regular fa-comment"></i> {{ post.total_comments }} repl{{ post.total_comments|pluralize:"y,ies" }}</span>
-                <span><i class="fa-regular fa-eye"></i> {{ post.view }}</span>
-                {% if post.last_activity != post.created_at %}
-                <span style="margin-left:auto; font-size:11px; color:#8e8e8e;">
-                    last reply {{ post.last_activity|timesince }} ago
-                </span>
-                {% endif %}
-            </div>
-
-            <div class="awaClass-post-actions">
-                <a href="{% url 'chat_post_detail' post.post_id %}" class="awaClass-action-btn">
-                    <i class="fa-regular fa-comment-dots"></i> View Thread
-                </a>
-                <button class="awaClass-action-btn {% if request.user in post.like.all %}liked{% endif %} like-btn-{{ post.post_id }}"
-                        onclick="likePost('{{ post.post_id }}', this)">
-                    <i class="{% if request.user in post.like.all %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
-                    <span class="like-count-{{ post.post_id }}">{{ post.total_likes }}</span>
-                </button>
-            </div>
-        </div>
+        </article>
         {% empty %}
-        <div class="awaClass-empty">
-            <i class="fa-regular fa-message"></i>
+        <div class="qa-empty">
+            <i class="fa-regular fa-circle-question"></i>
+            {% if has_filters %}
+            <p>No questions match your search or filters.</p>
+            <a class="qa-btn qa-btn-ghost" data-progress href="{% url 'chat_room' %}{% if current_scope %}?scope={{ current_scope }}{% endif %}">Clear filters</a>
+            {% elif current_scope == 'mine' %}
+            <p>You haven't asked a question yet.</p>
+            <button type="button" class="qa-btn" onclick="openQuestionModal()">Ask your first question</button>
+            {% elif current_scope == 'saved' %}
+            <p>Questions you save will appear here.</p>
+            {% else %}
             <p>No questions yet. Be the first to ask!</p>
-            <button class="awaClass-new-post-btn" onclick="openNewPostModal()" style="margin-top:20px;">
-                <i class="fa-solid fa-pen"></i> Ask a Question
-            </button>
+            <button type="button" class="qa-btn" onclick="openQuestionModal()">Ask a question</button>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
 
-    <div class="awa-no-results" id="noResults">
-        <i class="fa-regular fa-face-frown-open"></i>
-        <p>No questions match your search.</p>
-        <button class="awaClass-new-post-btn" onclick="openNewPostModal()" style="margin-top:12px;">
-            <i class="fa-solid fa-pen"></i> Ask this Question
-        </button>
-    </div>
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="qa-pager" aria-label="Pagination">
+        {% if page_obj.has_previous %}
+        <a class="qa-btn qa-btn-ghost" data-progress href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">
+            <i class="fa-solid fa-chevron-left"></i> Previous
+        </a>
+        {% else %}
+        <span class="qa-btn qa-btn-ghost" aria-disabled="true"><i class="fa-solid fa-chevron-left"></i> Previous</span>
+        {% endif %}
+
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+        {% if page_obj.has_next %}
+        <a class="qa-btn qa-btn-ghost" data-progress href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.next_page_number }}">
+            Next <i class="fa-solid fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <span class="qa-btn qa-btn-ghost" aria-disabled="true">Next <i class="fa-solid fa-chevron-right"></i></span>
+        {% endif %}
+    </nav>
+    {% endif %}
+
+</div>
 </div>
 
-<!-- New Post Modal -->
-<div id="newPostModal" class="awaClass-modal">
-    <div class="awaClass-modal-content">
-        <div class="awaClass-modal-header">
-            <h3><i class="fa-solid fa-pen-to-square"></i> Ask a Question</h3>
-            <button class="awaClass-modal-close" onclick="closeNewPostModal()">&times;</button>
+
+<!-- Ask a question dialog -->
+<div class="qa-modal" id="questionModal" role="dialog" aria-modal="true" aria-labelledby="qModalTitle">
+    <div class="qa-modal-box wide">
+        <div class="qa-modal-head">
+            <h3 id="qModalTitle">Ask a question</h3>
+            <button type="button" class="qa-iconbtn" data-qa-close aria-label="Close">&times;</button>
         </div>
-        <form id="newPostForm" method="POST" action="{% url 'create_class_post' %}" enctype="multipart/form-data">
+        <form id="qaQuestionForm" method="post" enctype="multipart/form-data" novalidate action="{% url 'create_class_post' %}">
             {% csrf_token %}
-            <div class="awaClass-modal-body">
-                <div class="awa-tips-box">
-                    <strong>💡 Tips for a great question:</strong><br>
-                    Be specific about what you don't understand. Include the subject & topic.
-                    Mention the year if it's a past TopMark question. Add an image of the question if helpful.
-                </div>
-                <div class="awaClass-form-group">
-                    <label>Question Title <span style="color:red;">*</span></label>
-                    <input type="text" name="title" id="postTitle" maxlength="300" placeholder="e.g. How do I solve quadratic equations using the formula?" required oninput="updateCounter('titleCounter', this.value.length, 300)">
-                    <div class="awa-char-counter" id="titleCounter">0 / 300</div>
-                </div>
-                <div class="awaClass-form-group">
-                    <label>Subject</label>
-                    <select name="subject" id="postSubject">
-                        <option value="">General</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="Physics">Physics</option>
+
+            <div class="qa-field" data-field="title">
+                <label for="qTitle">Question title <span class="qa-req">*</span></label>
+                <input class="qa-input" type="text" id="qTitle" name="title" maxlength="{{ limits.title_max }}" value="" autocomplete="off"
+                       placeholder="e.g. How do I solve quadratic equations using the formula?">
+                <div class="qa-hint qa-count" id="titleCount">0 / {{ limits.title_max }}</div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-two">
+                <div class="qa-field" data-field="subject">
+                    <label for="qSubject">Subject <span class="qa-req">*</span></label>
+                    <select class="qa-select" id="qSubject" name="subject">
+                        <option value="">Choose a subject</option>
+                        {% for s in form_subjects %}<option value="{{ s }}" >{{ s }}</option>{% endfor %}
                     </select>
+                    <div class="qa-err"></div>
                 </div>
-                <div class="awaClass-form-group">
-                    <label>Question Details <span style="color:red;">*</span></label>
-                    <textarea name="content" id="postContent" maxlength="5000" placeholder="Describe what you're struggling with, what you've tried so far, and any relevant context…" required oninput="updateCounter('contentCounter', this.value.length, 5000)"></textarea>
-                    <div class="awa-char-counter" id="contentCounter">0 / 5000</div>
-                </div>
-                <div class="awaClass-form-group">
-                    <label>Attach an Image <span style="color:#8e8e8e;">(optional)</span></label>
-                    <input type="file" id="postImage" name="image" accept="image/*" onchange="previewImage(this)">
-                    <img id="imagePreview" class="awaClass-image-preview" alt="Preview">
+                <div class="qa-field" data-field="class_level">
+                    <label for="qLevel">Class level <span class="qa-opt">(optional)</span></label>
+                    <select class="qa-select" id="qLevel" name="class_level">
+                        <option value="">Not specified</option>
+                        {% for l in level_options %}<option value="{{ l }}" {% if l == default_level %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                    <div class="qa-err"></div>
                 </div>
             </div>
-            <div class="awaClass-modal-footer">
-                <button type="button" class="awaClass-btn-secondary" onclick="closeNewPostModal()">Cancel</button>
-                <button type="submit" class="awaClass-btn-primary" id="postSubmitBtn">
-                    <i class="fa-solid fa-paper-plane"></i> Post Question
-                </button>
+
+            <div class="qa-field" data-field="topic">
+                <label for="qTopic">Topic <span class="qa-opt">(optional)</span></label>
+                <input class="qa-input" type="text" id="qTopic" name="topic" maxlength="{{ limits.topic_max }}" value="" autocomplete="off" placeholder="e.g. Quadratic equations">
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-field" data-field="content">
+                <label for="qContent">Explain your question <span class="qa-req">*</span></label>
+                <textarea class="qa-textarea" id="qContent" name="content" maxlength="{{ limits.body_max }}"
+                          placeholder="Describe what you are struggling with and what you have tried so far…"></textarea>
+                <div class="qa-hint qa-count" id="contentCount">0 / {{ limits.body_max }}</div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-field" data-field="image">
+                <span class="qa-label">Image <span class="qa-opt">(optional)</span></span>
+                <div class="qa-file">
+                    <input type="file" id="qImage" name="image" accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Choose an image">
+                    <div class="qa-hint" style="margin:0;">JPG, PNG, WEBP or GIF. Maximum 5 MB.</div>
+                    <div class="qa-file-preview" id="imgPreview">
+                        <img id="imgPreviewImg" alt="Selected image preview">
+                        <div class="qa-file-row"><span id="imgName"></span>
+                            <button type="button" class="qa-btn qa-btn-ghost qa-btn-sm" id="imgRemove">Remove</button></div>
+                    </div>
+                </div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-field" data-field="audio">
+                <span class="qa-label">Audio explanation <span class="qa-opt">(optional)</span></span>
+                <div class="qa-file">
+                    <input type="file" id="qAudio" name="audio" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/webm,.mp3,.wav,.ogg,.m4a,.aac,.webm" aria-label="Choose an audio file">
+                    <div class="qa-hint" style="margin:0;">MP3, WAV, OGG, M4A or WEBM. Maximum 10 MB.</div>
+                    <div class="qa-file-preview" id="audPreview">
+                        <audio id="audPreviewEl" controls></audio>
+                        <div class="qa-file-row"><span id="audName"></span>
+                            <button type="button" class="qa-btn qa-btn-ghost qa-btn-sm" id="audRemove">Remove</button></div>
+                    </div>
+                </div>
+                <div class="qa-err"></div>
+            </div>
+
+            <div class="qa-form-actions">
+                <button type="button" class="qa-btn qa-btn-ghost" data-qa-close>Cancel</button>
+                <button type="submit" class="qa-btn" id="qSubmitBtn"><i class="fa-solid fa-paper-plane"></i> Post question</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Lightbox -->
-<div id="lightbox" class="awa-lightbox" onclick="closeLightbox()">
-    <button class="awa-lightbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button>
-    <img id="lightboxImg" src="" alt="">
+<!-- Shared UI pieces: confirm dialog, image viewer, toast, progress bar -->
+<div class="qa-progress" id="qaProgress"></div>
+<div class="qa-toast" id="qaToast" role="status" aria-live="polite"></div>
+
+<div class="qa-modal" id="qaConfirm" role="dialog" aria-modal="true" aria-labelledby="qaConfirmTitle">
+    <div class="qa-modal-box">
+        <h3 id="qaConfirmTitle">Are you sure?</h3>
+        <p id="qaConfirmText"></p>
+        <div class="qa-modal-actions">
+            <button type="button" class="qa-btn qa-btn-ghost" data-qa-close>Cancel</button>
+            <button type="button" class="qa-btn qa-btn-danger" id="qaConfirmYes">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="qa-lightbox" id="qaLightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button type="button" id="qaLightboxClose" aria-label="Close image">&times;</button>
+    <img id="qaLightboxImg" src="" alt="">
 </div>
 
 <script>
-    const CSRF = getCookie('csrftoken');
+    const QA_CSRF = '{{ csrf_token }}';
 
-    function getCookie(name) {
-        let v = null;
-        if (document.cookie) {
-            document.cookie.split(';').forEach(c => {
-                c = c.trim();
-                if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
-            });
-        }
-        return v;
+    /* ---- progress bar + toast ---- */
+    function qaProgress(on) {
+        const bar = document.getElementById('qaProgress');
+        if (!bar) return;
+        if (on) { bar.classList.add('on'); }
+        else { bar.classList.remove('on'); bar.style.width = '0'; }
     }
 
-    function openNewPostModal() {
-        document.getElementById('newPostModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-        setTimeout(() => document.getElementById('postTitle').focus(), 100);
+    let qaToastTimer = null;
+    function qaToast(message, type) {
+        const t = document.getElementById('qaToast');
+        t.textContent = message;
+        t.className = 'qa-toast show' + (type === 'error' ? ' error' : '');
+        clearTimeout(qaToastTimer);
+        qaToastTimer = setTimeout(() => t.classList.remove('show'), 3200);
     }
 
-    function closeNewPostModal() {
-        document.getElementById('newPostModal').classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    document.getElementById('newPostModal').addEventListener('click', function(e) {
-        if (e.target === this) closeNewPostModal();
-    });
-
-    function previewImage(input) {
-        const preview = document.getElementById('imagePreview');
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
-            reader.readAsDataURL(input.files[0]);
-        } else {
-            preview.style.display = 'none';
-        }
-    }
-
-    function updateCounter(id, len, max) {
-        const el = document.getElementById(id);
-        el.textContent = `${len} / ${max}`;
-        el.classList.toggle('warn', len > max * 0.9);
-    }
-
-    function setSort(sort) {
-        const url = new URL(window.location.href);
-        url.searchParams.set('sort', sort);
-        window.location.href = url.toString();
-    }
-
-    function setSubject(subject) {
-        const url = new URL(window.location.href);
-        if (subject) url.searchParams.set('subject', subject);
-        else url.searchParams.delete('subject');
-        window.location.href = url.toString();
-    }
-
-    function applyFilters() {
-        const status = document.getElementById('statusFilter').value;
-        const url = new URL(window.location.href);
-        if (status) url.searchParams.set('status', status);
-        else url.searchParams.delete('status');
-        window.location.href = url.toString();
-    }
-
-    function liveSearchPosts(query) {
-        const q = query.trim().toLowerCase();
-        const cards = document.querySelectorAll('.awaClass-post-card');
-        let visible = 0;
-
-        cards.forEach(card => {
-            const title = card.dataset.title || '';
-            const content = card.dataset.content || '';
-            const subject = card.dataset.subject || '';
-            const match = !q || title.includes(q) || content.includes(q) || subject.toLowerCase().includes(q);
-            card.style.display = match ? '' : 'none';
-            if (match) visible++;
+    /* ---- POST helper (CSRF + JSON errors) ---- */
+    async function qaPost(url, formData) {
+        const res = await fetch(url, {
+            method: 'POST',
+            body: formData || new FormData(),
+            credentials: 'same-origin',
+            headers: { 'X-CSRFToken': QA_CSRF, 'X-Requested-With': 'XMLHttpRequest' }
         });
-
-        document.getElementById('noResults').style.display = (visible === 0 && q) ? 'block' : 'none';
-    }
-
-    function toggleExpand(postId) {
-        const clamp = document.getElementById(`content-${postId}`);
-        const btn = document.getElementById(`expand-btn-${postId}`);
-        if (!clamp) return;
-        const expanded = clamp.classList.toggle('expanded');
-        btn.innerHTML = expanded
-            ? 'Show less <i class="fa-solid fa-chevron-up" style="font-size:10px;"></i>'
-            : 'Show more <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>';
-    }
-
-    document.querySelectorAll('.awa-content-clamp').forEach(el => {
-        if (el.scrollHeight <= el.clientHeight + 4) {
-            const postId = el.id.replace('content-', '');
-            const btn = document.getElementById(`expand-btn-${postId}`);
-            if (btn) btn.style.display = 'none';
+        let data = null;
+        try { data = await res.json(); } catch (e) { /* not JSON */ }
+        if (!res.ok || !data || data.success === false) {
+            throw new Error((data && data.error) || 'Something went wrong. Please try again.');
         }
-    });
-
-    function likePost(postId, btn) {
-        fetch(`/chat/post/${postId}/like/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) return;
-            const icon = btn.querySelector('i');
-            if (data.liked) {
-                icon.className = 'fa-solid fa-heart';
-                btn.classList.add('liked');
-            } else {
-                icon.className = 'fa-regular fa-heart';
-                btn.classList.remove('liked');
-            }
-            document.querySelectorAll(`.like-count-${postId}`).forEach(el => {
-                el.textContent = data.total_likes;
-            });
-        })
-        .catch(console.error);
+        return data;
     }
 
-    function openLightbox(src) {
-        document.getElementById('lightboxImg').src = src;
-        document.getElementById('lightbox').classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeLightbox() {
-        document.getElementById('lightbox').classList.remove('active');
+    /* ---- modals ---- */
+    function qaOpenModal(el) { el.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function qaCloseModals() {
+        document.querySelectorAll('.qa-modal.open, .qa-lightbox.open').forEach(m => m.classList.remove('open'));
         document.body.style.overflow = '';
     }
 
-    document.addEventListener('keydown', e => {
+    function qaConfirm(message, yesLabel, onYes) {
+        document.getElementById('qaConfirmText').textContent = message;
+        const yes = document.getElementById('qaConfirmYes');
+        yes.textContent = yesLabel || 'Confirm';
+        yes.onclick = function () { qaCloseModals(); onYes(); };
+        qaOpenModal(document.getElementById('qaConfirm'));
+        yes.focus();
+    }
+
+    function openImageModal(src) {
+        document.getElementById('qaLightboxImg').src = src;
+        qaOpenModal(document.getElementById('qaLightbox'));
+    }
+
+    document.addEventListener('click', function (e) {
+        // close buttons / click on the dark backdrop
+        if (e.target.closest('[data-qa-close]') || e.target.classList.contains('qa-modal') ||
+            e.target.id === 'qaLightbox' || e.target.id === 'qaLightboxClose') {
+            qaCloseModals();
+        }
+        // close any open ⋯ menu when clicking elsewhere
+        document.querySelectorAll('details.qa-menu[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+        // progress bar for normal navigation links
+        const a = e.target.closest('a[data-progress]');
+        if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey) qaProgress(true);
+    });
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-            closeLightbox();
-            closeNewPostModal();
+            qaCloseModals();
+            document.querySelectorAll('details.qa-menu[open]').forEach(d => d.removeAttribute('open'));
         }
     });
 
-    document.getElementById('newPostForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const btn = document.getElementById('postSubmitBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Posting…';
+    /* ---- forms: confirm dialogs + loading state ---- */
+    document.addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return;            // a page-level validator said no
+        const f = e.target;
+        if (!(f instanceof HTMLFormElement)) return;
 
-        fetch(this.action, {
-            method: 'POST',
-            body: new FormData(this),
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = data.redirect;
-            } else {
-                window.location.href = this.action;
+        if (f.dataset.confirm && !f.dataset.confirmed) {
+            e.preventDefault();
+            qaConfirm(f.dataset.confirm, f.dataset.confirmLabel || 'Confirm', function () {
+                f.dataset.confirmed = '1';
+                if (f.requestSubmit) f.requestSubmit(); else f.submit();
+            });
+            return;
+        }
+        if (f.hasAttribute('data-loading')) {
+            const b = f.querySelector('button[type="submit"]');
+            if (b) {
+                b.dataset.html = b.innerHTML;
+                b.innerHTML = '<span class="qa-spin"></span> ' + (b.dataset.loadingText || 'Please wait…');
+                b.classList.add('is-loading');
+                // disable on the next tick so the form value still posts
+                setTimeout(() => { b.disabled = true; }, 0);
             }
-        })
-        .catch(() => this.submit());
+            qaProgress(true);
+        }
     });
 
-    let knownCount = {{ posts.count }};
+    // Coming back with the Back button must not leave buttons stuck in "loading".
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        qaProgress(false);
+        document.querySelectorAll('button.is-loading').forEach(b => {
+            b.disabled = false; b.classList.remove('is-loading');
+            if (b.dataset.html) b.innerHTML = b.dataset.html;
+        });
+        document.querySelectorAll('form[data-confirmed]').forEach(f => delete f.dataset.confirmed);
+    });
 
-    function refreshPosts() { window.location.reload(); }
+    /* ---- bookmark toggle (list cards and question page) ---- */
+    async function qaBookmark(btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+            const d = await qaPost(btn.dataset.url);
+            btn.classList.toggle('saved', d.saved);
+            btn.classList.toggle('is-on', d.saved);
+            btn.setAttribute('aria-pressed', d.saved ? 'true' : 'false');
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = (d.saved ? 'fa-solid' : 'fa-regular') + ' fa-bookmark';
+            const label = btn.querySelector('.qa-label-text');
+            if (label) label.textContent = d.saved ? 'Saved' : 'Save';
+            qaToast(d.saved ? 'Saved to your list' : 'Removed from your saved questions');
+        } catch (err) {
+            qaToast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+<script>
+/* Ask / edit question dialog */
+(function () {
+    const LIM = {
+        titleMin: {{ limits.title_min }}, titleMax: {{ limits.title_max }},
+        bodyMin: {{ limits.body_min }}, bodyMax: {{ limits.body_max }},
+        imageBytes: 5 * 1024 * 1024, audioBytes: 10 * 1024 * 1024
+    };
+    const modal = document.getElementById('questionModal');
+    const form = document.getElementById('qaQuestionForm');
+    const $ = id => document.getElementById(id);
+
+    window.openQuestionModal = function () {
+        document.querySelectorAll('details.qa-menu[open]').forEach(d => d.removeAttribute('open'));
+        qaOpenModal(modal);
+        setTimeout(() => $('qTitle').focus(), 80);
+    };
+
+    function counter(inputId, countId, max) {
+        const input = $(inputId), out = $(countId);
+        const update = () => { out.textContent = input.value.length + ' / ' + max; out.classList.toggle('warn', input.value.length > max * 0.9); };
+        input.addEventListener('input', update); update();
+    }
+    counter('qTitle', 'titleCount', LIM.titleMax);
+    counter('qContent', 'contentCount', LIM.bodyMax);
+
+    function setError(name, message) {
+        const field = form.querySelector('[data-field="' + name + '"]');
+        if (!field) return;
+        field.classList.toggle('invalid', !!message);
+        field.querySelector('.qa-err').textContent = message || '';
+    }
+    function fileError(file, kind) {
+        if (!file) return '';
+        if (kind === 'image') {
+            if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) return 'Image must be a JPG, PNG, WEBP or GIF file.';
+            if (file.size > LIM.imageBytes) return 'Image must be 5 MB or smaller.';
+        } else {
+            if (file.type.indexOf('audio/') !== 0 || !/\.(mp3|wav|ogg|oga|m4a|mp4|aac|webm)$/i.test(file.name)) return 'Audio must be an MP3, WAV, OGG, M4A or WEBM file.';
+            if (file.size > LIM.audioBytes) return 'Audio must be 10 MB or smaller.';
+        }
+        return '';
+    }
+
+    let imgUrl = null;
+    $('qImage').addEventListener('change', function () {
+        const file = this.files[0], err = fileError(file, 'image');
+        setError('image', err);
+        if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+        if (!file || err) { this.value = ''; $('imgPreview').classList.remove('show'); return; }
+        imgUrl = URL.createObjectURL(file);
+        $('imgPreviewImg').src = imgUrl; $('imgName').textContent = file.name;
+        $('imgPreview').classList.add('show');
+    });
+    $('imgRemove').addEventListener('click', function () {
+        $('qImage').value = ''; $('imgPreview').classList.remove('show');
+        if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+    });
+
+    let audUrl = null;
+    $('qAudio').addEventListener('change', function () {
+        const file = this.files[0], err = fileError(file, 'audio');
+        setError('audio', err);
+        if (audUrl) { URL.revokeObjectURL(audUrl); audUrl = null; }
+        if (!file || err) { this.value = ''; $('audPreview').classList.remove('show'); return; }
+        audUrl = URL.createObjectURL(file);
+        $('audPreviewEl').src = audUrl; $('audName').textContent = file.name;
+        $('audPreview').classList.add('show');
+    });
+    $('audRemove').addEventListener('click', function () {
+        const el = $('audPreviewEl'); el.pause(); el.removeAttribute('src'); el.load();
+        $('qAudio').value = ''; $('audPreview').classList.remove('show');
+        if (audUrl) { URL.revokeObjectURL(audUrl); audUrl = null; }
+    });
+
+    ['title:qTitle', 'subject:qSubject', 'class_level:qLevel', 'topic:qTopic', 'content:qContent'].forEach(function (pair) {
+        const parts = pair.split(':');
+        ['input', 'change'].forEach(ev => $(parts[1]).addEventListener(ev, () => setError(parts[0], '')));
+    });
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = $('qSubmitBtn');
+        if (btn.disabled) return;
+        const title = $('qTitle').value.trim().replace(/\s+/g, ' ');
+        const content = $('qContent').value.trim();
+        let first = null;
+        const fail = (name, msg, id) => { setError(name, msg); if (!first) first = $(id); };
+        if (title.length < LIM.titleMin) fail('title', 'Enter a clear title (at least ' + LIM.titleMin + ' characters).', 'qTitle'); else setError('title', '');
+        if (!$('qSubject').value) fail('subject', 'Choose a subject.', 'qSubject'); else setError('subject', '');
+        if (content.length < LIM.bodyMin) fail('content', 'Explain your question a little more (at least ' + LIM.bodyMin + ' characters).', 'qContent'); else setError('content', '');
+        const ie = fileError($('qImage').files[0], 'image'); if (ie) fail('image', ie, 'qImage'); else setError('image', '');
+        const ae = fileError($('qAudio').files[0], 'audio'); if (ae) fail('audio', ae, 'qAudio'); else setError('audio', '');
+        if (first) { first.focus(); first.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="qa-spin"></span> Saving…';
+        qaProgress(true);
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST', body: new FormData(form), credentials: 'same-origin',
+                headers: { 'X-CSRFToken': QA_CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            let data = null;
+            try { data = await res.json(); } catch (err) { /* not JSON */ }
+            if (data && data.success) { window.location.href = data.redirect; return; }
+            qaProgress(false);
+            if (data && data.errors) {
+                let firstKey = null;
+                Object.keys(data.errors).forEach(function (k) { setError(k, data.errors[k]); if (!firstKey) firstKey = k; });
+                const f = form.querySelector('[data-field="' + firstKey + '"]');
+                if (f) f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                qaToast('Something went wrong. Please try again.', 'error');
+            }
+        } catch (err) {
+            qaProgress(false);
+            qaToast('Network problem. Please try again.', 'error');
+        }
+        btn.disabled = false;
+        btn.innerHTML = original;
+    });
+})();
+</script>
+
+<script>
+    // Filters apply as soon as a choice is made.
+    document.querySelectorAll('#qaFilterForm select').forEach(function (sel) {
+        sel.addEventListener('change', function () { qaProgress(true); sel.form.submit(); });
+    });
 </script>
 
 {% include 'footer.html' %}

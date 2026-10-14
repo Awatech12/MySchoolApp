@@ -1,0 +1,216 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>ID Card | {{ full_name }} | TopMark Tutorial Center</title>
+
+  <style>
+    :root {
+      --blue:    #0074cc;
+      --blue-lt: #0095f6;
+      --accent:  #8fd0fd;
+      --sky:     #e8f4fd;
+      --ink:     #262626;
+      --muted:   #737373;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
+      background: #f3f4f6;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── Screen toolbar (hidden when printing) ── */
+    .toolbar {
+      max-width: 760px; margin: 0 auto; padding: 20px 16px 8px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .toolbar h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+    .toolbar p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .btns { display: flex; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 11px 20px; border-radius: 12px; border: 0; cursor: pointer;
+      font: inherit; font-size: 14px; font-weight: 700; text-decoration: none;
+    }
+    .btn-primary { background: var(--blue-lt); color: #fff; }
+    .btn-primary:hover { background: var(--blue); }
+    .btn-light { background: #fff; color: var(--ink); }
+
+    .sheet {
+      max-width: 760px; margin: 0 auto; padding: 8px 16px 40px;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 24px;
+    }
+    .side-label {
+      width: 100%; text-align: center; font-size: 12px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .tip { max-width: 760px; margin: 0 auto; padding: 0 16px 24px; font-size: 13px; color: var(--muted); text-align: center; }
+
+    /* ── The card: CR80 standard, 85.6mm x 54mm ── */
+    .card {
+      position: relative;
+      width: 85.6mm; height: 54mm;
+      background: #fff;
+      border: 0.3mm solid #cfd8e3;
+      border-radius: 3mm;
+      overflow: hidden;
+      flex-shrink: 0;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+
+    /* FRONT */
+    .f-head {
+      background: var(--blue); color: #fff;
+      height: 14mm; padding: 0 3mm;
+      display: flex; align-items: center; gap: 2.4mm;
+    }
+    .f-head img { width: 9.5mm; height: 9.5mm; object-fit: contain; background: #fff; border-radius: 1.6mm; padding: 0.6mm; }
+    .f-title { font-size: 12pt; font-weight: 800; letter-spacing: -0.2px; line-height: 1.05; }
+    .f-title small { display: block; font-size: 5.2pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-top: 0.6mm; }
+    .f-tag { margin-left: auto; font-size: 5.4pt; font-weight: 800; letter-spacing: .1em; background: #fff; color: var(--blue); padding: 0.9mm 1.8mm; border-radius: 10mm; white-space: nowrap; }
+
+    .f-body { display: flex; gap: 3mm; padding: 2.6mm 3mm 0; }
+    .photo {
+      width: 21mm; height: 25.5mm; flex-shrink: 0;
+      border-radius: 1.8mm; overflow: hidden;
+      border: 0.5mm solid var(--blue-lt); background: var(--sky);
+    }
+    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .info { min-width: 0; flex: 1; }
+    .name {
+      font-size: 9.2pt; font-weight: 800; letter-spacing: -0.2px; line-height: 1.1;
+      color: var(--ink); margin-bottom: 1.6mm;
+      overflow-wrap: anywhere;
+    }
+    .rows { display: grid; grid-template-columns: auto 1fr; column-gap: 2mm; row-gap: 0.7mm; align-items: baseline; }
+    .rows dt { font-size: 4.8pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .rows dd { font-size: 6.6pt; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+    .rows dd.adm { color: var(--blue); font-size: 7.4pt; letter-spacing: .01em; }
+
+    .f-foot {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 5.4mm; background: var(--ink); color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 3mm; font-size: 5pt; font-weight: 600;
+    }
+    .f-foot b { color: var(--accent); font-weight: 800; }
+
+    /* BACK */
+    .b-stripe { height: 7mm; background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 6pt; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .b-body { padding: 2.2mm 3.4mm 0; }
+    .b-body h3 { font-size: 5.6pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin-bottom: 0.8mm; }
+    .terms { list-style: none; margin-bottom: 1.8mm; }
+    .terms li { font-size: 5.2pt; line-height: 1.35; color: var(--ink); padding-left: 2mm; position: relative; }
+    .terms li::before { content: ''; position: absolute; left: 0; top: 1.05mm; width: 0.9mm; height: 0.9mm; border-radius: 50%; background: var(--blue-lt); }
+    .contact { font-size: 5.4pt; line-height: 1.4; color: var(--ink); }
+    .contact b { font-weight: 800; }
+
+    .sign-row { position: absolute; left: 3.4mm; right: 3.4mm; bottom: 8.4mm; display: flex; justify-content: space-between; gap: 6mm; }
+    .sign { flex: 1; text-align: center; }
+    .sign .line { border-top: 0.3mm solid var(--ink); margin-bottom: 0.6mm; }
+    .sign span { font-size: 4.8pt; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .b-foot { position: absolute; left: 0; right: 0; bottom: 0; height: 5.4mm; background: var(--ink); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 5.2pt; font-weight: 700; font-style: italic; }
+
+    /* ── Printing: only the two cards ── */
+    @page { size: A4; margin: 15mm; }
+    @media print {
+      body { background: #fff; }
+      .toolbar, .tip { display: none !important; }
+      .sheet { padding: 0; gap: 8mm; max-width: none; justify-content: flex-start; flex-direction: column; align-items: flex-start; }
+      .side-label { text-align: left; color: #555; }
+      .card { border: 0.2mm solid #999; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div>
+    <h1>Student ID Card</h1>
+    <p>{{ full_name }} &middot; {{ admission_number }}</p>
+  </div>
+  <div class="btns">
+    <a class="btn btn-light" href="{% url 'profile' student.username %}">Back to profile</a>
+    <button type="button" class="btn btn-primary" onclick="window.print()">Print ID card</button>
+  </div>
+</div>
+
+<div class="sheet">
+
+  <!-- ═════════ FRONT ═════════ -->
+  <div>
+    <div class="side-label">Front</div>
+    <div class="card" aria-label="ID card front">
+      <div class="f-head">
+        <img src="{% static 'images/logo.png' %}" alt="">
+        <div class="f-title">TopMark<small>Tutorial Center &middot; Kishi</small></div>
+        <span class="f-tag">STUDENT ID</span>
+      </div>
+
+      <div class="f-body">
+        <div class="photo"><img src="{{ profile.get_picture_url }}" alt="{{ full_name }}"></div>
+        <div class="info">
+          <div class="name">{{ full_name }}</div>
+          <dl class="rows">
+            <dt>Adm. No</dt><dd class="adm">{{ admission_number }}</dd>
+            {% if class_level %}<dt>Class</dt><dd>{{ class_level }}</dd>{% endif %}
+            {% if profile.specialization %}<dt>Dept.</dt><dd>{{ profile.specialization }}</dd>{% endif %}
+            {% if profile.gender %}<dt>Gender</dt><dd>{{ profile.gender }}</dd>{% endif %}
+            {% if dob %}<dt>D.O.B</dt><dd>{{ dob|date:"d M Y" }}</dd>{% endif %}
+            {% if profile.phone %}<dt>Phone</dt><dd>{{ profile.phone }}</dd>{% endif %}
+          </dl>
+        </div>
+      </div>
+
+      <div class="f-foot"><span>Build Minds | Shape Futures</span><span>Issued <b>{{ issue_year }}</b></span></div>
+    </div>
+  </div>
+
+  <!-- ═════════ BACK ═════════ -->
+  <div>
+    <div class="side-label">Back</div>
+    <div class="card" aria-label="ID card back">
+      <div class="b-stripe">TopMark Tutorial Center</div>
+      <div class="b-body">
+        <h3>Terms of use</h3>
+        <ul class="terms">
+          <li>This card is the property of TopMark Tutorial Center and must be carried to every class.</li>
+          <li>It is not transferable. Report a lost card to the center immediately.</li>
+          <li>If found, please return it to the address below.</li>
+        </ul>
+        <h3>Contact</h3>
+        <div class="contact">
+          <b>Venue:</b> Akh-baru-deen High School, Agede Area, Kishi, Oyo State<br>
+          <b>Phone / WhatsApp:</b> 08104716152<br>
+          <b>Classes:</b> Thursday to Sunday, 4:00pm - 6:00pm
+        </div>
+      </div>
+
+      <div class="sign-row">
+        <div class="sign"><div class="line"></div><span>Student's signature</span></div>
+        <div class="sign"><div class="line"></div><span>Authorised signature</span></div>
+      </div>
+      <div class="b-foot">Learn. Grow. Succeed.</div>
+    </div>
+  </div>
+
+</div>
+
+<p class="tip">Tip: in the print dialog choose A4, scale 100%, and turn on &ldquo;Background graphics&rdquo; so the colours print. Cut along the card border.</p>
+
+{% if autoprint %}
+<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+{% endif %}
+</body>
+</html>

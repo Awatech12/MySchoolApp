@@ -137,14 +137,14 @@
     CBT Practice Exams
   </a>
 
-  <!-- Discussion Room -->
+  <!-- Student Q&A Centre -->
   <a href="{% url 'chat_room' %}"
      class="ac-sidebar-item{% if '/chat' in request.path %} active{% endif %}"
-     title="Discussion Room">
+     title="Student Q&amp;A Centre">
     <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
-    Discussion Room
+    Student Q&amp;A Centre
   </a>
 
   <!-- Profile -->
@@ -153,6 +153,19 @@
      title="Profile">
     <img src="{{ user.profile.picture.url }}" alt="Profile" class="ac-sidebar-avatar">
     Profile
+  </a>
+
+  <!-- Student ID Card -->
+  <a href="{% url 'id_card' %}"
+     class="ac-sidebar-item{% if '/id-card' in request.path %} active{% endif %}"
+     title="Print my ID card">
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <circle cx="8" cy="11" r="2"/>
+      <path d="M5 16c.6-1.6 1.8-2.4 3-2.4s2.4.8 3 2.4"/>
+      <path d="M14 10h5M14 14h3"/>
+    </svg>
+    My ID Card
   </a>
 
   <!-- Admin (staff only) -->
