@@ -825,6 +825,44 @@ def update_subjects(request):
     })
 
 
+@login_required
+@never_cache
+@require_GET
+def my_subjects(request):
+    """
+    JSON feed for the "My Subjects" modal (sidebar / home page).
+    Returns the signed-in student's passport photo, admission number and other
+    key details, plus the subjects they registered. Always the student's own data.
+    """
+    user    = request.user
+    profile = Profile.objects.filter(user=user).first()
+    subjects = list(
+        RegisteredSubject.objects.filter(student=user)
+        .order_by('subject_name')
+        .values_list('subject_name', flat=True)
+    )
+
+    class_level = ''
+    if profile:
+        class_level = _normalize_class_level(profile.class_level) or profile.class_level
+
+    return JsonResponse({
+        'success':          True,
+        'full_name':        user.get_full_name() or user.username,
+        'username':         user.username,
+        'photo':            profile.get_picture_url if profile else '',
+        'admission_number': profile.admission_number if profile else '',
+        'class_level':      class_level or '',
+        'school':           (profile.school if profile else '') or '',
+        'category':         dict(Profile.STUDENT_CATEGORY_CHOICES).get(profile.student_category, '') if profile else '',
+        'specialization':   (profile.specialization if profile else '') or '',
+        'gender':           (profile.gender if profile else '') or '',
+        'subjects':         subjects,
+        'count':            len(subjects),
+        'profile_url':      reverse('profile', args=[user.username]) + '#performance',
+    })
+
+
 def follow(request, username):
     user    = get_object_or_404(User, username=username)
     profile = Profile.objects.get(user=user)

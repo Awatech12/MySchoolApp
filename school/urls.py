@@ -73,6 +73,7 @@ urlpatterns = [
     path('change-password/', views.change_password, name='change_password'),
     path('update-passport/', views.update_passport, name='update_passport'),
     path('subjects/update/', views.update_subjects, name='update_subjects'),
+    path('my-subjects/', views.my_subjects, name='my_subjects'),
     path('results/print/<str:username>/', views.print_test_results, name='print_test_results'),
     path('id-card/', views.id_card, name='id_card'),
     path('id-card/<str:username>/', views.id_card, name='id_card_user'),

@@ -161,7 +161,19 @@
         <span class="nav-label">Q&amp;A</span>
     </a>
 
-    <!-- 5. Logout -->
+    <!-- 5. My Subjects (opens modal; falls back to profile if the modal is absent) -->
+    {% if user.is_authenticated %}
+    <a href="{% url 'profile' user.username %}#performance"
+       class="nav-item"
+       data-my-subjects
+       aria-haspopup="dialog"
+       title="My Subjects">
+        <i class="fas fa-book-open"></i>
+        <span class="nav-label">Subjects</span>
+    </a>
+    {% endif %}
+
+    <!-- 6. Logout -->
     <a href="{% url 'logout' %}"
        class="nav-item"
        title="Logout"

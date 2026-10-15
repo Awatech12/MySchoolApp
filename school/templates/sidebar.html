@@ -1,3 +1,48 @@
+
+<style>
+  /* ═══════════════════════════════════════════
+     MY SUBJECTS MODAL  (self-contained: works on every page)
+  ═══════════════════════════════════════════ */
+  button.ac-sidebar-item { border: 0; background: transparent; cursor: pointer; width: 100%; text-align: left; }
+
+  .ms-modal { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
+  .ms-modal[hidden] { display: none; }
+  .ms-sheet { background: #fff; color: #262626; width: 100%; max-width: 560px; max-height: 94vh; max-height: 94dvh; display: flex; flex-direction: column; border-radius: 8px 8px 0 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; box-sizing: border-box; }
+  .ms-sheet *, .ms-sheet *::before, .ms-sheet *::after { box-sizing: border-box; }
+  @media (min-width: 640px) { .ms-modal { align-items: center; padding: 20px; } .ms-sheet { border-radius: 6px; max-height: 90vh; } }
+
+  .ms-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; background: #0074cc; color: #fff; }
+  .ms-h h2 { font-size: 17px; font-weight: 700; margin: 0; color: #fff; }
+  .ms-x { width: 44px; height: 44px; margin: -8px -8px -8px 0; border: 0; background: transparent; color: #fff; font-size: 18px; cursor: pointer; }
+  .ms-b { padding: 16px; overflow-y: auto; flex: 1; }
+  .ms-f { display: flex; gap: 10px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #dbdbdb; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+
+  .ms-student { display: flex; gap: 14px; align-items: flex-start; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #dbdbdb; }
+  .ms-photo { width: 84px; height: 104px; object-fit: cover; border: 1px solid #dbdbdb; border-radius: 4px; background: #fafafa; flex: none; }
+  .ms-name { font-size: 17px; font-weight: 700; margin: 0 0 6px; word-break: break-word; }
+  .ms-meta { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; margin: 0; }
+  .ms-meta dt { color: #737373; font-weight: 600; }
+  .ms-meta dd { margin: 0; font-weight: 600; word-break: break-word; }
+  .ms-meta dd.is-empty { color: #8e8e8e; font-weight: 400; }
+
+  .ms-sec { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; }
+  .ms-sec h3 { font-size: 14px; font-weight: 700; color: #0074cc; margin: 0; }
+  .ms-count { font-size: 12px; font-weight: 700; color: #0074cc; background: #e8f4fd; border-radius: 999px; padding: 2px 10px; }
+  .ms-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  @media (min-width: 520px) { .ms-list { grid-template-columns: 1fr 1fr; } }
+  .ms-list li { display: flex; align-items: center; gap: 10px; border: 1px solid #dbdbdb; border-radius: 4px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
+  .ms-num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #e8f4fd; color: #0074cc; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  .ms-state { text-align: center; padding: 28px 8px; color: #737373; font-size: 14px; }
+  .ms-state h3 { font-size: 16px; color: #262626; margin: 0 0 6px; }
+  .ms-state.err { color: #991b1b; }
+
+  .ms-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 16px; border-radius: 4px; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
+  .ms-btn-outline { background: #fff; color: #0074cc; border-color: #0074cc; }
+  .ms-btn-outline:hover { background: #e8f4fd; }
+  .ms-btn-primary { background: #0095f6; color: #fff; }
+  .ms-btn-primary:hover { background: #0074cc; }
+</style>
 <style>
   /* ═══════════════════════════════════════════
      DESKTOP SIDEBAR  (hidden on mobile)
@@ -147,6 +192,17 @@
     Student Q&amp;A Centre
   </a>
 
+  <!-- My Subjects (opens modal) -->
+  {% if user.is_authenticated %}
+  <button type="button" class="ac-sidebar-item" data-my-subjects aria-haspopup="dialog" title="My registered subjects">
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>
+    </svg>
+    My Subjects
+  </button>
+  {% endif %}
+
   <!-- Student ID Card -->
   <a href="{% url 'id_card' %}"
      class="ac-sidebar-item{% if '/id-card' in request.path %} active{% endif %}"
@@ -186,3 +242,119 @@
   </a>
 
 </aside>
+
+{% if user.is_authenticated %}
+<!-- ══ MY SUBJECTS MODAL ══ -->
+<div class="ms-modal" id="ms-modal" hidden>
+  <div class="ms-sheet" role="dialog" aria-modal="true" aria-labelledby="ms-title">
+    <div class="ms-h">
+      <h2 id="ms-title">My Subjects</h2>
+      <button type="button" class="ms-x" data-ms-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button>
+    </div>
+    <div class="ms-b" id="ms-body"></div>
+    <div class="ms-f">
+      <button type="button" class="ms-btn ms-btn-outline" data-ms-close>Close</button>
+      <a class="ms-btn ms-btn-primary" id="ms-edit" href="{% url 'profile' user.username %}#performance"><i class="fas fa-pen" aria-hidden="true"></i> Edit subjects</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var modal = document.getElementById('ms-modal');
+  if (!modal) return;
+  var body = document.getElementById('ms-body'), lastFocus = null;
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function state(title, text, isErr) {
+    body.textContent = '';
+    var d = el('div', 'ms-state' + (isErr ? ' err' : ''));
+    if (title) d.appendChild(el('h3', '', title));
+    d.appendChild(el('p', '', text));
+    body.appendChild(d);
+  }
+
+  function render(d) {
+    body.textContent = '';
+
+    var top = el('div', 'ms-student');
+    var img = el('img', 'ms-photo');
+    img.src = d.photo || ''; img.alt = 'Passport photo of ' + d.full_name;
+    img.width = 84; img.height = 104;
+    top.appendChild(img);
+
+    var info = el('div');
+    info.appendChild(el('h3', 'ms-name', d.full_name));
+    var dl = el('dl', 'ms-meta');
+    [['Admission No.', d.admission_number], ['Class', d.class_level], ['School', d.school],
+     ['Category', d.category], ['Department', d.specialization], ['Gender', d.gender]
+    ].forEach(function (r) {
+      dl.appendChild(el('dt', '', r[0]));
+      dl.appendChild(el('dd', r[1] ? '' : 'is-empty', r[1] || 'Not set'));
+    });
+    info.appendChild(dl);
+    top.appendChild(info);
+    body.appendChild(top);
+
+    var sec = el('div', 'ms-sec');
+    sec.appendChild(el('h3', '', 'Registered Subjects'));
+    sec.appendChild(el('span', 'ms-count', d.count + (d.count === 1 ? ' subject' : ' subjects')));
+    body.appendChild(sec);
+
+    if (!d.subjects.length) {
+      var empty = el('div', 'ms-state');
+      empty.appendChild(el('h3', '', 'No subjects registered yet'));
+      empty.appendChild(el('p', '', 'Tap "Edit subjects" to choose the subjects you are studying.'));
+      body.appendChild(empty);
+    } else {
+      var ul = el('ul', 'ms-list');
+      d.subjects.forEach(function (name, i) {
+        var li = el('li');
+        li.appendChild(el('span', 'ms-num', String(i + 1)));
+        li.appendChild(el('span', '', name));
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+    if (d.profile_url) document.getElementById('ms-edit').href = d.profile_url;
+  }
+
+  function load() {
+    state('', 'Loading your subjects…');
+    fetch('{% url "my_subjects" %}', { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function (d) { if (d && d.success) render(d); else throw new Error(); })
+      .catch(function () { state('Could not load subjects', 'Please check your connection and try again.', true); });
+  }
+
+  function open(e) {
+    if (e) e.preventDefault();
+    lastFocus = document.activeElement;
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    load();
+    var x = modal.querySelector('.ms-x'); if (x) x.focus();
+  }
+  function close() {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  /* Delegated, so triggers rendered later (footer tab bar, home tile) work too */
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-my-subjects]') : null;
+    if (t) open(e);
+  });
+  Array.prototype.forEach.call(modal.querySelectorAll('[data-ms-close]'), function (t) { t.addEventListener('click', close); });
+  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) close(); });
+})();
+</script>
+{% endif %}
