@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, check_image, clean_question, image_blobs_from_uploads,
                                 import_questions, parse_rows, rows_from_text, rows_from_upload)
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
 import uuid, json, re, logging, random
@@ -1281,7 +1281,45 @@ def _finalize_examination(attempt, auto=False):
 
     cbt_score, _ = CBTScore.objects.get_or_create(user_id=attempt.student_id)
     cbt_score.recalculate()
+
+    # Tell the student they are done until the next scheduled examination.
+    nxt = ExamSchedule.objects.filter(is_active=True, starts_at__gt=now).order_by('starts_at').first()
+    msg = 'You have completed your CBT Examination. '
+    msg += (f'Your next examination is on {_fmt_exam_dt(nxt.starts_at)}.' if nxt
+            else 'You will be notified when the next examination is scheduled.')
+    Notification.objects.create(user_id=attempt.student_id, message=msg)
     return attempt
+
+
+def _fmt_exam_dt(dt):
+    return _as_local(dt).strftime('%A, %d %b %Y at %I:%M %p')
+
+
+def _exam_status(user):
+    """
+    Where the student stands with the scheduled examination. Returns a dict with
+      state: 'open'     - an exam window is open and the student has not sat it yet
+             'done'     - the student already sat the current scheduled exam (wait for the next one)
+             'upcoming' - nothing is open now, but an exam is scheduled
+             'closed'   - the last window ended and the student never sat it; next one not yet scheduled
+             'none'     - no exam has been scheduled
+      schedule: the current schedule (open / last started), next: the next future schedule.
+    """
+    now = timezone.now()
+    live = ExamSchedule.objects.filter(is_active=True)
+    nxt = live.filter(starts_at__gt=now).order_by('starts_at').first()
+    current = live.filter(starts_at__lte=now).order_by('-starts_at').first()
+
+    if current:
+        done = ExaminationAttempt.objects.filter(student=user, schedule=current, is_submitted=True).exists()
+        if done:
+            state = 'done'
+        elif current.ends_at > now:
+            state = 'open'
+        else:
+            state = 'upcoming' if nxt else 'closed'
+        return {'state': state, 'schedule': current, 'next': nxt}
+    return {'state': 'upcoming' if nxt else 'none', 'schedule': None, 'next': nxt}
 
 
 def _expire_if_due(attempt):
@@ -1321,8 +1359,12 @@ def cbt_examination(request):
         {'name': n, 'available': counts.get(n, 0), 'questions': min(counts.get(n, 0), EXAM_QUESTIONS_PER_SUBJECT)}
         for n in _exam_registered_subjects(user)
     ]
+    status = _exam_status(user)
     return render(request, 'cbt_examination.html', {
         'view_mode': 'home',
+        'exam_state': status['state'],
+        'exam_schedule': status['schedule'],
+        'next_schedule': status['next'],
         'subjects': subjects,
         'active': ExaminationAttempt.objects.filter(student=user, is_submitted=False).first(),
         'history': ExaminationAttempt.objects.filter(student=user, is_submitted=True)[:10],
@@ -1368,9 +1410,21 @@ def cbt_examination_start(request):
         if existing:
             return redirect('cbt_examination_take', attempt_id=existing.attempt_id)
 
+        # The examination can only be started inside an admin-set window, once per schedule.
+        status = _exam_status(user)
+        if status['state'] != 'open':
+            if status['state'] == 'done':
+                nxt = status['next']
+                return back('You have already completed your examination. ' +
+                            (f'The next one is on {_fmt_exam_dt(nxt.starts_at)}.' if nxt
+                             else 'Please wait for the next examination to be scheduled.'))
+            if status['state'] == 'upcoming':
+                return back(f'The examination is not open yet. It starts on {_fmt_exam_dt(status["next"].starts_at)}.')
+            return back('There is no examination open right now.')
+
         ordered = [s for s in registered if s in chosen]
         attempt = ExaminationAttempt.objects.create(
-            student=user, subjects=ordered, paper=_build_exam_paper(ordered), answers={},
+            student=user, schedule=status['schedule'], subjects=ordered, paper=_build_exam_paper(ordered), answers={},
             duration_sec=len(ordered) * EXAM_MINUTES_PER_SUBJECT * 60,
         )
     return redirect('cbt_examination_take', attempt_id=attempt.attempt_id)
@@ -1845,6 +1899,76 @@ def cbt_question_template(request):
     w.writerow(['English Language', 'According to the passage, why did Ade return home?', 'He was sick', 'He was tired', 'He lost his job', 'He missed his family', 'D', '', '', 'P1', 'Comprehension passage', 'Write or paste the whole passage here...', ''])
     w.writerow(['English Language', 'The word "reluctantly" in the passage means', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', 'P1', '', '', ''])
     return resp
+
+
+# ── CBT Examination: exam schedule (teachers / staff only) ──
+#
+# The examination is locked until a scheduled window opens. The teacher sets the date and time
+# the exam opens and the last moment students may start it. Students are notified when an exam
+# is scheduled and again when they finish it.
+
+def _parse_local_datetime(value):
+    """Parse an <input type="datetime-local"> value (site timezone) into an aware datetime, or None."""
+    value = (value or '').strip()
+    if not value:
+        return None
+    try:
+        dt = datetime_type.fromisoformat(value)
+    except ValueError:
+        return None
+    return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+
+
+@_exam_teacher_only
+@ensure_csrf_cookie
+def cbt_exam_schedule(request):
+    """List the scheduled examinations and create a new one."""
+    now = timezone.now()
+    if request.method == 'POST':
+        title = ' '.join((request.POST.get('title') or '').split())[:150]
+        starts = _parse_local_datetime(request.POST.get('starts_at'))
+        ends = _parse_local_datetime(request.POST.get('ends_at'))
+
+        err = None
+        if not starts or not ends:
+            err = 'Please set both the date and time the exam opens and the time it closes.'
+        elif ends <= starts:
+            err = 'The closing time must be after the opening time.'
+        elif ends <= now:
+            err = 'The closing time is already in the past.'
+        elif ExamSchedule.objects.filter(is_active=True, starts_at__lt=ends, ends_at__gt=starts).exists():
+            err = 'That time overlaps another scheduled examination.'
+
+        if err:
+            messages.error(request, err)
+            return redirect('cbt_exam_schedule')
+
+        sched = ExamSchedule.objects.create(title=title, starts_at=starts, ends_at=ends, created_by=request.user)
+        msg = (f'{sched.title or "CBT Examination"} is scheduled for {_fmt_exam_dt(starts)}. '
+               f'You can start it any time until {_fmt_exam_dt(ends)}.')
+        students = User.objects.filter(is_active=True, is_staff=False, is_superuser=False).values_list('pk', flat=True)
+        Notification.objects.bulk_create([Notification(user_id=uid, message=msg) for uid in students], batch_size=500)
+        messages.success(request, 'Examination scheduled. Students have been notified.')
+        return redirect('cbt_exam_schedule')
+
+    schedules = list(ExamSchedule.objects.annotate(
+        sat=Count('attempts', filter=Q(attempts__is_submitted=True), distinct=True))[:50])
+    for s in schedules:
+        s.phase = ('off' if not s.is_active else 'upcoming' if s.starts_at > now
+                   else 'open' if s.ends_at > now else 'closed')
+    return render(request, 'cbt_exam_schedule.html', {
+        'schedules': schedules,
+        'profile_url': reverse('profile', args=[request.user.username]),
+    })
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_exam_schedule_delete(request, pk):
+    """Cancel a scheduled examination (students' saved results are not affected)."""
+    get_object_or_404(ExamSchedule, pk=pk).delete()
+    messages.success(request, 'The scheduled examination was removed.')
+    return redirect('cbt_exam_schedule')
 
 
 # ── Student Q&A Centre (chat room) ──────────────────────────────────

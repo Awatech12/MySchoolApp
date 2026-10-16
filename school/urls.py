@@ -28,6 +28,8 @@ urlpatterns = [
     path('examination/',                                   views.cbt_examination,          name='cbt_examination'),
     path('examination/start/',                             views.cbt_examination_start,    name='cbt_examination_start'),
     # teacher question bank (staff only)
+    path('examination/schedule/',                          views.cbt_exam_schedule,        name='cbt_exam_schedule'),
+    path('examination/schedule/<int:pk>/delete/',          views.cbt_exam_schedule_delete, name='cbt_exam_schedule_delete'),
     path('examination/questions/',                         views.cbt_question_bank,        name='cbt_question_bank'),
     path('examination/questions/upload/',                  views.cbt_question_upload,      name='cbt_question_upload'),
     path('examination/questions/add/',                     views.cbt_question_add,         name='cbt_question_add'),

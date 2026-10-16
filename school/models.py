@@ -762,6 +762,27 @@ class ExamQuestion(models.Model):
         return f"[{self.subject_name}] {self.text[:60]}"
 
 
+class ExamSchedule(models.Model):
+    """
+    A date and time window set by the admin/teacher during which students may start the
+    CBT Examination. Outside every window the examination is locked.
+    A student can sit the exam once per schedule; after that they are told they are done
+    until the next schedule opens.
+    """
+    title      = models.CharField(max_length=150, blank=True)
+    starts_at  = models.DateTimeField()                    # the exam opens
+    ends_at    = models.DateTimeField()                    # last moment a student can START the exam
+    is_active  = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='exam_schedules')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-starts_at']
+
+    def __str__(self):
+        return f"{self.title or 'CBT Examination'} – {self.starts_at:%Y-%m-%d %H:%M}"
+
+
 class ExaminationAttempt(models.Model):
     """
     One sitting of the CBT Examination.
@@ -775,6 +796,8 @@ class ExaminationAttempt(models.Model):
     """
     attempt_id     = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='examination_attempts')
+    # The scheduled exam this sitting belongs to (null for sittings made before scheduling existed).
+    schedule       = models.ForeignKey('ExamSchedule', null=True, blank=True, on_delete=models.SET_NULL, related_name='attempts')
     subjects       = models.JSONField(default=list)    # subject names sat, in order
     paper          = models.JSONField(default=list)    # [{id, subject, text, options:[[key,text]..], answer, explanation}]
     answers        = models.JSONField(default=dict)    # {"<question id>": "A".."D"}

@@ -1,0 +1,84 @@
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopMark – Exam Schedule</title>
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --blue:#0095f6; --blue-dk:#0074cc; --blue-lt:#e8f4fd; --dark:#262626; --gray1:#fafafa; --gray2:#efefef; --gray3:#8e8e8e; --line:#dbdbdb; --green:#16a34a; --green-lt:#e8f8ee; --red:#dc2626; --red-lt:#fdecec; --amber:#d97706; --amber-lt:#fef3e2; }
+  * { box-sizing: border-box; }
+  body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--gray1); color:var(--dark); margin:0; min-height:100vh; }
+  .shell { max-width:860px; margin:0 auto; padding:24px 16px 60px; }
+  @media (min-width:768px) { .shell { padding-left:66px; } }
+  h1 { font-size:22px; font-weight:800; margin:0 0 4px; }
+  .sub { color:var(--gray3); font-size:13px; font-weight:500; margin:0 0 18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:15px; font-weight:800; margin:0 0 12px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1.5px solid transparent; border-radius:22px; padding:9px 20px; font:800 13px 'Plus Jakarta Sans',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn-primary { background:var(--blue); color:#fff; } .btn-primary:hover { background:var(--blue-dk); }
+  .btn-ghost { background:#fff; color:var(--dark); border-color:var(--line); } .btn-ghost:hover { background:var(--gray2); }
+  .btn-sm { padding:5px 12px; font-size:12px; } .btn-red { color:var(--red); border-color:#f3c0c0; }
+  .alert { padding:11px 16px; border-radius:10px; font-size:13px; font-weight:600; margin-bottom:8px; background:var(--blue-lt); color:var(--blue-dk); }
+  .alert.error { background:var(--red-lt); color:var(--red); } .alert.success { background:var(--green-lt); color:var(--green); }
+  label.f { display:block; font-size:12px; font-weight:800; margin:0 0 4px; }
+  .row { display:grid; gap:12px; grid-template-columns:1fr; margin-bottom:12px; }
+  @media (min-width:640px) { .row.two { grid-template-columns:1fr 1fr; } }
+  input[type=text], input[type=datetime-local] { width:100%; border:1.5px solid var(--line); border-radius:8px; padding:9px 11px; font:600 13px 'Plus Jakarta Sans',sans-serif; background:#fff; color:var(--dark); }
+  .item { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .item b { font-size:14px; display:block; } .item small { color:var(--gray3); font-weight:600; font-size:12px; display:block; margin-top:2px; }
+  .chip { display:inline-block; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800; margin-left:6px; }
+  .chip.upcoming { background:var(--blue-lt); color:var(--blue-dk); } .chip.open { background:var(--green-lt); color:var(--green); } .chip.closed { background:var(--gray2); color:var(--gray3); }
+  .empty { text-align:center; padding:20px 8px; color:var(--gray3); font-weight:600; }
+</style>
+</head>
+<body>
+{% include 'sidebar.html' %}
+<div class="shell">
+  <h1>Exam Schedule</h1>
+  <p class="sub">Students can only start the CBT Examination between the opening and closing time you set here.</p>
+  <p><a class="btn btn-ghost btn-sm" href="{% url 'cbt_examination' %}"><i class="fa-solid fa-arrow-left"></i> CBT Examination</a></p>
+
+  {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+  <div class="card">
+    <h2><i class="fa-regular fa-calendar-plus"></i> Set a new exam date</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div class="row"><div><label class="f" for="title">Title (optional)</label>
+        <input type="text" name="title" id="title" maxlength="150" placeholder="e.g. First Term Examination"></div></div>
+      <div class="row two">
+        <div><label class="f" for="starts_at">Exam opens (date and time)</label>
+          <input type="datetime-local" name="starts_at" id="starts_at" required></div>
+        <div><label class="f" for="ends_at">Last time students can start</label>
+          <input type="datetime-local" name="ends_at" id="ends_at" required></div>
+      </div>
+      <p class="sub" style="margin:0 0 12px">Once a student starts, their own timer runs for the full paper. All students are notified when you save.</p>
+      <button class="btn btn-primary" type="submit"><i class="fa-solid fa-calendar-check"></i> Schedule examination</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2><i class="fa-solid fa-list"></i> Scheduled examinations</h2>
+    {% for s in schedules %}
+    <div class="item">
+      <div>
+        <b>{{ s.title|default:"CBT Examination" }}<span class="chip {{ s.phase }}">{% if s.phase == 'upcoming' %}Upcoming{% elif s.phase == 'open' %}Open now{% else %}Closed{% endif %}</span></b>
+        <small>Opens {{ s.starts_at|date:"D, d M Y, h:i A" }} &middot; closes {{ s.ends_at|date:"D, d M Y, h:i A" }} &middot; {{ s.sat }} student{{ s.sat|pluralize }} finished</small>
+      </div>
+      <form method="post" action="{% url 'cbt_exam_schedule_delete' s.pk %}" onsubmit="return confirm('Remove this scheduled examination?')">{% csrf_token %}
+        <button class="btn btn-ghost btn-sm btn-red" type="submit">Remove</button>
+      </form>
+    </div>
+    {% empty %}
+    <div class="empty">No examination scheduled yet. Students cannot sit the exam until you set a date.</div>
+    {% endfor %}
+  </div>
+</div>
+{% include "footer.html" %}
+</body>
+</html>

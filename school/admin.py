@@ -1,5 +1,5 @@
 from django.contrib import admin
-from school.models import Profile, Post, PostComment, Notification, ExamQuestion, ExamPassage, ExaminationAttempt
+from school.models import Profile, Post, PostComment, Notification, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule
 
 # Register your models here.
 admin.site.register(Profile)
@@ -25,6 +25,12 @@ class ExamPassageAdmin(admin.ModelAdmin):
     list_display = ('subject_name', 'ref', 'title')
     list_filter = ('subject_name',)
     search_fields = ('title', 'text', 'ref')
+
+
+@admin.register(ExamSchedule)
+class ExamScheduleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'starts_at', 'ends_at', 'is_active')
+    list_filter = ('is_active',)
 
 
 @admin.register(ExaminationAttempt)
