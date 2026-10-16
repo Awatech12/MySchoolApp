@@ -23,6 +23,22 @@ urlpatterns = [
     path('cbt/english/',            views.cbt_english,        name='cbt_english'),
     path('cbt/chemistry/',          views.cbt_chemistry,      name='cbt_chemistry'),
     path('cbt/submit/',             views.cbt_submit,         name='cbt_submit'),      # score submission
+
+    # ── CBT Examination (real timed test on registered subjects) ──
+    path('examination/',                                   views.cbt_examination,          name='cbt_examination'),
+    path('examination/start/',                             views.cbt_examination_start,    name='cbt_examination_start'),
+    # teacher question bank (staff only)
+    path('examination/questions/',                         views.cbt_question_bank,        name='cbt_question_bank'),
+    path('examination/questions/upload/',                  views.cbt_question_upload,      name='cbt_question_upload'),
+    path('examination/questions/add/',                     views.cbt_question_add,         name='cbt_question_add'),
+    path('examination/questions/template/',                views.cbt_question_template,    name='cbt_question_template'),
+    path('examination/questions/<int:pk>/edit/',           views.cbt_question_edit,        name='cbt_question_edit'),
+    path('examination/questions/<int:pk>/toggle/',         views.cbt_question_toggle,      name='cbt_question_toggle'),
+    path('examination/questions/<int:pk>/delete/',         views.cbt_question_delete,      name='cbt_question_delete'),
+    path('examination/<uuid:attempt_id>/',                 views.cbt_examination_take,     name='cbt_examination_take'),
+    path('examination/<uuid:attempt_id>/save/',            views.cbt_examination_save,     name='cbt_examination_save'),
+    path('examination/<uuid:attempt_id>/submit/',          views.cbt_examination_submit,   name='cbt_examination_submit'),
+    path('examination/<uuid:attempt_id>/result/',          views.cbt_examination_result,   name='cbt_examination_result'),
     # ─────────────────────────────────────────────────────────────
 
     # Live video URLs
@@ -74,7 +90,9 @@ urlpatterns = [
     path('update-passport/', views.update_passport, name='update_passport'),
     path('subjects/update/', views.update_subjects, name='update_subjects'),
     path('my-subjects/', views.my_subjects, name='my_subjects'),
+    path('results/', views.my_results, name='my_results'),
     path('results/print/<str:username>/', views.print_test_results, name='print_test_results'),
+    path('results/<str:username>/', views.my_results, name='my_results_user'),
     path('id-card/', views.id_card, name='id_card'),
     path('id-card/<str:username>/', views.id_card, name='id_card_user'),
     path('<str:username>', views.profile, name='profile'),

@@ -1,0 +1,244 @@
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopMark – Exam Question Bank</title>
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --blue:#0095f6; --blue-dk:#0074cc; --blue-lt:#e8f4fd; --dark:#262626; --gray1:#fafafa; --gray2:#efefef; --gray3:#8e8e8e; --line:#dbdbdb; --green:#16a34a; --green-lt:#e8f8ee; --red:#dc2626; --red-lt:#fdecec; --amber:#d97706; --amber-lt:#fef3e2; }
+  * { box-sizing: border-box; }
+  body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--gray1); color:var(--dark); margin:0; min-height:100vh; }
+  .shell { max-width:1000px; margin:0 auto; padding:24px 16px 60px; }
+  @media (min-width:768px) { .shell { padding-left:66px; } }
+  h1 { font-size:22px; font-weight:800; margin:0 0 4px; }
+  .sub { color:var(--gray3); font-size:13px; font-weight:500; margin:0 0 18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:15px; font-weight:800; margin:0 0 12px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1.5px solid transparent; border-radius:22px; padding:9px 20px; font:800 13px 'Plus Jakarta Sans',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn-primary { background:var(--blue); color:#fff; } .btn-primary:hover { background:var(--blue-dk); }
+  .btn-ghost { background:#fff; color:var(--dark); border-color:var(--line); } .btn-ghost:hover { background:var(--gray2); }
+  .btn-sm { padding:5px 12px; font-size:12px; }
+  .btn-red { color:var(--red); border-color:#f3c0c0; }
+  .alert { padding:11px 16px; border-radius:10px; font-size:13px; font-weight:600; margin-bottom:8px; background:var(--blue-lt); color:var(--blue-dk); }
+  .alert.error { background:var(--red-lt); color:var(--red); } .alert.success { background:var(--green-lt); color:var(--green); } .alert.warning { background:var(--amber-lt); color:#8a5a12; }
+  .top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+
+  .stats { display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); }
+  .stat { display:block; text-decoration:none; color:inherit; border:1.5px solid var(--line); border-radius:10px; padding:10px 12px; background:#fff; }
+  .stat:hover, .stat.on { border-color:var(--blue); background:var(--blue-lt); }
+  .stat b { font-size:13px; display:block; margin-bottom:4px; }
+  .stat small { font-size:11px; font-weight:700; color:var(--gray3); }
+  .bar { height:5px; background:var(--gray2); border-radius:4px; overflow:hidden; margin-top:6px; }
+  .bar i { display:block; max-width:100%; height:100%; background:var(--green); }
+  .stat.low .bar i { background:var(--amber); } .stat.none .bar i { background:var(--red); }
+
+  label.f { display:block; font-size:12px; font-weight:800; margin:0 0 4px; }
+  .row { display:grid; gap:12px; grid-template-columns:1fr; margin-bottom:12px; }
+  @media (min-width:640px) { .row.two { grid-template-columns:1fr 1fr; } }
+  input[type=text], input[type=search], select, textarea, input[type=file] { width:100%; border:1.5px solid var(--line); border-radius:8px; padding:9px 11px; font:600 13px 'Plus Jakarta Sans',sans-serif; background:#fff; color:var(--dark); }
+  textarea { min-height:90px; resize:vertical; }
+  .chk { display:flex; gap:8px; align-items:flex-start; font-size:13px; font-weight:600; }
+  .chk small { display:block; color:var(--gray3); font-weight:500; }
+  details.help { margin:6px 0 14px; font-size:12px; color:#555; line-height:1.7; }
+  details.help summary { cursor:pointer; font-weight:800; color:var(--blue-dk); }
+  details.help pre { background:var(--gray1); border:1px solid var(--line); border-radius:8px; padding:10px; overflow-x:auto; font-size:12px; margin:6px 0; }
+
+  .tools { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .tools input { flex:1; min-width:160px; width:auto; } .tools select { width:auto; max-width:230px; }
+  .tbl-wrap { overflow-x:auto; }
+  table.tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  table.tbl th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--gray3); padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  table.tbl td { padding:10px; border-bottom:1px solid var(--gray2); font-weight:600; vertical-align:top; }
+  tr.off td { opacity:.5; }
+  td.q { min-width:260px; } td.q small { display:block; color:var(--gray3); font-weight:500; margin-top:3px; }
+  .ans { display:inline-flex; width:24px; height:24px; border-radius:50%; background:var(--green-lt); color:var(--green); font-weight:800; align-items:center; justify-content:center; }
+  .acts { display:flex; gap:6px; flex-wrap:wrap; } .acts form { margin:0; }
+  .pager { display:flex; justify-content:center; gap:10px; align-items:center; margin-top:14px; font-size:13px; font-weight:700; }
+  .empty { text-align:center; padding:26px 8px; color:var(--gray3); font-weight:600; }
+
+  .modal { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:14px; }
+  .modal.open { display:flex; }
+  .box { background:#fff; border-radius:14px; padding:20px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; }
+  .box h3 { margin:0 0 14px; font-size:17px; }
+  .acts-end { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+</style>
+</head>
+<body>
+{% include 'sidebar.html' %}
+<div class="shell">
+
+  <div class="top">
+    <div>
+      <h1>Exam Question Bank</h1>
+      <p class="sub">Upload and manage the questions students get in the CBT Examination. {{ total_active }} active questions in total.</p>
+    </div>
+    <div class="tools">
+      <a class="btn btn-ghost" href="{% url 'cbt_examination' %}"><i class="fa-solid fa-arrow-left"></i> CBT Examination</a>
+      <button class="btn btn-primary" type="button" id="addBtn"><i class="fa-solid fa-plus"></i> Add a question</button>
+    </div>
+  </div>
+
+  {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+  <div class="card">
+    <h2><i class="fa-solid fa-chart-simple"></i> Questions per subject</h2>
+    <div class="stats">
+      {% for s in stats %}
+      <a class="stat{% if s.name == subject %} on{% endif %}{% if s.active == 0 %} none{% elif s.active < per_subject %} low{% endif %}" href="?subject={{ s.name|urlencode }}">
+        <b>{{ s.name }}</b>
+        <small>{{ s.active }} active{% if s.total != s.active %} &middot; {{ s.total }} total{% endif %}</small>
+        <div class="bar"><i style="width:{% widthratio s.active 50 100 %}%"></i></div>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="sub" style="margin:10px 0 0">A subject needs at least {{ per_subject }} active questions to give a full paper; with fewer, students get what is available.</p>
+  </div>
+
+  <div class="card">
+    <h2><i class="fa-solid fa-file-arrow-up"></i> Upload questions</h2>
+    <form method="post" action="{% url 'cbt_question_upload' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row two">
+        <div>
+          <label class="f" for="upSubject">Subject for this upload</label>
+          <select name="subject" id="upSubject">
+            <option value="">Use the “subject” column in my file</option>
+            {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="f" for="upFile">File (.csv, .xlsx or .txt)</label>
+          <input type="file" name="file" id="upFile" accept=".csv,.xlsx,.txt,.tsv">
+        </div>
+      </div>
+      <details class="help">
+        <summary>Or paste questions instead / see the file format</summary>
+        <textarea name="pasted" placeholder="Solve for x: 3x - 7 = 11 | 6 | 4 | 5 | 18 | A"></textarea>
+        <p>
+          <b>Spreadsheet (CSV / Excel)</b>: one question per row with a header row:
+        </p>
+        <pre>subject, question, option_a, option_b, option_c, option_d, answer, explanation</pre>
+        <p>The <b>answer</b> is the letter A, B, C or D. <b>subject</b> and <b>explanation</b> are optional; leave out the subject column if you picked a subject above.
+          <a href="{% url 'cbt_question_template' %}">Download a CSV template</a>.</p>
+        <p><b>Text / pasted</b>: one question per line, separated by <code>|</code>:</p>
+        <pre>question | option A | option B | option C | option D | answer letter</pre>
+        <p>Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
+      </details>
+      <label class="chk" style="margin-bottom:14px">
+        <input type="checkbox" name="replace">
+        <span>Replace existing questions of the subjects in this upload<small>Old questions of those subjects are removed so only the uploaded ones remain. Students’ past results and reviews are not affected. Nothing is changed if the file has errors.</small></span>
+      </label>
+      <button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload"></i> Upload</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2><i class="fa-solid fa-list"></i> Questions{% if subject %} – {{ subject }}{% endif %}</h2>
+    <form class="tools" method="get">
+      <select name="subject" onchange="this.form.submit()">
+        <option value="">All subjects</option>
+        {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+      <input type="search" name="q" value="{{ search }}" placeholder="Search question text…">
+      <button class="btn btn-ghost" type="submit">Search</button>
+    </form>
+
+    {% if page_obj.object_list %}
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Subject</th><th>Question</th><th>Ans</th><th></th></tr></thead>
+        <tbody>
+        {% for q in page_obj %}
+          <tr{% if not q.is_active %} class="off"{% endif %}>
+            <td>{{ q.subject_name }}{% if not q.is_active %}<small style="display:block;color:var(--amber)">switched off</small>{% endif %}</td>
+            <td class="q">{{ q.text }}
+              <small>A. {{ q.option_a }} &nbsp; B. {{ q.option_b }} &nbsp; C. {{ q.option_c }} &nbsp; D. {{ q.option_d }}</small></td>
+            <td><span class="ans">{{ q.answer }}</span></td>
+            <td>
+              <div class="acts">
+                <button type="button" class="btn btn-ghost btn-sm edit-btn"
+                  data-id="{{ q.pk }}" data-subject="{{ q.subject_name }}" data-text="{{ q.text }}"
+                  data-a="{{ q.option_a }}" data-b="{{ q.option_b }}" data-c="{{ q.option_c }}" data-d="{{ q.option_d }}"
+                  data-answer="{{ q.answer }}" data-expl="{{ q.explanation }}">Edit</button>
+                <form method="post" action="{% url 'cbt_question_toggle' q.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm" type="submit">{% if q.is_active %}Switch off{% else %}Switch on{% endif %}</button></form>
+                <form method="post" action="{% url 'cbt_question_delete' q.pk %}" onsubmit="return confirm('Delete this question permanently?')">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm btn-red" type="submit">Delete</button></form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pager">
+      {% if page_obj.has_previous %}<a class="btn btn-ghost btn-sm" href="?{% if query %}{{ query }}&{% endif %}page={{ page_obj.previous_page_number }}">&larr; Prev</a>{% endif %}
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a class="btn btn-ghost btn-sm" href="?{% if query %}{{ query }}&{% endif %}page={{ page_obj.next_page_number }}">Next &rarr;</a>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty">No questions found. Upload a file above or add one by hand.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal" id="qModal" role="dialog" aria-modal="true">
+  <div class="box">
+    <h3 id="qTitle">Add a question</h3>
+    <form method="post" id="qForm" action="{% url 'cbt_question_add' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <div class="row two">
+        <div><label class="f">Subject</label>
+          <select name="subject" id="fSubject" required>
+            {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
+          </select></div>
+        <div><label class="f">Correct answer</label>
+          <select name="answer" id="fAnswer" required><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+      </div>
+      <div class="row"><div><label class="f">Question</label><textarea name="text" id="fText" required></textarea></div></div>
+      <div class="row two">
+        <div><label class="f">Option A</label><input type="text" name="option_a" id="fA" maxlength="300" required></div>
+        <div><label class="f">Option B</label><input type="text" name="option_b" id="fB" maxlength="300" required></div>
+        <div><label class="f">Option C</label><input type="text" name="option_c" id="fC" maxlength="300" required></div>
+        <div><label class="f">Option D</label><input type="text" name="option_d" id="fD" maxlength="300" required></div>
+      </div>
+      <div class="row"><div><label class="f">Explanation (optional, shown in the student’s review)</label><textarea name="explanation" id="fExpl" style="min-height:60px"></textarea></div></div>
+      <div class="acts-end">
+        <button type="button" class="btn btn-ghost" id="qCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save question</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var modal = document.getElementById('qModal'), form = document.getElementById('qForm');
+  var addUrl = "{% url 'cbt_question_add' %}", editUrl = "{% url 'cbt_question_edit' 0 %}";
+  function $(id) { return document.getElementById(id); }
+  function open(d) {
+    form.action = d ? editUrl.replace('/0/', '/' + d.id + '/') : addUrl;
+    $('qTitle').textContent = d ? 'Edit question' : 'Add a question';
+    if (d) $('fSubject').value = d.subject;
+    $('fText').value = d ? d.text : '';
+    $('fA').value = d ? d.a : ''; $('fB').value = d ? d.b : ''; $('fC').value = d ? d.c : ''; $('fD').value = d ? d.d : '';
+    $('fAnswer').value = d ? d.answer : 'A';
+    $('fExpl').value = d ? d.expl : '';
+    modal.classList.add('open');
+    $('fText').focus();
+  }
+  $('addBtn').onclick = function () { open(null); };
+  $('qCancel').onclick = function () { modal.classList.remove('open'); };
+  modal.addEventListener('click', function (e) { if (e.target === modal) modal.classList.remove('open'); });
+  Array.prototype.forEach.call(document.querySelectorAll('.edit-btn'), function (b) {
+    b.onclick = function () { open(b.dataset); };
+  });
+})();
+</script>
+{% include "footer.html" %}

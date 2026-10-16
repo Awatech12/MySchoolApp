@@ -6,10 +6,12 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport
+from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, clean_question, import_questions,
+                                parse_rows, rows_from_text, rows_from_upload)
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExaminationAttempt
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
-import uuid, json, re, logging
+import uuid, json, re, logging, random
 from datetime import date as date_type
 from datetime import datetime as datetime_type, time as time_type
 from django.db import transaction, IntegrityError
@@ -488,10 +490,13 @@ def profile(request, username):
         # "feedback"/"title" are optional extras: shown automatically if you
         # ever add such fields to CBTExam, without needing any change here.
         teacher_feedback = (getattr(ex, 'feedback', '') or getattr(ex, 'teacher_feedback', '') or '').strip()
-        test_name = (getattr(ex, 'title', '') or getattr(ex, 'test_name', '') or f'{subject_label} CBT Test')
+        test_name = (getattr(ex, 'title', '') or getattr(ex, 'test_name', '')
+                     or f'{subject_label} ' + ('CBT Examination' if ex.exam_type == 'examination' else 'CBT Test'))
         taken_local = _as_local(ex.taken_at)
         exam_history.append({
             'test_name':        test_name,
+            'exam_type':        ex.exam_type,
+            'exam_type_display': ex.get_exam_type_display(),
             'subject':          subject_label,
             'date':             ex.taken_at,
             'date_iso':         taken_local.strftime('%Y-%m-%d'),   # calendar day in the site's timezone
@@ -658,6 +663,7 @@ def print_test_results(request, username):
             'total':         ex.total,
             'percentage':    ex.percentage,
             'grade_display': ex.get_grade_display(),
+            'exam_type':     ex.get_exam_type_display(),
             # Teacher's own feedback if the model ever stores it; otherwise the system remark.
             'feedback':      feedback or GRADE_REMARKS.get(ex.grade, ''),
         })
@@ -1132,6 +1138,575 @@ def cbt_submit(request):
         'points': cbt_score.points,
         'best':   cbt_score.best_score,
     })
+
+
+# ── CBT Examination (real, timed test on the student's registered subjects) ──
+#
+# "Test Practice" (cbt_exams.html) is graded in the browser and open to any subject.
+# The CBT Examination is the real thing:
+#   * a student can only sit the subjects they registered (RegisteredSubject);
+#   * questions are drawn on the server from the ExamQuestion bank, in random order,
+#     with the options shuffled, and frozen into an ExaminationAttempt;
+#   * the correct answers never reach the browser until the paper is submitted;
+#   * the countdown is enforced by the server clock (it survives a refresh, and a paper
+#     whose time is up is submitted automatically);
+#   * on submission each subject's score is saved as a CBTExam row, so the profile,
+#     the printed result slip and the admin dashboard pick it up automatically.
+
+EXAM_QUESTIONS_PER_SUBJECT = 40    # drawn at random from the 50-question bank of each subject
+EXAM_MINUTES_PER_SUBJECT   = 30    # total time = minutes x number of subjects
+EXAM_MAX_SUBJECTS          = 9     # WAEC / NECO allow at most 9 subjects per sitting
+EXAM_SAVE_GRACE_SEC        = 20    # answers still accepted this long after the clock hits zero
+
+# RegisteredSubject.subject_name -> CBTExam.subject key
+_EXAM_SUBJECT_KEYS = {label: key for key, label in CBTExam.SUBJECT_CHOICES}
+_EXAM_SUBJECT_KEYS['Food and Nutrition'] = 'homeeconomics'   # no separate CBTExam choice exists
+
+
+def _exam_registered_subjects(user):
+    return list(
+        RegisteredSubject.objects.filter(student=user)
+        .order_by('subject_name').values_list('subject_name', flat=True)
+    )
+
+
+def _exam_bank_counts():
+    """{subject_name: number of active questions}"""
+    return dict(
+        ExamQuestion.objects.filter(is_active=True)
+        .values_list('subject_name').annotate(n=Count('id'))
+    )
+
+
+def _build_exam_paper(subject_names):
+    """Draw and freeze the questions for a paper. Options are shuffled; keys stay A-D."""
+    paper = []
+    for name in subject_names:
+        pool = list(ExamQuestion.objects.filter(subject_name=name, is_active=True))
+        for q in random.sample(pool, min(len(pool), EXAM_QUESTIONS_PER_SUBJECT)):
+            opts = [['A', q.option_a], ['B', q.option_b], ['C', q.option_c], ['D', q.option_d]]
+            random.shuffle(opts)
+            paper.append({
+                'id': q.id, 'subject': name, 'text': q.text, 'options': opts,
+                'answer': q.answer, 'explanation': q.explanation,
+            })
+    return paper
+
+
+def _exam_student(user):
+    profile = Profile.objects.filter(user=user).first()
+    return {
+        'name': user.get_full_name() or user.username,
+        'admission_number': profile.admission_number if profile else '',
+        'class_level': (profile.class_level if profile else '') or '',
+        'picture': profile.get_picture_url if profile else '',
+    }
+
+
+def _finalize_examination(attempt, auto=False):
+    """
+    Grade a paper on the server and save the results. Idempotent.
+    Call inside transaction.atomic() with the attempt row locked (select_for_update).
+    """
+    if attempt.is_submitted:
+        return attempt
+
+    now = timezone.now()
+    per = {name: {'score': 0, 'total': 0, 'answered': 0} for name in attempt.subjects}
+    for q in attempt.paper:
+        row = per.setdefault(q['subject'], {'score': 0, 'total': 0, 'answered': 0})
+        row['total'] += 1
+        picked = attempt.answers.get(str(q['id']))
+        if picked:
+            row['answered'] += 1
+            if picked == q['answer']:
+                row['score'] += 1
+
+    elapsed = attempt.duration_sec if auto else int(
+        min(attempt.duration_sec, max(0, (now - attempt.started_at).total_seconds())))
+
+    rows = []
+    for name, r in per.items():
+        if r['total'] < 1:
+            continue
+        r['percentage'] = round(r['score'] / r['total'] * 100)
+        r['grade'] = _grade_for(r['percentage'])
+        key = _EXAM_SUBJECT_KEYS.get(name)
+        if key:
+            rows.append(CBTExam(student_id=attempt.student_id, subject=key, score=r['score'], total=r['total'],
+                                percentage=r['percentage'], grade=r['grade'], time_used_sec=elapsed,
+                                exam_type='examination'))
+    if rows:
+        CBTExam.objects.bulk_create(rows)
+
+    total = sum(r['total'] for r in per.values())
+    score = sum(r['score'] for r in per.values())
+    attempt.score, attempt.total = score, total
+    attempt.percentage = round(score / total * 100) if total else 0
+    attempt.grade = _grade_for(attempt.percentage)
+    attempt.results = per
+    attempt.is_submitted = True
+    attempt.auto_submitted = bool(auto)
+    attempt.submitted_at = now
+    attempt.save()
+
+    cbt_score, _ = CBTScore.objects.get_or_create(user_id=attempt.student_id)
+    cbt_score.recalculate()
+    return attempt
+
+
+def _expire_if_due(attempt):
+    """Auto-submit an attempt whose time has run out. Returns the (possibly refreshed) attempt."""
+    if attempt.is_submitted or attempt.remaining_sec() > 0:
+        return attempt
+    with transaction.atomic():
+        locked = ExaminationAttempt.objects.select_for_update().get(pk=attempt.pk)
+        _finalize_examination(locked, auto=True)
+    return ExaminationAttempt.objects.get(pk=attempt.pk)
+
+
+def _close_expired_examinations(user):
+    for att in ExaminationAttempt.objects.filter(student=user, is_submitted=False):
+        _expire_if_due(att)
+
+
+def _clean_exam_answers(attempt, incoming):
+    """Keep only answers that belong to this paper and use one of the offered option keys."""
+    valid = {str(q['id']): {k for k, _ in q['options']} for q in attempt.paper}
+    return {
+        str(qid): key for qid, key in (incoming or {}).items()
+        if str(qid) in valid and isinstance(key, str) and key in valid[str(qid)]
+    }
+
+
+@login_required
+@never_cache
+@ensure_csrf_cookie
+def cbt_examination(request):
+    """Landing page: the student's registered subjects, rules, a resume card and past sittings."""
+    user = request.user
+    _close_expired_examinations(user)
+
+    counts = _exam_bank_counts()
+    subjects = [
+        {'name': n, 'available': counts.get(n, 0), 'questions': min(counts.get(n, 0), EXAM_QUESTIONS_PER_SUBJECT)}
+        for n in _exam_registered_subjects(user)
+    ]
+    return render(request, 'cbt_examination.html', {
+        'view_mode': 'home',
+        'subjects': subjects,
+        'active': ExaminationAttempt.objects.filter(student=user, is_submitted=False).first(),
+        'history': ExaminationAttempt.objects.filter(student=user, is_submitted=True)[:10],
+        'max_subjects': EXAM_MAX_SUBJECTS,
+        'per_subject': EXAM_QUESTIONS_PER_SUBJECT,
+        'minutes_per_subject': EXAM_MINUTES_PER_SUBJECT,
+        'is_teacher': _is_teacher(user),
+        'profile_url': reverse('profile', args=[user.username]),
+    })
+
+
+@login_required
+@require_POST
+def cbt_examination_start(request):
+    """Create the paper for the ticked subjects and open the examination hall."""
+    user = request.user
+
+    def back(msg):
+        messages.error(request, msg)
+        return redirect('cbt_examination')
+
+    registered = _exam_registered_subjects(user)
+    chosen = list(dict.fromkeys(s.strip() for s in request.POST.getlist('subjects') if s.strip()))
+
+    if not registered:
+        return back('You have not registered any subjects yet. Register your subjects first, then come back.')
+    if not chosen:
+        return back('Please select at least one subject.')
+    if any(s not in registered for s in chosen):
+        return back('You can only sit the examination for subjects you registered.')
+    if len(chosen) > EXAM_MAX_SUBJECTS:
+        return back(f'You can sit at most {EXAM_MAX_SUBJECTS} subjects at a time.')
+
+    counts = _exam_bank_counts()
+    empty = [s for s in chosen if counts.get(s, 0) < 1]
+    if empty:
+        return back('No questions are available yet for: ' + ', '.join(empty) + '. Please untick it and try again.')
+
+    with transaction.atomic():
+        _close_expired_examinations(user)
+        existing = (ExaminationAttempt.objects.select_for_update()
+                    .filter(student=user, is_submitted=False).first())
+        if existing:
+            return redirect('cbt_examination_take', attempt_id=existing.attempt_id)
+
+        ordered = [s for s in registered if s in chosen]
+        attempt = ExaminationAttempt.objects.create(
+            student=user, subjects=ordered, paper=_build_exam_paper(ordered), answers={},
+            duration_sec=len(ordered) * EXAM_MINUTES_PER_SUBJECT * 60,
+        )
+    return redirect('cbt_examination_take', attempt_id=attempt.attempt_id)
+
+
+@login_required
+@never_cache
+@ensure_csrf_cookie
+def cbt_examination_take(request, attempt_id):
+    """The examination hall. Questions are sent WITHOUT the correct answers."""
+    attempt = get_object_or_404(ExaminationAttempt, attempt_id=attempt_id, student=request.user)
+    attempt = _expire_if_due(attempt)
+    if attempt.is_submitted:
+        return redirect('cbt_examination_result', attempt_id=attempt.attempt_id)
+
+    payload = {
+        'remaining': max(0, attempt.remaining_sec()),
+        'subjects': attempt.subjects,
+        'questions': [
+            {'id': q['id'], 'subject': q['subject'], 'text': q['text'], 'options': q['options']}
+            for q in attempt.paper
+        ],
+        'answers': attempt.answers,
+        'saveUrl': reverse('cbt_examination_save', args=[attempt.attempt_id]),
+        'submitUrl': reverse('cbt_examination_submit', args=[attempt.attempt_id]),
+        'resultUrl': reverse('cbt_examination_result', args=[attempt.attempt_id]),
+    }
+    return render(request, 'cbt_examination.html', {
+        'view_mode': 'exam',
+        'exam_payload': payload,
+        'student_info': _exam_student(request.user),
+        'profile_url': reverse('profile', args=[request.user.username]),
+    })
+
+
+@login_required
+@require_POST
+def cbt_examination_save(request, attempt_id):
+    """Autosave the student's answers (full map, last write wins)."""
+    try:
+        data = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
+    if not isinstance(data.get('answers'), dict):
+        return JsonResponse({'ok': False, 'error': 'answers must be an object'}, status=400)
+
+    with transaction.atomic():
+        attempt = get_object_or_404(ExaminationAttempt.objects.select_for_update(),
+                                    attempt_id=attempt_id, student=request.user)
+        result_url = reverse('cbt_examination_result', args=[attempt.attempt_id])
+        if attempt.is_submitted:
+            return JsonResponse({'ok': False, 'submitted': True, 'result_url': result_url})
+
+        remaining = attempt.remaining_sec()
+        if remaining <= -EXAM_SAVE_GRACE_SEC:
+            _finalize_examination(attempt, auto=True)
+            return JsonResponse({'ok': False, 'expired': True, 'result_url': result_url})
+
+        attempt.answers = _clean_exam_answers(attempt, data['answers'])
+        attempt.save(update_fields=['answers'])
+    return JsonResponse({'ok': True, 'remaining': max(0, remaining), 'answered': len(attempt.answers)})
+
+
+@login_required
+@require_POST
+def cbt_examination_submit(request, attempt_id):
+    """Final submit (button or timer). Grades on the server and saves the results."""
+    try:
+        data = json.loads(request.body or b'{}')
+    except ValueError:
+        data = {}
+
+    with transaction.atomic():
+        attempt = get_object_or_404(ExaminationAttempt.objects.select_for_update(),
+                                    attempt_id=attempt_id, student=request.user)
+        if not attempt.is_submitted:
+            remaining = attempt.remaining_sec()
+            if isinstance(data.get('answers'), dict) and remaining > -EXAM_SAVE_GRACE_SEC:
+                attempt.answers = _clean_exam_answers(attempt, data['answers'])
+            _finalize_examination(attempt, auto=remaining <= 0)
+
+    return JsonResponse({
+        'ok': True,
+        'result_url': reverse('cbt_examination_result', args=[attempt.attempt_id]),
+    })
+
+
+@login_required
+@never_cache
+def cbt_examination_result(request, attempt_id):
+    """Result slip + answer review (correct answers are only revealed from here)."""
+    attempt = get_object_or_404(ExaminationAttempt, attempt_id=attempt_id, student=request.user)
+    attempt = _expire_if_due(attempt)
+    if not attempt.is_submitted:
+        return redirect('cbt_examination_take', attempt_id=attempt.attempt_id)
+
+    grade_labels = dict(CBTExam.GRADE_CHOICES)
+    sections = []
+    for name in attempt.subjects:
+        r = attempt.results.get(name)
+        if not r:
+            continue
+        questions = []
+        for n, q in enumerate([q for q in attempt.paper if q['subject'] == name], start=1):
+            picked = attempt.answers.get(str(q['id']))
+            options = [
+                {'label': 'ABCD'[i], 'text': text, 'is_correct': key == q['answer'], 'is_picked': key == picked}
+                for i, (key, text) in enumerate(q['options'])
+            ]
+            questions.append({
+                'n': n, 'text': q['text'], 'options': options, 'explanation': q.get('explanation', ''),
+                'status': 'skipped' if not picked else ('correct' if picked == q['answer'] else 'wrong'),
+            })
+        sections.append({
+            'name': name, 'score': r['score'], 'total': r['total'], 'answered': r['answered'],
+            'percentage': r['percentage'], 'grade': r['grade'], 'grade_label': grade_labels.get(r['grade'], ''),
+            'questions': questions,
+        })
+
+    return render(request, 'cbt_examination.html', {
+        'view_mode': 'result',
+        'attempt': attempt,
+        'print_date': _as_local(attempt.submitted_at).strftime('%Y-%m-%d'),
+        'sections': sections,
+        'grade_label': grade_labels.get(attempt.grade, ''),
+        'remark': GRADE_REMARKS.get(attempt.grade, ''),
+        'student_info': _exam_student(request.user),
+        'profile_url': reverse('profile', args=[request.user.username]),
+    })
+
+
+# ── My Results: every test result grouped by test date, with a Print button per date ──
+# (Printing itself is print_test_results, which re-queries the database for that date.)
+
+@login_required
+@never_cache
+@require_GET
+def my_results(request, username=None):
+    """A student's own results (staff may open any student's via /results/<username>/)."""
+    target = request.user if username is None else get_object_or_404(User, username=username)
+    if not _can_view_private(request, target):
+        raise PermissionDenied
+
+    labels = dict(CBTExam.SUBJECT_CHOICES)
+    exams = list(CBTExam.objects.filter(student=target).order_by('-taken_at')[:EXAM_HISTORY_LIMIT])
+
+    days = []   # newest first, so each calendar day's rows are contiguous
+    for ex in exams:
+        local = _as_local(ex.taken_at)
+        iso = local.strftime('%Y-%m-%d')
+        if not days or days[-1]['date_iso'] != iso:
+            days.append({'date_iso': iso, 'date': local, 'rows': []})
+        days[-1]['rows'].append({
+            'subject': labels.get(ex.subject, ex.subject.replace('_', ' ').title()),
+            'type': ex.get_exam_type_display(),
+            'is_exam': ex.exam_type == 'examination',
+            'score': ex.score, 'total': ex.total, 'percentage': ex.percentage,
+            'grade': ex.grade, 'grade_display': ex.get_grade_display(),
+        })
+
+    grade_labels = dict(CBTExam.GRADE_CHOICES)
+    for d in days:
+        got = sum(r['score'] for r in d['rows'])
+        out_of = sum(r['total'] for r in d['rows'])
+        d['got'], d['out_of'] = got, out_of
+        d['pct'] = round(got / out_of * 100) if out_of else 0
+        d['grade_display'] = grade_labels.get(_grade_for(d['pct']), '')
+        d['subject_count'] = len({r['subject'] for r in d['rows']})
+
+    return render(request, 'my_results.html', {
+        'target': target,
+        'is_owner': target == request.user,
+        'days': days,
+        'result_count': len(exams),
+        'limit': EXAM_HISTORY_LIMIT,
+        'profile_url': reverse('profile', args=[request.user.username]),
+    })
+
+
+# ── CBT Examination: question bank management (teachers / staff only) ──
+#
+# Teachers upload questions here (CSV, Excel or pasted text).
+# Parsing/validation lives in school/exam_import.py.
+
+EXAM_BANK_PAGE_SIZE = 20
+EXAM_UPLOAD_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _exam_teacher_only(view):
+    """Staff / superusers only (the project's existing teacher role)."""
+    @wraps(view)
+    @login_required
+    @never_cache
+    def wrapper(request, *args, **kwargs):
+        if not _is_teacher(request.user):
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+    return wrapper
+
+
+def _bank_redirect(request, subject=''):
+    nxt = request.POST.get('next', '')
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        return redirect(nxt)
+    url = reverse('cbt_question_bank')
+    return redirect(url + ('?' + urlencode({'subject': subject}) if subject else ''))
+
+
+def _bank_fail(request, msg, subject=''):
+    messages.error(request, msg)
+    return _bank_redirect(request, subject)
+
+
+@_exam_teacher_only
+@ensure_csrf_cookie
+def cbt_question_bank(request):
+    """Overview of the bank per subject, upload / add forms and a searchable list of questions."""
+    subject = request.GET.get('subject', '').strip()
+    search = request.GET.get('q', '').strip()
+
+    rows = {r['subject_name']: r for r in ExamQuestion.objects.values('subject_name').annotate(
+        total=Count('id'), active=Count('id', filter=Q(is_active=True)))}
+    stats = [{'name': n, 'active': rows.get(n, {}).get('active', 0), 'total': rows.get(n, {}).get('total', 0)}
+             for n in sorted(SENIOR_SECONDARY_SUBJECTS)]
+
+    qs = ExamQuestion.objects.all()
+    if subject:
+        qs = qs.filter(subject_name=subject)
+    if search:
+        qs = qs.filter(text__icontains=search)
+    page = Paginator(qs, EXAM_BANK_PAGE_SIZE).get_page(request.GET.get('page'))
+
+    return render(request, 'cbt_question_bank.html', {
+        'stats': stats,
+        'subject_names': sorted(SENIOR_SECONDARY_SUBJECTS),
+        'page_obj': page,
+        'subject': subject,
+        'search': search,
+        'query': urlencode({k: v for k, v in (('subject', subject), ('q', search)) if v}),
+        'per_subject': EXAM_QUESTIONS_PER_SUBJECT,
+        'total_active': sum(r['active'] for r in stats),
+        'profile_url': reverse('profile', args=[request.user.username]),
+    })
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_question_upload(request):
+    """Import questions from an uploaded CSV / Excel / text file, or from pasted text."""
+    default_subject = request.POST.get('subject', '').strip()
+    replace = request.POST.get('replace') == 'on'
+    upload = request.FILES.get('file')
+    pasted = request.POST.get('pasted', '').strip()
+
+    if default_subject and default_subject not in SENIOR_SECONDARY_SUBJECTS:
+        return _bank_fail(request, 'Please choose a valid subject.')
+    if not upload and not pasted:
+        return _bank_fail(request, 'Choose a file to upload or paste your questions.', default_subject)
+
+    try:
+        if upload:
+            if upload.size > EXAM_UPLOAD_MAX_BYTES:
+                return _bank_fail(request, 'That file is too large (limit 2 MB).', default_subject)
+            rows = rows_from_upload(upload.name, upload.read())
+        else:
+            rows = rows_from_text(pasted)
+    except ValueError as e:
+        return _bank_fail(request, str(e), default_subject)
+
+    if len(rows) > EXAM_IMPORT_MAX_ROWS + 1:
+        return _bank_fail(request, f'Too many rows. Please upload at most {EXAM_IMPORT_MAX_ROWS} questions at a time.', default_subject)
+
+    questions, errors = parse_rows(rows, SENIOR_SECONDARY_SUBJECTS, default_subject)
+
+    if replace and errors:
+        # Never wipe a subject's existing questions on the strength of a file that has mistakes.
+        messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the lines below and upload again.')
+    elif questions:
+        created, present, removed = import_questions(questions, replace=replace)
+        bits = [f'{created} new question{"s" if created != 1 else ""} added']
+        if present:
+            bits.append(f'{present} already in the bank')
+        if removed:
+            bits.append(f'{removed} old question{"s" if removed != 1 else ""} replaced')
+        messages.success(request, 'Upload complete: ' + ', '.join(bits) + '.')
+    elif not errors:
+        messages.error(request, 'No questions were found in that file.')
+
+    if errors:
+        skipped = '' if replace else f'{len(errors)} line{"s" if len(errors) != 1 else ""} skipped. '
+        messages.warning(request, skipped + 'Problems found:')
+        for line, msg in errors[:8]:
+            messages.warning(request, f'Line {line}: {msg}')
+        if len(errors) > 8:
+            messages.warning(request, f'…and {len(errors) - 8} more.')
+    return _bank_redirect(request, default_subject)
+
+
+def _question_from_post(request):
+    p = request.POST
+    return clean_question(p.get('subject', ''), p.get('text', ''), p.get('option_a', ''), p.get('option_b', ''),
+                          p.get('option_c', ''), p.get('option_d', ''), p.get('answer', ''),
+                          p.get('explanation', ''), SENIOR_SECONDARY_SUBJECTS)
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_question_add(request):
+    data, err = _question_from_post(request)
+    if err:
+        return _bank_fail(request, 'Question not saved: ' + err + '.', request.POST.get('subject', ''))
+    created, present, _ = import_questions([data])
+    messages.success(request, 'Question added.' if created else 'That question is already in the bank.')
+    return _bank_redirect(request, data['subject_name'])
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_question_edit(request, pk):
+    obj = get_object_or_404(ExamQuestion, pk=pk)
+    data, err = _question_from_post(request)
+    if err:
+        return _bank_fail(request, 'Changes not saved: ' + err + '.')
+    obj.subject_name, obj.text = data['subject_name'], data['text']
+    obj.option_a, obj.option_b, obj.option_c, obj.option_d = data['a'], data['b'], data['c'], data['d']
+    obj.answer, obj.explanation = data['answer'], data['explanation']
+    try:
+        with transaction.atomic():
+            obj.save()
+    except IntegrityError:
+        return _bank_fail(request, 'Changes not saved: an identical question already exists.')
+    messages.success(request, 'Question updated.')
+    return _bank_redirect(request)
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_question_toggle(request, pk):
+    obj = get_object_or_404(ExamQuestion, pk=pk)
+    obj.is_active = not obj.is_active
+    obj.save(update_fields=['is_active'])
+    messages.success(request, 'Question is now ' + ('active.' if obj.is_active else 'switched off (students will not get it).'))
+    return _bank_redirect(request)
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_question_delete(request, pk):
+    get_object_or_404(ExamQuestion, pk=pk).delete()
+    messages.success(request, 'Question deleted.')
+    return _bank_redirect(request)
+
+
+@_exam_teacher_only
+@require_GET
+def cbt_question_template(request):
+    """A ready-to-fill CSV template (opens in Excel / Google Sheets)."""
+    resp = HttpResponse(content_type='text/csv; charset=utf-8')
+    resp['Content-Disposition'] = 'attachment; filename="exam_questions_template.csv"'
+    resp.write('\ufeff')   # so Excel reads UTF-8 correctly
+    w = csv.writer(resp)
+    w.writerow(['subject', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer', 'explanation'])
+    w.writerow(['Mathematics', 'Solve for x: 3x - 7 = 11', '6', '4', '5', '18', 'A', '3x = 18, so x = 6'])
+    w.writerow(['English Language', 'Choose the plural of "child"', 'childs', 'children', 'childes', 'childrens', 'B', ''])
+    return resp
 
 
 # ── Student Q&A Centre (chat room) ──────────────────────────────────
@@ -2312,7 +2887,7 @@ def api_student_results(request, pk):
             'id': str(e.exam_id),
             'subject': labels.get(e.subject, e.subject.title()),
             'score': e.score, 'total': e.total, 'percentage': e.percentage,
-            'grade': e.get_grade_display(), 'time': e.time_display,
+            'grade': e.get_grade_display(), 'time': e.time_display, 'type': e.get_exam_type_display(),
             'date': localtime(e.taken_at).strftime('%d %b %Y %H:%M'),
         } for e in exams],
     })

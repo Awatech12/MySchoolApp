@@ -262,7 +262,6 @@ button,input,select,textarea{font:inherit;color:inherit}
     <div class="tm-tabs" role="tablist" aria-label="Student profile sections">
         <button type="button" role="tab" class="tm-tab" id="tab-info" aria-controls="panel-info" aria-selected="true" data-tab="info">Student Information</button>
         <button type="button" role="tab" class="tm-tab" id="tab-performance" aria-controls="panel-performance" aria-selected="false" tabindex="-1" data-tab="performance">Academic Performance</button>
-        <button type="button" role="tab" class="tm-tab" id="tab-results" aria-controls="panel-results" aria-selected="false" tabindex="-1" data-tab="results">Examination Results</button>
     </div>
 
     <!-- ── A. Student Information ── -->
@@ -303,6 +302,7 @@ button,input,select,textarea{font:inherit;color:inherit}
         <div class="tm-section">
             <div class="tm-section-h">
                 <h2>Subject Performance</h2>
+                {% if can_view_private %}<a class="tm-btn tm-btn-outline tm-btn-sm" href="{% if is_owner %}{% url 'my_results' %}{% else %}{% url 'my_results_user' profile.user.username %}{% endif %}"><i class="fas fa-print" aria-hidden="true"></i> View &amp; print results</a>{% endif %}
                 {% if is_owner and registered_subject_cards %}<button type="button" class="tm-btn tm-btn-outline tm-btn-sm" data-open="tm-subj-modal"><i class="fas fa-pen" aria-hidden="true"></i> Edit subjects</button>{% endif %}
             </div>
             {% if is_owner and class_level_legacy %}
@@ -315,7 +315,7 @@ button,input,select,textarea{font:inherit;color:inherit}
                     <div class="tm-bar-top"><span>{{ c.name }}</span><span>{{ c.avg_pct }}% <small>average · {{ c.exams_taken }} exam{{ c.exams_taken|pluralize }} · best {{ c.best_pct }}%</small></span></div>
                     <div class="tm-bar" role="progressbar" aria-label="{{ c.name }} average score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ c.avg_pct }}"><span style="width:{{ c.avg_pct }}%"></span></div>
                     {% else %}
-                    <div class="tm-bar-top"><span>{{ c.name }}</span><small class="tm-sub">{% if c.has_cbt %}No exams yet{% if is_owner %} · <a class="tm-link" href="{% url 'cbt_exams' %}">Practise</a>{% endif %}{% else %}Practice not available yet{% endif %}</small></div>
+                    <div class="tm-bar-top"><span>{{ c.name }}</span><small class="tm-sub">{% if c.has_cbt %}No exams yet{% if is_owner %} · <a class="tm-link" href="{% url 'cbt_exams' %}">Practise</a> · <a class="tm-link" href="{% url 'cbt_examination' %}">Sit exam</a>{% endif %}{% else %}Practice not available yet{% endif %}</small></div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -323,51 +323,6 @@ button,input,select,textarea{font:inherit;color:inherit}
                 <div class="tm-empty"><h3>No subjects registered yet</h3>
                     <p>{% if is_owner %}Choose the Senior Secondary subjects you are studying.{% else %}This student has not registered any subjects.{% endif %}</p>
                     {% if is_owner %}<button type="button" class="tm-btn tm-btn-navy" data-open="tm-subj-modal">Register subjects</button>{% endif %}</div>
-            {% endif %}
-        </div>
-    </section>
-
-    <!-- ── C. Examination Results ── -->
-    <section class="tm-panel" id="panel-results" role="tabpanel" aria-labelledby="tab-results" tabindex="0" hidden>
-        <div class="tm-section">
-            <div class="tm-section-h"><h2>Examination Results</h2></div>
-            {% if not can_view_private %}
-            <div class="tm-note" role="note"><i class="fas fa-lock" aria-hidden="true"></i><div>Examination results are private. Only the student and TopMark staff can see them.</div></div>
-            {% elif exam_history %}
-            <div class="tm-toolbar">
-                <div class="tm-filters">
-                    <div><label for="tm-filter" class="tm-sr">Filter results by subject</label>
-                        <select id="tm-filter" class="tm-select"><option value="">All subjects</option>{% for s in subject_summaries %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}</select></div>
-                    <div><label for="tm-date-filter" class="tm-sr">Filter results by test date</label>
-                        <select id="tm-date-filter" class="tm-select"><option value="">All test dates</option>{% for d in exam_days %}<option value="{{ d.date_iso }}">{{ d.date|date:"j F Y" }}</option>{% endfor %}</select></div>
-                    <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" id="tm-print-results" data-url="{% url 'print_test_results' user.username %}" disabled><i class="fas fa-print" aria-hidden="true"></i> Print Test Results</button>
-                </div>
-                <p class="tm-sub" id="tm-count" aria-live="polite">{{ exam_history|length }} result{{ exam_history|length|pluralize }}</p>
-            </div>
-            <p class="tm-sub" id="tm-print-hint" style="margin-bottom:10px">Select a test date to print that day's results (all subjects taken on that date).</p>
-            <div class="tm-tablewrap">
-            <table class="tm-table" id="tm-results">
-                <caption class="tm-sr">Examination results, newest first</caption>
-                <thead><tr><th scope="col">S/N</th><th scope="col">Examination</th><th scope="col">Subject</th><th scope="col">Score</th><th scope="col">Percentage</th><th scope="col">Grade</th><th scope="col">Teacher's feedback</th></tr></thead>
-                <tbody>
-                {% for ex in exam_history %}
-                    <tr data-subject="{{ ex.subject }}" data-date="{{ ex.date_iso }}">
-                        <td data-label="S/N" class="tm-sn">{{ forloop.counter }}</td>
-                        <td class="t-name" data-label="Examination">{{ ex.test_name }}</td>
-                        <td data-label="Subject">{{ ex.subject }}</td>
-                        <td data-label="Score">{{ ex.score }}/{{ ex.total }}</td>
-                        <td data-label="Percentage">{{ ex.percentage }}%</td>
-                        <td data-label="Grade"><span class="tm-pill">{{ ex.grade_display }}</span></td>
-                        <td data-label="Feedback" class="tm-fb">{% if ex.teacher_feedback %}{{ ex.teacher_feedback }}{% elif ex.remark %}{{ ex.remark }}{% else %}—{% endif %}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            </div>
-            {% if exam_history|length >= exam_history_limit %}<p class="tm-sub" style="margin-top:10px">Showing the latest {{ exam_history_limit }} results.</p>{% endif %}
-            {% else %}
-            <div class="tm-empty"><h3>No examinations yet</h3><p>Results will appear here after the first examination.</p>
-                {% if is_owner %}<a class="tm-btn tm-btn-navy" href="{% url 'cbt_exams' %}">Take an exam</a>{% endif %}</div>
             {% endif %}
         </div>
     </section>
@@ -511,7 +466,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 
     /* ── Tabs (WAI-ARIA tabs pattern, arrow-key navigation, #hash deep links) ── */
     var tabs = $$('.tm-tab');
-    var legacyHash = { overview: 'performance', subjects: 'performance', details: 'info' };
+    var legacyHash = { overview: 'performance', subjects: 'performance', details: 'info', results: 'performance' };
     function showTab(name, focus) {
         if (legacyHash[name]) name = legacyHash[name];
         if (!tabs.some(function (t) { return t.dataset.tab === name; })) return false;
@@ -574,29 +529,6 @@ button,input,select,textarea{font:inherit;color:inherit}
         var first = f[0], last = f[f.length - 1];
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    });
-
-    /* ── Results filters (subject + test date) and "Print Test Results" ── */
-    var filter = $('#tm-filter'), dateFilter = $('#tm-date-filter'), printResults = $('#tm-print-results');
-    function applyResultFilters() {
-        var shown = 0, subj = filter ? filter.value : '', day = dateFilter ? dateFilter.value : '';
-        $$('#tm-results tbody tr').forEach(function (tr) {
-            var ok = (!subj || tr.dataset.subject === subj) && (!day || tr.dataset.date === day);
-            tr.hidden = !ok; if (ok) { shown++; var sn = tr.querySelector('.tm-sn'); if (sn) sn.textContent = shown; }
-        });
-        $('#tm-count').textContent = shown + ' result' + (shown === 1 ? '' : 's');
-        if (printResults) {
-            printResults.disabled = !day;
-            var hint = $('#tm-print-hint'); if (hint) hint.hidden = !!day;
-        }
-    }
-    [filter, dateFilter].forEach(function (el) { if (el) el.addEventListener('change', applyResultFilters); });
-    /* The report is a separate A4 page built on the server for the chosen date only, so
-       nothing else from this profile page can end up on the printout. */
-    if (printResults) printResults.addEventListener('click', function () {
-        var day = dateFilter ? dateFilter.value : '';
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
-        window.open(printResults.dataset.url + '?date=' + encodeURIComponent(day) + '&autoprint=1', '_blank', 'noopener');
     });
 
     /* ── Print ── */

@@ -110,6 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
         <thead>
             <tr>
                 <th scope="col">Subject</th>
+                <th scope="col">Type</th>
                 <th scope="col" class="num">Score</th>
                 <th scope="col" class="num">Percentage</th>
                 <th scope="col">Grade</th>
@@ -120,6 +121,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
         {% for r in rows %}
             <tr data-subject="{{ r.subject }}" data-pct="{{ r.percentage }}">
                 <td class="subj">{{ r.subject }}</td>
+                <td>{{ r.exam_type }}</td>
                 <td class="num">{{ r.score }} / {{ r.total }}</td>
                 <td class="num">{{ r.percentage }}%</td>
                 <td class="rp-grade">{{ r.grade_display }}</td>
@@ -130,6 +132,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
         <tfoot>
             <tr>
                 <td>Overall</td>
+                <td></td>
                 <td class="num">{{ total_score }} / {{ total_questions }}</td>
                 <td class="num">{{ overall_pct }}%</td>
                 <td>{{ overall_grade }}</td>
@@ -147,7 +150,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Ar
         <div class="stamp">Official<br>stamp</div>
     </div>
 
-    <footer class="rp-foot">TopMark Tutorial Center &middot; Test Results Report &middot; {{ test_date|date:"j F Y" }} &middot; Computer-based practice results</footer>
+    <footer class="rp-foot">TopMark Tutorial Center &middot; Test Results Report &middot; {{ test_date|date:"j F Y" }} &middot; Computer-based test results</footer>
 </main>
 
 <script>

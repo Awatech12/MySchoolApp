@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.templatetags.static import static
 import uuid
+import hashlib
 
 
 # Create your models here.
@@ -299,6 +300,11 @@ class CBTExam(models.Model):
         ('fail',        'Fail'),
     ]
 
+    EXAM_TYPE_CHOICES = [
+        ('practice',    'Test Practice'),
+        ('examination', 'CBT Examination'),
+    ]
+
     exam_id       = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cbt_exams')
     subject       = models.CharField(max_length=30, choices=SUBJECT_CHOICES, default='mathematics')
@@ -307,6 +313,8 @@ class CBTExam(models.Model):
     percentage    = models.PositiveIntegerField(default=0)          # 0-100
     grade         = models.CharField(max_length=20, choices=GRADE_CHOICES, default='fail')
     time_used_sec = models.PositiveIntegerField(default=0)          # seconds spent
+    # 'practice' = Test Practice (existing rows keep this); 'examination' = the real CBT Examination
+    exam_type     = models.CharField(max_length=12, choices=EXAM_TYPE_CHOICES, default='practice')
     taken_at      = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -655,3 +663,99 @@ class RegisteredSubject(models.Model):
 
     def __str__(self):
         return f"{self.student.username} – {self.subject_name} ({self.category})"
+
+
+# ── CBT Examination (real, timed, server-graded test on the student's registered subjects) ──
+
+class ExamQuestion(models.Model):
+    """
+    One multiple-choice question in the CBT Examination question bank.
+    `subject_name` uses the same names as RegisteredSubject.subject_name
+    (SENIOR_SECONDARY_SUBJECTS in views.py), so a student's registered
+    subjects line up with the questions available to them.
+    Teachers add questions from the website: CBT Examination > Manage question bank.
+    """
+    ANSWER_CHOICES = [('A', 'A'), ('B', 'B'), ('C', 'C'), ('D', 'D')]
+
+    subject_name = models.CharField(max_length=100, db_index=True)
+    text         = models.TextField()
+    option_a     = models.CharField(max_length=300)
+    option_b     = models.CharField(max_length=300)
+    option_c     = models.CharField(max_length=300)
+    option_d     = models.CharField(max_length=300)
+    answer       = models.CharField(max_length=1, choices=ANSWER_CHOICES)
+    explanation  = models.TextField(blank=True)
+    is_active    = models.BooleanField(default=True)
+    # Hash of subject + question + options: lets the loader re-run safely without duplicating questions.
+    fingerprint  = models.CharField(max_length=40, unique=True, editable=False)
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['subject_name', 'id']
+
+    @staticmethod
+    def make_fingerprint(subject_name, text, a, b, c, d):
+        raw = '\x1f'.join([subject_name, text, a, b, c, d]).strip().lower()
+        return hashlib.sha1(raw.encode('utf-8')).hexdigest()
+
+    def save(self, *args, **kwargs):
+        self.fingerprint = self.make_fingerprint(
+            self.subject_name, self.text, self.option_a, self.option_b, self.option_c, self.option_d)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"[{self.subject_name}] {self.text[:60]}"
+
+
+class ExaminationAttempt(models.Model):
+    """
+    One sitting of the CBT Examination.
+
+    The paper is frozen at the start: `paper` is a server-side snapshot of the
+    questions (with the correct answer), so the student can resume after a
+    refresh, later edits to the bank never change a paper in progress, and the
+    answers never have to be sent to the browser before the paper is submitted.
+    On submission the per-subject scores are also written to CBTExam, so they
+    appear on the profile, the printed result slip and the admin dashboard.
+    """
+    attempt_id     = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='examination_attempts')
+    subjects       = models.JSONField(default=list)    # subject names sat, in order
+    paper          = models.JSONField(default=list)    # [{id, subject, text, options:[[key,text]..], answer, explanation}]
+    answers        = models.JSONField(default=dict)    # {"<question id>": "A".."D"}
+    duration_sec   = models.PositiveIntegerField(default=0)
+    started_at     = models.DateTimeField(auto_now_add=True)
+    submitted_at   = models.DateTimeField(null=True, blank=True)
+    is_submitted   = models.BooleanField(default=False)
+    auto_submitted = models.BooleanField(default=False)   # True when the timer ran out
+    score          = models.PositiveIntegerField(default=0)
+    total          = models.PositiveIntegerField(default=0)
+    percentage     = models.PositiveIntegerField(default=0)
+    grade          = models.CharField(max_length=20, choices=CBTExam.GRADE_CHOICES, default='fail')
+    results        = models.JSONField(default=dict)    # {subject: {score, total, answered, percentage, grade}}
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [models.Index(fields=['student', 'is_submitted'])]
+
+    def __str__(self):
+        return f"{self.student.username} – exam {self.started_at:%Y-%m-%d %H:%M} ({'submitted' if self.is_submitted else 'in progress'})"
+
+    @property
+    def deadline(self):
+        from datetime import timedelta
+        return self.started_at + timedelta(seconds=self.duration_sec)
+
+    def remaining_sec(self, now=None):
+        """Seconds left on the server clock (can be negative once time is up)."""
+        from django.utils import timezone
+        now = now or timezone.now()
+        return int((self.deadline - now).total_seconds())
+
+    @property
+    def time_used_display(self):
+        if not self.submitted_at:
+            return ''
+        used = min(self.duration_sec, int((self.submitted_at - self.started_at).total_seconds()))
+        return f"{used // 60:02d}:{used % 60:02d}"
+

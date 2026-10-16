@@ -1,0 +1,123 @@
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopMark – My Results</title>
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --blue:#0095f6; --blue-dk:#0074cc; --blue-lt:#e8f4fd; --dark:#262626; --gray1:#fafafa; --gray2:#efefef; --gray3:#8e8e8e; --line:#dbdbdb; --green:#16a34a; --green-lt:#e8f8ee; --red:#dc2626; --red-lt:#fdecec; --amber:#d97706; --amber-lt:#fef3e2; }
+  * { box-sizing:border-box; }
+  body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--gray1); color:var(--dark); margin:0; min-height:100vh; }
+  .shell { max-width:900px; margin:0 auto; padding:24px 16px 60px; }
+  @media (min-width:768px) { .shell { padding-left:66px; } }
+  h1 { font-size:22px; font-weight:800; margin:0 0 4px; }
+  .sub { color:var(--gray3); font-size:13px; font-weight:500; margin:0 0 16px; }
+  .top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1.5px solid transparent; border-radius:22px; padding:9px 20px; font:800 13px 'Plus Jakarta Sans',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn-primary { background:var(--blue); color:#fff; } .btn-primary:hover { background:var(--blue-dk); }
+  .btn-ghost { background:#fff; color:var(--dark); border-color:var(--line); } .btn-ghost:hover { background:var(--gray2); }
+  .note { background:var(--blue-lt); color:var(--blue-dk); border-radius:10px; padding:11px 15px; font-size:13px; font-weight:600; margin-bottom:16px; }
+  .tools { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .tools select { border:1.5px solid var(--line); border-radius:8px; padding:8px 11px; font:600 13px 'Plus Jakarta Sans',sans-serif; background:#fff; color:var(--dark); }
+  .day { background:#fff; border:1px solid var(--line); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+  .day-h { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 16px; border-bottom:1px solid var(--gray2); }
+  .day-h strong { font-size:15px; display:block; }
+  .day-h small { color:var(--gray3); font-weight:600; font-size:12px; }
+  .tbl-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--gray3); padding:8px 16px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:10px 16px; border-bottom:1px solid var(--gray2); font-weight:600; }
+  tr.hide { display:none; }
+  tfoot td { background:var(--gray1); font-weight:800; border-bottom:0; }
+  .chip { display:inline-block; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800; }
+  .chip.distinction { background:var(--green-lt); color:var(--green); } .chip.credit { background:var(--blue-lt); color:var(--blue-dk); }
+  .chip.pass { background:var(--amber-lt); color:var(--amber); } .chip.nearly { background:#fff0e5; color:#c2570c; } .chip.fail { background:var(--red-lt); color:var(--red); }
+  .tag { display:inline-block; font-size:11px; font-weight:800; border-radius:6px; padding:2px 8px; background:var(--gray2); color:#555; }
+  .tag.exam { background:var(--blue-lt); color:var(--blue-dk); }
+  .empty { text-align:center; padding:40px 12px; background:#fff; border:1px solid var(--line); border-radius:12px; color:var(--gray3); }
+  .empty h2 { color:var(--dark); font-size:17px; margin:0 0 6px; }
+</style>
+</head>
+<body>
+{% include 'sidebar.html' %}
+<div class="shell">
+
+  <div class="top">
+    <div>
+      <h1>{% if is_owner %}My Results{% else %}Results – {% firstof target.get_full_name target.username %}{% endif %}</h1>
+      <p class="sub">Your test results by date. Print the official results report for any test date.</p>
+    </div>
+    {% if is_owner %}<a class="btn btn-ghost" href="{% url 'cbt_examination' %}"><i class="fa-solid fa-file-pen"></i> CBT Examination</a>{% endif %}
+  </div>
+
+  {% if days %}
+    <div class="tools">
+      <select id="typeFilter" aria-label="Filter by type">
+        <option value="">All types</option>
+        <option value="Test Practice">Test Practice</option>
+        <option value="CBT Examination">CBT Examination</option>
+      </select>
+    </div>
+
+    {% for d in days %}
+    <section class="day" data-day>
+      <div class="day-h">
+        <div>
+          <strong>{{ d.date|date:"l, j F Y" }}</strong>
+          <small>{{ d.subject_count }} subject{{ d.subject_count|pluralize }} &middot; {{ d.got }}/{{ d.out_of }} &middot; {{ d.pct }}% &middot; {{ d.grade_display }}</small>
+        </div>
+        <a class="btn btn-primary" href="{% url 'print_test_results' target.username %}?date={{ d.date_iso }}&autoprint=1" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print results</a>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Subject</th><th>Type</th><th>Score</th><th>%</th><th>Grade</th></tr></thead>
+          <tbody>
+          {% for r in d.rows %}
+            <tr data-type="{{ r.type }}">
+              <td>{{ r.subject }}</td>
+              <td><span class="tag{% if r.is_exam %} exam{% endif %}">{{ r.type }}</span></td>
+              <td>{{ r.score }}/{{ r.total }}</td>
+              <td>{{ r.percentage }}%</td>
+              <td><span class="chip {{ r.grade }}">{{ r.grade_display }}</span></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endfor %}
+
+    {% if result_count >= limit %}<p class="sub">Showing the latest {{ limit }} results. Printing a date always includes every result from that day.</p>{% endif %}
+    <p class="note"><i class="fa-solid fa-lock"></i> Results are private: only the student and TopMark staff can see them.</p>
+  {% else %}
+    <div class="empty">
+      <h2>No results yet</h2>
+      <p>Your results will appear here after your first test.</p>
+      {% if is_owner %}<a class="btn btn-primary" href="{% url 'cbt_examination' %}">Take the CBT Examination</a>{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var f = document.getElementById('typeFilter');
+  if (!f) return;
+  f.addEventListener('change', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-day]'), function (day) {
+      var shown = 0;
+      Array.prototype.forEach.call(day.querySelectorAll('tbody tr'), function (tr) {
+        var ok = !f.value || tr.dataset.type === f.value;
+        tr.classList.toggle('hide', !ok);
+        if (ok) shown++;
+      });
+      day.style.display = shown ? '' : 'none';
+    });
+  });
+})();
+</script>
+{% include "footer.html" %}

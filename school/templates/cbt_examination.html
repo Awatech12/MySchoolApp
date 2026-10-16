@@ -1,0 +1,634 @@
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopMark – CBT Examination</title>
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #0095f6; --blue-dk: #0074cc; --blue-lt: #e8f4fd; --blue-mid: #cce9fd;
+    --dark: #262626; --gray1: #fafafa; --gray2: #efefef; --gray3: #8e8e8e; --line: #dbdbdb;
+    --green: #16a34a; --green-lt: #e8f8ee; --red: #dc2626; --red-lt: #fdecec;
+    --amber: #d97706; --amber-lt: #fef3e2; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--gray1); color: var(--dark); min-height: 100vh; margin: 0; }
+
+  .exm-shell { max-width: 940px; margin: 0 auto; padding: 24px 16px 90px; }
+  @media (min-width: 768px) { .exm-shell { padding-left: 66px; } }
+
+  /* focus mode: no sidebar while a paper is open */
+  body.exm-exam .ac-sidebar { display: none !important; }
+  body.exm-exam { padding-left: 0 !important; }
+  body.exm-exam .exm-shell { padding-left: 16px; max-width: 1080px; }
+
+  h1.exm-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; }
+  .exm-sub { color: var(--gray3); font-size: 13px; font-weight: 500; margin: 0 0 18px; }
+
+  .card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 800; margin: 0 0 12px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px solid transparent; border-radius: 22px; padding: 10px 22px; font: 800 14px 'Plus Jakarta Sans', sans-serif; cursor: pointer; text-decoration: none; transition: background .15s, transform .1s; }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--blue-dk); }
+  .btn-primary:disabled { background: #b9dffb; cursor: not-allowed; }
+  .btn-ghost { background: #fff; color: var(--dark); border-color: var(--line); }
+  .btn-ghost:hover { background: var(--gray2); }
+  .btn-danger { background: var(--red); color: #fff; }
+
+  .exm-alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 14px; background: var(--blue-lt); color: var(--blue-dk); }
+  .exm-alert.error { background: var(--red-lt); color: var(--red); }
+  .exm-alert.success { background: var(--green-lt); color: var(--green); }
+
+  /* ── home ── */
+  .rules { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8; color: #444; }
+  .resume { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--amber-lt); border-color: #f5d49b; }
+  .resume strong { font-size: 15px; }
+  .resume small { display: block; color: #8a5a12; font-weight: 600; margin-top: 2px; }
+  .sub-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .sub-head h2 { margin: 0; }
+  .sub-tools button { background: none; border: 0; color: var(--blue-dk); font: 700 12px 'Plus Jakarta Sans', sans-serif; cursor: pointer; padding: 4px 8px; }
+  .sub-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .sub-grid { grid-template-columns: 1fr 1fr; } }
+  .sub-opt { position: relative; display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; font-weight: 700; font-size: 14px; background: #fff; transition: border-color .15s, background .15s; }
+  .sub-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .sub-opt .tick { flex: none; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #c4c4c4; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
+  .sub-opt:has(input:checked) { border-color: var(--blue); background: var(--blue-lt); }
+  .sub-opt:has(input:checked) .tick { background: var(--blue); border-color: var(--blue); }
+  .sub-opt:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+  .sub-opt small { display: block; font-weight: 600; color: var(--gray3); font-size: 11px; margin-top: 1px; }
+  .start-bar { position: sticky; bottom: 0; background: rgba(250,250,250,.96); border-top: 1px solid var(--line); margin: 16px -16px -90px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .start-sum { font-size: 13px; font-weight: 700; color: #555; }
+  .empty { text-align: center; padding: 24px 8px; color: var(--gray3); }
+  .empty h2 { color: var(--dark); }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--gray3); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  table.tbl td { padding: 11px 10px; border-bottom: 1px solid var(--gray2); font-weight: 600; }
+  .tbl-wrap { overflow-x: auto; }
+
+  .chip { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 800; }
+  .chip.distinction { background: var(--green-lt); color: var(--green); }
+  .chip.credit { background: var(--blue-lt); color: var(--blue-dk); }
+  .chip.pass { background: var(--amber-lt); color: var(--amber); }
+  .chip.nearly { background: #fff0e5; color: #c2570c; }
+  .chip.fail { background: var(--red-lt); color: var(--red); }
+
+  /* ── exam hall ── */
+  .ex-bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 8px; }
+  .ex-tabs { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+  .ex-tabs::-webkit-scrollbar { display: none; }
+  .ex-tab { flex: none; border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font: 700 12px 'Plus Jakarta Sans', sans-serif; cursor: pointer; white-space: nowrap; }
+  .ex-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .ex-tab small { opacity: .8; margin-left: 4px; font-weight: 600; }
+  .ex-timer { flex: none; display: flex; align-items: center; gap: 6px; background: var(--blue-lt); color: var(--blue-dk); font-weight: 800; font-size: 15px; border-radius: 999px; padding: 7px 14px; font-variant-numeric: tabular-nums; }
+  .ex-timer.warn { background: var(--amber-lt); color: var(--amber); }
+  .ex-timer.danger { background: var(--red-lt); color: var(--red); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .ex-progress { height: 5px; background: var(--gray2); border-radius: 4px; overflow: hidden; }
+  #progFill { height: 100%; width: 0; background: var(--blue); transition: width .2s; }
+  .ex-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--gray3); margin: 6px 2px 12px; }
+  #saveState.err { color: var(--red); }
+  .ex-grid { display: grid; gap: 14px; grid-template-columns: 1fr; align-items: start; }
+  @media (min-width: 900px) { .ex-grid { grid-template-columns: 1fr 270px; } .nav-card { position: sticky; top: 76px; } }
+  .q-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .q-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .q-badge { background: var(--blue-lt); color: var(--blue-dk); border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 800; }
+  .q-num { font-size: 12px; color: var(--gray3); font-weight: 700; }
+  .q-text { font-size: 17px; font-weight: 700; line-height: 1.55; margin-bottom: 18px; white-space: pre-wrap; word-wrap: break-word; }
+  .opts { display: grid; gap: 10px; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; font: 600 15px 'Plus Jakarta Sans', sans-serif; color: var(--dark); cursor: pointer; transition: border-color .12s, background .12s; }
+  .opt:hover { border-color: var(--blue); background: var(--gray1); }
+  .opt .ltr { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gray2); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+  .opt .txt { padding-top: 3px; word-break: break-word; }
+  .opt.sel { border-color: var(--blue); background: var(--blue-lt); }
+  .opt.sel .ltr { background: var(--blue); color: #fff; }
+  .q-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .flag-btn.on { background: var(--amber-lt); color: var(--amber); border-color: #f5d49b; }
+  .nav-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .nav-card h3 { margin: 0 0 10px; font-size: 13px; font-weight: 800; }
+  .nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+  .nav-n { height: 38px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; font: 700 13px 'Plus Jakarta Sans', sans-serif; cursor: pointer; position: relative; }
+  .nav-n.done { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .nav-n.flag::after { content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+  .nav-n.cur { outline: 2.5px solid var(--dark); outline-offset: 1px; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; font-weight: 600; color: var(--gray3); margin-top: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .kbd { font-size: 11px; color: var(--gray3); margin-top: 12px; line-height: 1.7; }
+  @media (max-width: 899px) { .kbd { display: none; } }
+
+  .modal { position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+  .modal.open { display: flex; }
+  .modal-box { background: #fff; border-radius: 14px; padding: 22px; max-width: 420px; width: 100%; }
+  .modal-box h3 { margin: 0 0 8px; font-size: 18px; }
+  .modal-box p { margin: 0 0 16px; font-size: 14px; color: #555; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+  /* ── result ── */
+  .slip { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .slip { grid-template-columns: auto 1fr auto; align-items: center; } }
+  .slip img { width: 96px; height: 120px; object-fit: cover; border: 1px solid var(--line); border-radius: 6px; background: var(--gray1); }
+  .slip dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
+  .slip dt { color: var(--gray3); font-weight: 600; }
+  .slip dd { margin: 0; font-weight: 700; word-break: break-word; }
+  .ring { --c: var(--red); width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--gray2) 0); display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+  .ring.distinction { --c: var(--green); } .ring.credit { --c: var(--blue); } .ring.pass { --c: var(--amber); } .ring.nearly { --c: #ea7a1f; }
+  .ring span { width: 94px; height: 94px; border-radius: 50%; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+  .ring small { font-size: 11px; color: var(--gray3); font-weight: 700; }
+  .verdict { margin-top: 12px; font-size: 13px; font-weight: 700; text-align: center; }
+  .rv-sec { border: 1px solid var(--line); border-radius: var(--radius); background: #fff; margin-bottom: 10px; }
+  .rv-sec > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; font-weight: 800; font-size: 14px; }
+  .rv-sec > summary::-webkit-details-marker { display: none; }
+  .rv-sec > summary .rv-r { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .rv-body { padding: 4px 16px 16px; border-top: 1px solid var(--gray2); }
+  .rv-q { padding: 14px 0; border-bottom: 1px dashed var(--line); }
+  .rv-q:last-child { border-bottom: 0; }
+  .rv-q p { margin: 0 0 8px; font-weight: 700; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+  .rv-o { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; font-weight: 600; padding: 7px 10px; border-radius: 8px; margin-bottom: 4px; border: 1px solid transparent; }
+  .rv-o.ok { background: var(--green-lt); border-color: #b9e6c9; color: #14532d; }
+  .rv-o.bad { background: var(--red-lt); border-color: #f6c2c2; color: #7f1d1d; }
+  .rv-o b { flex: none; width: 18px; }
+  .rv-tag { font-size: 11px; font-weight: 800; margin-left: auto; padding-left: 8px; white-space: nowrap; }
+  .rv-st { font-size: 11px; font-weight: 800; margin-bottom: 6px; display: inline-block; }
+  .rv-st.correct { color: var(--green); } .rv-st.wrong { color: var(--red); } .rv-st.skipped { color: var(--gray3); }
+  .rv-expl { font-size: 12px; color: #555; background: var(--gray1); border-radius: 8px; padding: 8px 10px; margin-top: 6px; }
+  .res-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 18px; }
+
+  @media print {
+    .ac-sidebar, .no-print, header, nav { display: none !important; }
+    body { padding-left: 0 !important; background: #fff; }
+    .exm-shell { padding: 0; max-width: 100%; }
+    .rv-sec:not([open]) .rv-body { display: none; }
+  }
+</style>
+</head>
+<body class="exm-{{ view_mode }}" data-profile-url="{{ profile_url }}">
+{% include 'sidebar.html' %}
+
+<div class="exm-shell">
+
+{% if messages %}{% for m in messages %}<div class="exm-alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+{# ═════════════════════════ HOME: choose subjects ═════════════════════════ #}
+{% if view_mode == 'home' %}
+
+  <h1 class="exm-title">CBT Examination</h1>
+  <p class="exm-sub">A real, timed test on the subjects you registered. Your result is saved to your profile.</p>
+  {% if is_teacher %}
+  <div class="card resume" style="background:var(--blue-lt);border-color:var(--blue-mid,#cce9fd)">
+    <div><strong><i class="fa-solid fa-chalkboard-user"></i> Teacher tools</strong><small style="color:var(--blue-dk)">Upload, edit and switch off exam questions</small></div>
+    <a class="btn btn-primary" href="{% url 'cbt_question_bank' %}">Manage question bank</a>
+  </div>
+  {% endif %}
+
+  {% if active %}
+  <div class="card resume">
+    <div>
+      <strong><i class="fa-solid fa-hourglass-half"></i> You have an examination in progress</strong>
+      <small>{{ active.subjects|length }} subject{{ active.subjects|length|pluralize }} &middot; <span id="resumeLeft" data-left="{{ active.remaining_sec }}"></span> left</small>
+    </div>
+    <a class="btn btn-primary" href="{% url 'cbt_examination_take' active.attempt_id %}">Resume examination <i class="fa-solid fa-arrow-right"></i></a>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2><i class="fa-solid fa-list-check"></i> Before you begin</h2>
+    <ul class="rules">
+      <li>You can only sit the subjects you registered (up to {{ max_subjects }} at a time).</li>
+      <li>Each subject has up to {{ per_subject }} questions picked at random, and you get {{ minutes_per_subject }} minutes per subject.</li>
+      <li>The timer keeps running even if you refresh or close the page. When it reaches zero your paper is submitted automatically.</li>
+      <li>Your answers are saved as you go. Correct answers are shown only after you submit.</li>
+      <li>You can retake the examination; every sitting is recorded.</li>
+    </ul>
+  </div>
+
+  {% if not active %}
+    {% if subjects %}
+    <form method="post" action="{% url 'cbt_examination_start' %}" id="startForm">
+      {% csrf_token %}
+      <div class="card">
+        <div class="sub-head">
+          <h2>Your registered subjects</h2>
+          <div class="sub-tools">
+            <button type="button" id="selAll">Select all</button>
+            <button type="button" id="selNone">Clear</button>
+          </div>
+        </div>
+        <div class="sub-grid">
+          {% for s in subjects %}
+          <label class="sub-opt">
+            <input type="checkbox" name="subjects" value="{{ s.name }}" data-q="{{ s.questions }}"
+                   {% if s.available == 0 %}disabled{% elif forloop.counter <= max_subjects %}checked{% endif %}>
+            <span class="tick"><i class="fa-solid fa-check"></i></span>
+            <span>{{ s.name }}<small>{% if s.available %}{{ s.questions }} questions{% else %}No questions yet{% endif %}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="start-bar">
+        <div class="start-sum" id="startSum">&nbsp;</div>
+        <button type="submit" class="btn btn-primary" id="startBtn" disabled>Start examination <i class="fa-solid fa-play"></i></button>
+      </div>
+    </form>
+    {% else %}
+    <div class="card empty">
+      <h2>No subjects registered yet</h2>
+      <p>The examination is based on the subjects you registered. Add them on your profile, then come back.</p>
+      <a class="btn btn-primary" href="{{ profile_url }}">Go to my profile</a>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  {% if history %}
+  <div class="card">
+    <h2><i class="fa-solid fa-clock-rotate-left"></i> Your recent sittings</h2>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Date</th><th>Subjects</th><th>Score</th><th>%</th><th>Grade</th><th></th></tr></thead>
+        <tbody>
+        {% for h in history %}
+          <tr>
+            <td>{{ h.started_at|date:"d M Y, H:i" }}</td>
+            <td>{{ h.subjects|length }}</td>
+            <td>{{ h.score }}/{{ h.total }}</td>
+            <td>{{ h.percentage }}%</td>
+            <td><span class="chip {{ h.grade }}">{{ h.get_grade_display }}</span></td>
+            <td><a href="{% url 'cbt_examination_result' h.attempt_id %}" style="color:var(--blue-dk);font-weight:800;">View</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+{# ═════════════════════════ EXAM HALL ═════════════════════════ #}
+{% elif view_mode == 'exam' %}
+
+  <div class="ex-bar">
+    <div class="ex-tabs" id="tabs"></div>
+    <div class="ex-timer" id="timer"><i class="fa-regular fa-clock"></i> <span id="timerText">--:--</span></div>
+    <button class="btn btn-primary" id="submitBtn" type="button">Submit</button>
+  </div>
+  <div class="ex-progress"><div id="progFill"></div></div>
+  <div class="ex-meta"><span id="answeredTxt"></span><span id="saveState">&nbsp;</span></div>
+
+  <div class="ex-grid">
+    <div class="q-card" id="qCard">
+      <div class="q-top"><span class="q-badge" id="qBadge"></span><span class="q-num" id="qNum"></span></div>
+      <div class="q-text" id="qText"></div>
+      <div class="opts" id="opts"></div>
+      <div class="q-actions">
+        <button class="btn btn-ghost" id="prevBtn" type="button"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+        <button class="btn btn-ghost flag-btn" id="flagBtn" type="button"><i class="fa-regular fa-flag"></i> Mark for review</button>
+        <button class="btn btn-primary" id="nextBtn" type="button">Next <i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+    </div>
+    <aside class="nav-card">
+      <h3 id="navTitle">Questions</h3>
+      <div class="nav-grid" id="navGrid"></div>
+      <div class="legend">
+        <span><i style="background:var(--blue)"></i>Answered</span>
+        <span><i style="background:#fff;border:1.5px solid var(--line)"></i>Unanswered</span>
+        <span><i style="background:var(--amber);border-radius:50%"></i>Marked</span>
+      </div>
+      <div class="kbd">Keys: <b>A–D</b> choose &middot; <b>N</b>/<b>&rarr;</b> next &middot; <b>P</b>/<b>&larr;</b> previous &middot; <b>F</b> mark</div>
+    </aside>
+  </div>
+
+  <div class="modal" id="confirmModal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3>Submit your examination?</h3>
+      <p id="confirmText"></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" type="button" id="confirmNo">Keep working</button>
+        <button class="btn btn-danger" type="button" id="confirmYes">Submit now</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="busyModal" role="alertdialog" aria-modal="true">
+    <div class="modal-box" style="text-align:center">
+      <h3 id="busyTitle">Submitting…</h3>
+      <p id="busyText">Please wait while your paper is marked.</p>
+      <div class="modal-actions" id="busyActions" style="justify-content:center;display:none">
+        <button class="btn btn-primary" type="button" id="busyRetry">Try again</button>
+      </div>
+    </div>
+  </div>
+
+  {{ exam_payload|json_script:"examData" }}
+
+{# ═════════════════════════ RESULT ═════════════════════════ #}
+{% else %}
+
+  <h1 class="exm-title">Examination Result</h1>
+  <p class="exm-sub">{{ attempt.started_at|date:"l, d F Y" }}{% if attempt.auto_submitted %} &middot; submitted automatically when time ran out{% endif %}</p>
+
+  <div class="card">
+    <div class="slip">
+      <img src="{{ student_info.picture }}" alt="Passport photograph" onerror="this.onerror=null;this.src='https://placehold.co/96x120/efefef/8e8e8e?text=Photo'">
+      <dl>
+        <dt>Name</dt><dd>{{ student_info.name }}</dd>
+        {% if student_info.admission_number %}<dt>Admission no.</dt><dd>{{ student_info.admission_number }}</dd>{% endif %}
+        {% if student_info.class_level %}<dt>Class</dt><dd>{{ student_info.class_level }}</dd>{% endif %}
+        <dt>Subjects</dt><dd>{{ attempt.subjects|length }}</dd>
+        <dt>Time used</dt><dd>{{ attempt.time_used_display }}</dd>
+        <dt>Total score</dt><dd>{{ attempt.score }} / {{ attempt.total }}</dd>
+      </dl>
+      <div>
+        <div class="ring {{ attempt.grade }}" style="--p:{{ attempt.percentage }}"><span>{{ attempt.percentage }}%<small>{{ grade_label }}</small></span></div>
+        <div class="verdict">{{ remark }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Score by subject</h2>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Subject</th><th>Score</th><th>%</th><th>Grade</th></tr></thead>
+        <tbody>
+        {% for s in sections %}
+          <tr><td>{{ s.name }}</td><td>{{ s.score }}/{{ s.total }}</td><td>{{ s.percentage }}%</td><td><span class="chip {{ s.grade }}">{{ s.grade_label }}</span></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="res-actions no-print">
+    <a class="btn btn-primary" href="{% url 'print_test_results' request.user.username %}?date={{ print_date }}&autoprint=1" target="_blank" rel="noopener"><i class="fa-solid fa-print"></i> Print results slip</a>
+    <button class="btn btn-ghost" type="button" onclick="window.print()"><i class="fa-solid fa-print"></i> Print with answers</button>
+    <a class="btn btn-ghost" href="{% url 'my_results' %}">All my results</a>
+    <a class="btn btn-ghost" href="{% url 'cbt_examination' %}">Back to CBT Examination</a>
+    <a class="btn btn-ghost" href="{{ profile_url }}">My profile</a>
+  </div>
+
+  <h2 style="font-size:16px;font-weight:800;margin:6px 0 10px">Review your answers</h2>
+  {% for s in sections %}
+  <details class="rv-sec">
+    <summary>
+      <span>{{ s.name }}</span>
+      <span class="rv-r">{{ s.score }}/{{ s.total }} <span class="chip {{ s.grade }}">{{ s.grade_label }}</span> <i class="fa-solid fa-chevron-down no-print"></i></span>
+    </summary>
+    <div class="rv-body">
+      {% for q in s.questions %}
+      <div class="rv-q">
+        <span class="rv-st {{ q.status }}">
+          Question {{ q.n }} &middot;
+          {% if q.status == 'correct' %}Correct{% elif q.status == 'wrong' %}Wrong{% else %}Not answered{% endif %}
+        </span>
+        <p>{{ q.text }}</p>
+        {% for o in q.options %}
+        <div class="rv-o{% if o.is_correct %} ok{% elif o.is_picked %} bad{% endif %}">
+          <b>{{ o.label }}.</b><span>{{ o.text }}</span>
+          {% if o.is_correct %}<span class="rv-tag">Correct answer</span>{% elif o.is_picked %}<span class="rv-tag">Your answer</span>{% endif %}
+        </div>
+        {% endfor %}
+        {% if q.explanation %}<div class="rv-expl">{{ q.explanation }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+
+{% endif %}
+
+</div><!-- /.exm-shell -->
+
+{# ═════════════════════════ SCRIPTS ═════════════════════════ #}
+{% if view_mode == 'home' %}
+<script>
+(function () {
+  var MIN_PER_SUBJECT = {{ minutes_per_subject }}, MAX = {{ max_subjects }};
+
+  var left = document.getElementById('resumeLeft');
+  if (left) {
+    var s = Math.max(0, parseInt(left.dataset.left, 10) || 0);
+    left.textContent = Math.floor(s / 60) + ' min';
+  }
+
+  var form = document.getElementById('startForm');
+  if (!form) return;
+  var boxes = Array.prototype.slice.call(form.querySelectorAll('input[name="subjects"]'));
+  var btn = document.getElementById('startBtn'), sum = document.getElementById('startSum');
+
+  function refresh() {
+    var on = boxes.filter(function (b) { return b.checked; });
+    var qs = on.reduce(function (t, b) { return t + (parseInt(b.dataset.q, 10) || 0); }, 0);
+    btn.disabled = on.length === 0;
+    sum.textContent = on.length
+      ? on.length + ' subject' + (on.length > 1 ? 's' : '') + ' \u00b7 ' + qs + ' questions \u00b7 ' + (on.length * MIN_PER_SUBJECT) + ' minutes'
+      : 'Select at least one subject';
+    boxes.forEach(function (b) {
+      if (b.dataset.q === '0') return;
+      b.disabled = !b.checked && on.length >= MAX;
+    });
+  }
+  boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+  document.getElementById('selAll').onclick = function () {
+    var n = 0;
+    boxes.forEach(function (b) { if (b.dataset.q !== '0') { b.checked = n < MAX; if (b.checked) n++; } });
+    refresh();
+  };
+  document.getElementById('selNone').onclick = function () { boxes.forEach(function (b) { b.checked = false; }); refresh(); };
+  form.addEventListener('submit', function () { btn.disabled = true; });
+  refresh();
+})();
+</script>
+{% elif view_mode == 'exam' %}
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById('examData').textContent);
+  var Q = D.questions, LETTERS = 'ABCD';
+  var answers = D.answers || {};          // { questionId: 'A'..'D' }
+  var flagged = {};                       // { questionId: true } (kept in this tab only)
+  var cur = 0, dirty = false, saving = false, submitting = false, saveTimer = null;
+
+  // The countdown follows the server: base seconds + time elapsed since we last heard from it.
+  var base = D.remaining, baseAt = performance.now();
+  function left() { return Math.max(0, Math.round(base - (performance.now() - baseAt) / 1000)); }
+  function resync(sec) { base = sec; baseAt = performance.now(); }
+
+  function $(id) { return document.getElementById(id); }
+  function cookie(n) { var m = document.cookie.match('(?:^|; )' + n + '=([^;]*)'); return m ? decodeURIComponent(m[1]) : ''; }
+  function fmt(s) {
+    var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return h ? h + ':' + p(m) + ':' + p(x) : p(m) + ':' + p(x);
+  }
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': cookie('csrftoken') },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+
+  if (!Q.length) { $('qText').textContent = 'No questions are available for this paper.'; return; }
+
+  var subjects = D.subjects.filter(function (s) { return Q.some(function (q) { return q.subject === s; }); });
+  function subjectOf(i) { return Q[i].subject; }
+  function idxIn(i) {                       // position of question i within its subject
+    var n = 0; for (var k = 0; k <= i; k++) if (Q[k].subject === Q[i].subject) n++; return n;
+  }
+  function subjectTotal(s) { return Q.filter(function (q) { return q.subject === s; }).length; }
+  function subjectDone(s) { return Q.filter(function (q) { return q.subject === s && answers[q.id]; }).length; }
+  function firstOf(s) { for (var k = 0; k < Q.length; k++) if (Q[k].subject === s) return k; return 0; }
+
+  /* ── render ── */
+  function renderTabs() {
+    $('tabs').innerHTML = '';
+    subjects.forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'ex-tab' + (s === subjectOf(cur) ? ' active' : '');
+      b.textContent = s;
+      var sm = document.createElement('small'); sm.textContent = subjectDone(s) + '/' + subjectTotal(s);
+      b.appendChild(sm);
+      b.onclick = function () { go(firstOf(s)); };
+      $('tabs').appendChild(b);
+    });
+    var act = $('tabs').querySelector('.active');
+    if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+  function renderNav() {
+    var s = subjectOf(cur);
+    $('navTitle').textContent = s + ' \u2013 ' + subjectDone(s) + ' of ' + subjectTotal(s) + ' answered';
+    var g = $('navGrid'); g.innerHTML = '';
+    Q.forEach(function (q, i) {
+      if (q.subject !== s) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'nav-n' + (answers[q.id] ? ' done' : '') + (flagged[q.id] ? ' flag' : '') + (i === cur ? ' cur' : '');
+      b.textContent = idxIn(i);
+      b.onclick = function () { go(i); };
+      g.appendChild(b);
+    });
+  }
+  function renderQuestion() {
+    var q = Q[cur];
+    $('qBadge').textContent = q.subject;
+    $('qNum').textContent = 'Question ' + idxIn(cur) + ' of ' + subjectTotal(q.subject);
+    $('qText').textContent = q.text;
+    var box = $('opts'); box.innerHTML = '';
+    q.options.forEach(function (o, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'opt' + (answers[q.id] === o[0] ? ' sel' : '');
+      var l = document.createElement('span'); l.className = 'ltr'; l.textContent = LETTERS[i];
+      var t = document.createElement('span'); t.className = 'txt'; t.textContent = o[1];
+      b.appendChild(l); b.appendChild(t);
+      b.onclick = function () { choose(i); };
+      box.appendChild(b);
+    });
+    $('prevBtn').disabled = cur === 0;
+    $('nextBtn').disabled = cur === Q.length - 1;
+    var f = !!flagged[q.id];
+    $('flagBtn').classList.toggle('on', f);
+    $('flagBtn').innerHTML = (f ? '<i class="fa-solid fa-flag"></i> Marked' : '<i class="fa-regular fa-flag"></i> Mark for review');
+  }
+  function renderProgress() {
+    var n = Object.keys(answers).length;
+    $('answeredTxt').textContent = n + ' of ' + Q.length + ' answered';
+    $('progFill').style.width = (n / Q.length * 100) + '%';
+  }
+  function renderAll() { renderTabs(); renderNav(); renderQuestion(); renderProgress(); }
+
+  /* ── actions ── */
+  function go(i) { cur = Math.max(0, Math.min(Q.length - 1, i)); renderAll(); window.scrollTo(0, 0); }
+  function choose(i) {
+    var q = Q[cur], key = q.options[i][0];
+    answers[q.id] = key;
+    dirty = true; renderAll(); queueSave();
+  }
+  function toggleFlag() { var id = Q[cur].id; flagged[id] ? delete flagged[id] : (flagged[id] = true); renderNav(); renderQuestion(); }
+
+  /* ── autosave ── */
+  function setState(txt, err) { var el = $('saveState'); el.textContent = txt; el.className = err ? 'err' : ''; }
+  function queueSave() { setState('Saving\u2026'); clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 500); }
+  function saveNow() {
+    if (saving || submitting || !dirty) return;
+    saving = true;
+    var snapshot = JSON.stringify(answers);
+    post(D.saveUrl, { answers: answers }).then(function (r) {
+      saving = false;
+      if (r.submitted || r.expired) { submitting = true; location.replace(r.result_url || D.resultUrl); return; }
+      if (!r.ok) throw new Error(r.error || 'save failed');
+      resync(r.remaining);
+      if (JSON.stringify(answers) === snapshot) { dirty = false; setState('All answers saved'); }
+      else queueSave();
+    }).catch(function () {
+      saving = false; setState('Offline \u2013 will retry', true);
+    });
+  }
+  setInterval(function () { if (dirty) saveNow(); }, 15000);
+
+  /* ── timer ── */
+  var autoFired = false;
+  function tick() {
+    var s = left();
+    $('timerText').textContent = fmt(s);
+    $('timer').className = 'ex-timer' + (s <= 60 ? ' danger' : (s <= 300 ? ' warn' : ''));
+    if (s <= 0 && !autoFired) { autoFired = true; submitExam(true); }
+  }
+  setInterval(tick, 500); tick();
+
+  /* ── submit ── */
+  function showBusy(title, text, retry) {
+    $('busyTitle').textContent = title; $('busyText').textContent = text;
+    $('busyActions').style.display = retry ? 'flex' : 'none';
+    $('busyModal').classList.add('open');
+  }
+  function submitExam(auto) {
+    if (submitting && !auto) return;
+    submitting = true;
+    $('confirmModal').classList.remove('open');
+    showBusy(auto ? 'Time is up' : 'Submitting\u2026', auto ? 'Your paper is being submitted automatically.' : 'Please wait while your paper is marked.', false);
+    post(D.submitUrl, { answers: answers }).then(function (r) {
+      if (!r.ok) throw new Error('submit failed');
+      location.replace(r.result_url || D.resultUrl);
+    }).catch(function () {
+      showBusy('Could not submit', 'Check your internet connection. Your answers are safe \u2013 tap Try again.', true);
+    });
+  }
+  $('busyRetry').onclick = function () { submitting = false; submitExam(left() <= 0); };
+  $('submitBtn').onclick = function () {
+    var un = Q.length - Object.keys(answers).length;
+    $('confirmText').textContent = un > 0
+      ? 'You have ' + un + ' unanswered question' + (un > 1 ? 's' : '') + '. You cannot change your answers after submitting.'
+      : 'You have answered every question. You cannot change your answers after submitting.';
+    $('confirmModal').classList.add('open');
+  };
+  $('confirmNo').onclick = function () { $('confirmModal').classList.remove('open'); };
+  $('confirmYes').onclick = function () { submitExam(false); };
+
+  $('prevBtn').onclick = function () { go(cur - 1); };
+  $('nextBtn').onclick = function () { go(cur + 1); };
+  $('flagBtn').onclick = toggleFlag;
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.modal.open')) return;
+    var k = e.key.toLowerCase(), i = 'abcd'.indexOf(k);
+    if (i > -1 && i < Q[cur].options.length) choose(i);
+    else if (k === 'n' || k === 'arrowright') go(cur + 1);
+    else if (k === 'p' || k === 'arrowleft') go(cur - 1);
+    else if (k === 'f') toggleFlag();
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (submitting) return;
+    e.preventDefault(); e.returnValue = '';
+  });
+
+  renderAll();
+  setState('Answers are saved automatically');
+})();
+</script>
+{% endif %}
+
+{% include "footer.html" %}
