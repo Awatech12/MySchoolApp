@@ -142,7 +142,79 @@
   }
 </style>
 
-<aside class="ac-sidebar">
+<style>
+  /* ═══════════════════════════════════════════
+     MOBILE DRAWER  (toggled by the header hamburger)
+  ═══════════════════════════════════════════ */
+  .ac-sidebar-backdrop { display: none; }
+
+  @media (max-width: 767px) {
+    .ac-sidebar {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: var(--ac-header-h, 64px); left: 0; bottom: 0;
+      width: 270px;
+      max-width: 82vw;
+      background: var(--ac-white, #fff);
+      padding: 20px 14px;
+      z-index: 1100;
+      overflow-y: auto;
+      gap: 4px;
+      box-sizing: border-box;
+      transform: translateX(-100%);
+      visibility: hidden;
+      transition: transform .25s ease, visibility 0s linear .25s;
+    }
+    .ac-sidebar.open {
+      transform: translateX(0);
+      visibility: visible;
+      transition: transform .25s ease;
+      box-shadow: 4px 0 24px rgba(0,0,0,.18);
+    }
+
+    .ac-sidebar-backdrop {
+      display: block;
+      position: fixed;
+      top: var(--ac-header-h, 64px); left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 1050;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    .ac-sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    .ac-sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: var(--ac-text-light, #737373);
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--ac-font, inherit);
+      transition: background 0.15s, color 0.15s;
+    }
+    .ac-sidebar-item svg {
+      width: 22px; height: 22px;
+      stroke: currentColor;
+      fill: none;
+      flex-shrink: 0;
+    }
+    .ac-sidebar-item:hover,
+    .ac-sidebar-item.active {
+      background: var(--ac-primary-lt, #e8f4fd);
+      color: var(--ac-primary, #0095f6);
+    }
+    .ac-sidebar-item.active { font-weight: 700; }
+    .ac-sidebar-spacer { flex: 1; }
+  }
+</style>
+
+<aside class="ac-sidebar" id="ac-sidebar">
 
   <!-- Home -->
   <a href="{% url 'home' %}"
@@ -266,6 +338,43 @@
   </a>
 
 </aside>
+
+<div class="ac-sidebar-backdrop" id="ac-sidebar-backdrop"></div>
+
+<script>
+(function () {
+  'use strict';
+  var btn = document.getElementById('ac-menu-toggle');
+  var sidebar = document.getElementById('ac-sidebar');
+  var backdrop = document.getElementById('ac-sidebar-backdrop');
+  if (!btn || !sidebar || !backdrop) return;
+
+  function setOpen(open) {
+    sidebar.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    var icon = btn.querySelector('i');
+    if (icon) icon.className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+
+  btn.addEventListener('click', function () {
+    setOpen(!sidebar.classList.contains('open'));
+  });
+  backdrop.addEventListener('click', function () { setOpen(false); });
+  // Close after choosing any item (links navigate; "My Subjects" opens its modal)
+  sidebar.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.ac-sidebar-item')) setOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && sidebar.classList.contains('open')) setOpen(false);
+  });
+  window.addEventListener('resize', function () {
+    if (window.innerWidth >= 768 && sidebar.classList.contains('open')) setOpen(false);
+  });
+})();
+</script>
 
 {% if user.is_authenticated %}
 <!-- ══ MY SUBJECTS MODAL ══ -->

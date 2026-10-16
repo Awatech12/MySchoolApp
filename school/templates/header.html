@@ -135,13 +135,51 @@
     object-fit: cover;
     display: block;
   }
+
+  /* Left group: mobile menu toggle + logo */
+  .ac-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* Hamburger — mobile only (sidebar is always visible on desktop) */
+  .ac-menu-btn {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 42px; height: 42px;
+    margin-left: -8px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ac-text);
+    font-size: 20px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ac-menu-btn:hover,
+  .ac-menu-btn[aria-expanded="true"] {
+    background: var(--ac-primary-lt);
+    color: var(--ac-primary);
+  }
+  @media (max-width: 767px) {
+    .ac-menu-btn { display: flex; }
+  }
 </style>
 
 <header class="ac-header">
-  <a href="{% url 'home' %}" class="ac-header-logo">
-    <img src="{% static 'images/logo.jpg' %}" alt="TopMark logo" class="ac-header-logo-img">
-    <span class="ac-header-logo-text"><span class="brand-top">Top<span>Mark</span></span><small>Tutorial Center</small></span>
-  </a>
+  <div class="ac-header-left">
+    <button type="button" class="ac-menu-btn" id="ac-menu-toggle"
+            aria-label="Open menu" aria-controls="ac-sidebar" aria-expanded="false">
+      <i class="fa-solid fa-bars" aria-hidden="true"></i>
+    </button>
+    <a href="{% url 'home' %}" class="ac-header-logo">
+      <img src="{% static 'images/logo.jpg' %}" alt="TopMark logo" class="ac-header-logo-img">
+      <span class="ac-header-logo-text"><span class="brand-top">Top<span>Mark</span></span><small>Tutorial Center</small></span>
+    </a>
+  </div>
 
   <div class="ac-header-icons">
     <a href="{% url 'notifications' %}" class="ac-header-icon-btn" title="Notifications">

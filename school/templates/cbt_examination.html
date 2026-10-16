@@ -102,6 +102,14 @@
   .q-badge { background: var(--blue-lt); color: var(--blue-dk); border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 800; }
   .q-num { font-size: 12px; color: var(--gray3); font-weight: 700; }
   .q-text { font-size: 17px; font-weight: 700; line-height: 1.55; margin-bottom: 18px; white-space: pre-wrap; word-wrap: break-word; }
+  .passage { background: #f4f9fe; border: 1px solid var(--blue-mid); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .passage .p-head { font-size: 12px; font-weight: 800; color: var(--blue-dk); margin-bottom: 8px; }
+  .passage .p-title { font-weight: 800; font-size: 15px; margin-bottom: 6px; }
+  .passage .p-text { white-space: pre-wrap; font-size: 14px; line-height: 1.75; max-height: 360px; overflow-y: auto; word-wrap: break-word; }
+  .pic { display: block; max-width: 100%; max-height: 360px; margin: 10px auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: zoom-in; }
+  .pic-err { margin: 10px 0; padding: 14px; text-align: center; font-size: 12px; font-weight: 700; color: var(--gray3); border: 1px dashed var(--line); border-radius: 8px; }
+  .q-pic { margin-bottom: 16px; }
+  #lightbox img { max-width: 96vw; max-height: 92vh; background: #fff; border-radius: 8px; cursor: zoom-out; }
   .opts { display: grid; gap: 10px; }
   .opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; font: 600 15px 'Plus Jakarta Sans', sans-serif; color: var(--dark); cursor: pointer; transition: border-color .12s, background .12s; }
   .opt:hover { border-color: var(--blue); background: var(--gray1); }
@@ -282,7 +290,9 @@
   <div class="ex-grid">
     <div class="q-card" id="qCard">
       <div class="q-top"><span class="q-badge" id="qBadge"></span><span class="q-num" id="qNum"></span></div>
+      <div id="passageBox"></div>
       <div class="q-text" id="qText"></div>
+      <div class="q-pic" id="qPic"></div>
       <div class="opts" id="opts"></div>
       <div class="q-actions">
         <button class="btn btn-ghost" id="prevBtn" type="button"><i class="fa-solid fa-arrow-left"></i> Previous</button>
@@ -312,6 +322,7 @@
       </div>
     </div>
   </div>
+  <div class="modal" id="lightbox" aria-hidden="true"><img id="lbImg" alt=""></div>
   <div class="modal" id="busyModal" role="alertdialog" aria-modal="true">
     <div class="modal-box" style="text-align:center">
       <h3 id="busyTitle">Submitting…</h3>
@@ -384,7 +395,16 @@
           Question {{ q.n }} &middot;
           {% if q.status == 'correct' %}Correct{% elif q.status == 'wrong' %}Wrong{% else %}Not answered{% endif %}
         </span>
+        {% if q.passage %}
+        <div class="passage">
+          <div class="p-head">Information for this and the next questions that share it</div>
+          {% if q.passage.title %}<div class="p-title">{{ q.passage.title }}</div>{% endif %}
+          {% if q.passage.text %}<div class="p-text">{{ q.passage.text }}</div>{% endif %}
+          {% if q.passage.image %}<img class="pic" src="{{ q.passage.image }}" alt="Diagram for the passage" style="cursor:default">{% endif %}
+        </div>
+        {% endif %}
         <p>{{ q.text }}</p>
+        {% if q.image %}<img class="pic" src="{{ q.image }}" alt="Diagram for this question" style="cursor:default">{% endif %}
         {% for o in q.options %}
         <div class="rv-o{% if o.is_correct %} ok{% elif o.is_picked %} bad{% endif %}">
           <b>{{ o.label }}.</b><span>{{ o.text }}</span>
@@ -511,8 +531,45 @@
       g.appendChild(b);
     });
   }
+  function runBounds(i) {                    // first / last question number sharing this question's passage
+    var p = Q[i].passage; if (!p) return null;
+    var same = function (k) { return Q[k].subject === Q[i].subject && Q[k].passage && Q[k].passage.id === p.id; };
+    var a = i, b = i;
+    while (a > 0 && same(a - 1)) a--;
+    while (b < Q.length - 1 && same(b + 1)) b++;
+    return [idxIn(a), idxIn(b)];
+  }
+  function picture(url, alt) {
+    var img = document.createElement('img');
+    img.className = 'pic'; img.alt = alt; img.src = url;
+    img.onclick = function () { $('lbImg').src = url; $('lightbox').classList.add('open'); };
+    img.onerror = function () {
+      var m = document.createElement('div'); m.className = 'pic-err';
+      m.textContent = 'The picture could not be loaded. Check your connection and refresh.';
+      img.replaceWith(m);
+    };
+    return img;
+  }
+  function renderMedia(q) {
+    var box = $('passageBox'); box.innerHTML = '';
+    if (q.passage) {
+      var r = runBounds(cur), p = q.passage, d = document.createElement('div');
+      d.className = 'passage';
+      var h = document.createElement('div'); h.className = 'p-head';
+      h.textContent = r[0] === r[1] ? 'Use the information below to answer question ' + r[0]
+                                     : 'Use the information below to answer questions ' + r[0] + ' to ' + r[1];
+      d.appendChild(h);
+      if (p.title) { var t = document.createElement('div'); t.className = 'p-title'; t.textContent = p.title; d.appendChild(t); }
+      if (p.text) { var x = document.createElement('div'); x.className = 'p-text'; x.textContent = p.text; d.appendChild(x); }
+      if (p.image) d.appendChild(picture(p.image, 'Diagram for the passage'));
+      box.appendChild(d);
+    }
+    var pic = $('qPic'); pic.innerHTML = '';
+    if (q.image) pic.appendChild(picture(q.image, 'Diagram for this question'));
+  }
   function renderQuestion() {
     var q = Q[cur];
+    renderMedia(q);
     $('qBadge').textContent = q.subject;
     $('qNum').textContent = 'Question ' + idxIn(cur) + ' of ' + subjectTotal(q.subject);
     $('qText').textContent = q.text;
@@ -619,6 +676,8 @@
     else if (k === 'p' || k === 'arrowleft') go(cur - 1);
     else if (k === 'f') toggleFlag();
   });
+  $('lightbox').addEventListener('click', function () { this.classList.remove('open'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('lightbox').classList.remove('open'); });
 
   window.addEventListener('beforeunload', function (e) {
     if (submitting) return;

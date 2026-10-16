@@ -667,6 +667,52 @@ class RegisteredSubject(models.Model):
 
 # ── CBT Examination (real, timed, server-graded test on the student's registered subjects) ──
 
+def _exam_image_field(folder):
+    """Optional image, stored the same way as the project's other uploads (Cloudinary or local media)."""
+    if settings.USE_CLOUDINARY:
+        return CloudinaryField('image', folder=folder, blank=True, null=True)
+    return models.ImageField(upload_to=f'{folder}/', blank=True, null=True)
+
+
+def _exam_image_url(f):
+    """Full URL of an exam image in both environments, or '' when there is none."""
+    if not f:
+        return ''
+    try:
+        if getattr(settings, 'USE_CLOUDINARY', False):
+            import cloudinary
+            public_id = getattr(f, 'public_id', None) or str(f)
+            return cloudinary.CloudinaryImage(str(public_id)).build_url(secure=True)
+        return f.url or ''
+    except Exception:
+        return ''
+
+
+class ExamPassage(models.Model):
+    """
+    Shared information for a group of questions: a comprehension passage, a data table, a map,
+    a circuit or any diagram. Students see it above each of its questions with the line
+    "Use the information below to answer questions X to Y", and its questions are always given together.
+    """
+    subject_name = models.CharField(max_length=100, db_index=True)
+    # Optional label teachers use in spreadsheets to attach questions to this passage (e.g. P1).
+    ref          = models.CharField(max_length=60, blank=True)
+    title        = models.CharField(max_length=150, blank=True)
+    text         = models.TextField(blank=True)
+    image        = _exam_image_field('exam_passages')
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['subject_name', 'id']
+
+    @property
+    def image_url(self):
+        return _exam_image_url(self.image)
+
+    def __str__(self):
+        return f"[{self.subject_name}] {self.title or self.text[:50] or 'Passage %s' % self.pk}"
+
+
 class ExamQuestion(models.Model):
     """
     One multiple-choice question in the CBT Examination question bank.
@@ -685,6 +731,11 @@ class ExamQuestion(models.Model):
     option_d     = models.CharField(max_length=300)
     answer       = models.CharField(max_length=1, choices=ANSWER_CHOICES)
     explanation  = models.TextField(blank=True)
+    # Optional diagram / picture for this question.
+    image        = _exam_image_field('exam_questions')
+    # Optional shared passage / diagram; `order` keeps the questions of one passage in sequence.
+    passage      = models.ForeignKey('ExamPassage', null=True, blank=True, on_delete=models.SET_NULL, related_name='questions')
+    order        = models.PositiveIntegerField(default=0)
     is_active    = models.BooleanField(default=True)
     # Hash of subject + question + options: lets the loader re-run safely without duplicating questions.
     fingerprint  = models.CharField(max_length=40, unique=True, editable=False)
@@ -702,6 +753,10 @@ class ExamQuestion(models.Model):
         self.fingerprint = self.make_fingerprint(
             self.subject_name, self.text, self.option_a, self.option_b, self.option_c, self.option_d)
         super().save(*args, **kwargs)
+
+    @property
+    def image_url(self):
+        return _exam_image_url(self.image)
 
     def __str__(self):
         return f"[{self.subject_name}] {self.text[:60]}"

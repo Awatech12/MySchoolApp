@@ -6,9 +6,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, clean_question, import_questions,
-                                parse_rows, rows_from_text, rows_from_upload)
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExaminationAttempt
+from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, check_image, clean_question, image_blobs_from_uploads,
+                                import_questions, parse_rows, rows_from_text, rows_from_upload)
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
 import uuid, json, re, logging, random
@@ -1178,17 +1178,46 @@ def _exam_bank_counts():
     )
 
 
+def _draw_questions(name):
+    """
+    Pick up to EXAM_QUESTIONS_PER_SUBJECT questions for one subject.
+    Questions that share a passage / diagram are treated as one block: they are all given, together
+    and in their set order, or not at all. Blocks and single questions are mixed in random order.
+    """
+    pool = list(ExamQuestion.objects.filter(subject_name=name, is_active=True).select_related('passage'))
+    groups = {}
+    units = []
+    for q in pool:
+        if q.passage_id:
+            groups.setdefault(q.passage_id, []).append(q)
+        else:
+            units.append([q])
+    for g in groups.values():
+        units.append(sorted(g, key=lambda q: (q.order, q.id)))
+    random.shuffle(units)
+
+    chosen, count = [], 0
+    for u in units:
+        if count + len(u) <= EXAM_QUESTIONS_PER_SUBJECT:
+            chosen.append(u)
+            count += len(u)
+    random.shuffle(chosen)
+    return [q for u in chosen for q in u]
+
+
 def _build_exam_paper(subject_names):
     """Draw and freeze the questions for a paper. Options are shuffled; keys stay A-D."""
     paper = []
     for name in subject_names:
-        pool = list(ExamQuestion.objects.filter(subject_name=name, is_active=True))
-        for q in random.sample(pool, min(len(pool), EXAM_QUESTIONS_PER_SUBJECT)):
+        for q in _draw_questions(name):
             opts = [['A', q.option_a], ['B', q.option_b], ['C', q.option_c], ['D', q.option_d]]
             random.shuffle(opts)
+            p = q.passage
             paper.append({
                 'id': q.id, 'subject': name, 'text': q.text, 'options': opts,
                 'answer': q.answer, 'explanation': q.explanation,
+                'image': q.image_url,
+                'passage': ({'id': p.id, 'title': p.title, 'text': p.text, 'image': p.image_url} if p else None),
             })
     return paper
 
@@ -1361,7 +1390,8 @@ def cbt_examination_take(request, attempt_id):
         'remaining': max(0, attempt.remaining_sec()),
         'subjects': attempt.subjects,
         'questions': [
-            {'id': q['id'], 'subject': q['subject'], 'text': q['text'], 'options': q['options']}
+            {'id': q['id'], 'subject': q['subject'], 'text': q['text'], 'options': q['options'],
+             'image': q.get('image', ''), 'passage': q.get('passage')}
             for q in attempt.paper
         ],
         'answers': attempt.answers,
@@ -1444,17 +1474,21 @@ def cbt_examination_result(request, attempt_id):
         r = attempt.results.get(name)
         if not r:
             continue
-        questions = []
+        questions, last_passage = [], None
         for n, q in enumerate([q for q in attempt.paper if q['subject'] == name], start=1):
             picked = attempt.answers.get(str(q['id']))
             options = [
                 {'label': 'ABCD'[i], 'text': text, 'is_correct': key == q['answer'], 'is_picked': key == picked}
                 for i, (key, text) in enumerate(q['options'])
             ]
+            p = q.get('passage')
+            pid = p['id'] if p else None
             questions.append({
                 'n': n, 'text': q['text'], 'options': options, 'explanation': q.get('explanation', ''),
+                'image': q.get('image', ''), 'passage': p if pid != last_passage else None,
                 'status': 'skipped' if not picked else ('correct' if picked == q['answer'] else 'wrong'),
             })
+            last_passage = pid
         sections.append({
             'name': name, 'score': r['score'], 'total': r['total'], 'answered': r['answered'],
             'percentage': r['percentage'], 'grade': r['grade'], 'grade_label': grade_labels.get(r['grade'], ''),
@@ -1523,8 +1557,9 @@ def my_results(request, username=None):
 
 # ── CBT Examination: question bank management (teachers / staff only) ──
 #
-# Teachers upload questions here (CSV, Excel or pasted text).
-# Parsing/validation lives in school/exam_import.py.
+# Teachers upload questions here (CSV, Excel or pasted text), attach pictures / diagrams to questions,
+# and create "passages" (shared information: a reading text, table, map or diagram) that several
+# questions refer to. Parsing/validation lives in school/exam_import.py.
 
 EXAM_BANK_PAGE_SIZE = 20
 EXAM_UPLOAD_MAX_BYTES = 2 * 1024 * 1024
@@ -1558,7 +1593,7 @@ def _bank_fail(request, msg, subject=''):
 @_exam_teacher_only
 @ensure_csrf_cookie
 def cbt_question_bank(request):
-    """Overview of the bank per subject, upload / add forms and a searchable list of questions."""
+    """Overview of the bank per subject, upload / add forms, passages and a searchable list of questions."""
     subject = request.GET.get('subject', '').strip()
     search = request.GET.get('q', '').strip()
 
@@ -1567,12 +1602,15 @@ def cbt_question_bank(request):
     stats = [{'name': n, 'active': rows.get(n, {}).get('active', 0), 'total': rows.get(n, {}).get('total', 0)}
              for n in sorted(SENIOR_SECONDARY_SUBJECTS)]
 
-    qs = ExamQuestion.objects.all()
+    qs = ExamQuestion.objects.select_related('passage')
     if subject:
         qs = qs.filter(subject_name=subject)
     if search:
         qs = qs.filter(text__icontains=search)
     page = Paginator(qs, EXAM_BANK_PAGE_SIZE).get_page(request.GET.get('page'))
+
+    all_passages = list(ExamPassage.objects.annotate(n=Count('questions')).order_by('subject_name', 'id')[:500])
+    shown_passages = [p for p in all_passages if not subject or p.subject_name == subject]
 
     return render(request, 'cbt_question_bank.html', {
         'stats': stats,
@@ -1583,6 +1621,8 @@ def cbt_question_bank(request):
         'query': urlencode({k: v for k, v in (('subject', subject), ('q', search)) if v}),
         'per_subject': EXAM_QUESTIONS_PER_SUBJECT,
         'total_active': sum(r['active'] for r in stats),
+        'passages': shown_passages,
+        'passage_options': all_passages,
         'profile_url': reverse('profile', args=[request.user.username]),
     })
 
@@ -1590,7 +1630,7 @@ def cbt_question_bank(request):
 @_exam_teacher_only
 @require_POST
 def cbt_question_upload(request):
-    """Import questions from an uploaded CSV / Excel / text file, or from pasted text."""
+    """Import questions from an uploaded CSV / Excel / text file (plus optional pictures), or pasted text."""
     default_subject = request.POST.get('subject', '').strip()
     replace = request.POST.get('replace') == 'on'
     upload = request.FILES.get('file')
@@ -1614,29 +1654,36 @@ def cbt_question_upload(request):
     if len(rows) > EXAM_IMPORT_MAX_ROWS + 1:
         return _bank_fail(request, f'Too many rows. Please upload at most {EXAM_IMPORT_MAX_ROWS} questions at a time.', default_subject)
 
-    questions, errors = parse_rows(rows, SENIOR_SECONDARY_SUBJECTS, default_subject)
+    blobs, image_errors = image_blobs_from_uploads(request.FILES.getlist('images'))
+    questions, errors = parse_rows(rows, SENIOR_SECONDARY_SUBJECTS, default_subject, images=blobs)
+    problems = [(0, e) for e in image_errors] + errors
 
-    if replace and errors:
+    if replace and problems:
         # Never wipe a subject's existing questions on the strength of a file that has mistakes.
-        messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the lines below and upload again.')
+        messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the problems below and upload again.')
     elif questions:
-        created, present, removed = import_questions(questions, replace=replace)
-        bits = [f'{created} new question{"s" if created != 1 else ""} added']
-        if present:
-            bits.append(f'{present} already in the bank')
-        if removed:
-            bits.append(f'{removed} old question{"s" if removed != 1 else ""} replaced')
-        messages.success(request, 'Upload complete: ' + ', '.join(bits) + '.')
-    elif not errors:
+        created, present, removed, import_errors = import_questions(questions, replace=replace)
+        if replace and import_errors:
+            messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the problems below and upload again.')
+            problems += import_errors
+        else:
+            problems += import_errors
+            bits = [f'{created} new question{"s" if created != 1 else ""} added']
+            if present:
+                bits.append(f'{present} already in the bank')
+            if removed:
+                bits.append(f'{removed} old question{"s" if removed != 1 else ""} replaced')
+            messages.success(request, 'Upload complete: ' + ', '.join(bits) + '.')
+    elif not problems:
         messages.error(request, 'No questions were found in that file.')
 
-    if errors:
-        skipped = '' if replace else f'{len(errors)} line{"s" if len(errors) != 1 else ""} skipped. '
-        messages.warning(request, skipped + 'Problems found:')
-        for line, msg in errors[:8]:
-            messages.warning(request, f'Line {line}: {msg}')
-        if len(errors) > 8:
-            messages.warning(request, f'…and {len(errors) - 8} more.')
+    if problems:
+        problems.sort(key=lambda x: x[0])
+        messages.warning(request, f'{len(problems)} problem{"s" if len(problems) != 1 else ""} found:')
+        for line, msg in problems[:8]:
+            messages.warning(request, (f'Line {line}: ' if line else '') + msg)
+        if len(problems) > 8:
+            messages.warning(request, f'…and {len(problems) - 8} more.')
     return _bank_redirect(request, default_subject)
 
 
@@ -1647,32 +1694,71 @@ def _question_from_post(request):
                           p.get('explanation', ''), SENIOR_SECONDARY_SUBJECTS)
 
 
+def _read_image_upload(request, field='image'):
+    """(file, error) for an optional picture in a form. The file is rewound so it can still be saved."""
+    f = request.FILES.get(field)
+    if not f:
+        return None, None
+    err = check_image(f.name, f.read())
+    f.seek(0)
+    return (None, err) if err else (f, None)
+
+
+def _save_question_from_post(request, obj):
+    """Validate the add/edit form and save `obj`. Returns an error message, or None on success."""
+    data, err = _question_from_post(request)
+    if err:
+        return err
+    p = request.POST
+
+    passage = None
+    pid = p.get('passage', '').strip()
+    if pid:
+        passage = ExamPassage.objects.filter(pk=int(pid) if pid.isdigit() else 0).first()
+        if not passage:
+            return 'the chosen passage no longer exists'
+        if passage.subject_name != data['subject_name']:
+            return 'the chosen passage belongs to a different subject'
+    try:
+        order = max(0, min(int(p.get('order') or 0), 999))
+    except ValueError:
+        return 'the position in the passage must be a number'
+    picture, err = _read_image_upload(request)
+    if err:
+        return err
+
+    obj.subject_name, obj.text = data['subject_name'], data['text']
+    obj.option_a, obj.option_b, obj.option_c, obj.option_d = data['a'], data['b'], data['c'], data['d']
+    obj.answer, obj.explanation = data['answer'], data['explanation']
+    obj.passage, obj.order = passage, (order if passage else 0)
+    if picture:
+        obj.image = picture
+    elif p.get('remove_image') == 'on':
+        obj.image = None
+    try:
+        with transaction.atomic():
+            obj.save()
+    except IntegrityError:
+        return 'an identical question already exists'
+    return None
+
+
 @_exam_teacher_only
 @require_POST
 def cbt_question_add(request):
-    data, err = _question_from_post(request)
+    err = _save_question_from_post(request, ExamQuestion())
     if err:
         return _bank_fail(request, 'Question not saved: ' + err + '.', request.POST.get('subject', ''))
-    created, present, _ = import_questions([data])
-    messages.success(request, 'Question added.' if created else 'That question is already in the bank.')
-    return _bank_redirect(request, data['subject_name'])
+    messages.success(request, 'Question added.')
+    return _bank_redirect(request, request.POST.get('subject', ''))
 
 
 @_exam_teacher_only
 @require_POST
 def cbt_question_edit(request, pk):
-    obj = get_object_or_404(ExamQuestion, pk=pk)
-    data, err = _question_from_post(request)
+    err = _save_question_from_post(request, get_object_or_404(ExamQuestion, pk=pk))
     if err:
         return _bank_fail(request, 'Changes not saved: ' + err + '.')
-    obj.subject_name, obj.text = data['subject_name'], data['text']
-    obj.option_a, obj.option_b, obj.option_c, obj.option_d = data['a'], data['b'], data['c'], data['d']
-    obj.answer, obj.explanation = data['answer'], data['explanation']
-    try:
-        with transaction.atomic():
-            obj.save()
-    except IntegrityError:
-        return _bank_fail(request, 'Changes not saved: an identical question already exists.')
     messages.success(request, 'Question updated.')
     return _bank_redirect(request)
 
@@ -1696,6 +1782,53 @@ def cbt_question_delete(request, pk):
 
 
 @_exam_teacher_only
+@require_POST
+def cbt_passage_save(request, pk=None):
+    """Create (no pk) or edit a passage: shared text and/or picture for a group of questions."""
+    obj = get_object_or_404(ExamPassage, pk=pk) if pk else ExamPassage()
+    p = request.POST
+    subject = p.get('subject', '').strip()
+    title, text, ref = p.get('title', '').strip(), p.get('text', '').strip(), p.get('ref', '').strip()
+
+    def fail(msg):
+        return _bank_fail(request, 'Passage not saved: ' + msg + '.', subject)
+
+    if subject not in SENIOR_SECONDARY_SUBJECTS:
+        return fail('please choose a subject')
+    if pk and obj.subject_name != subject and obj.questions.exists():
+        return fail('its questions belong to ' + obj.subject_name + ', so the subject cannot be changed')
+    if len(title) > 150 or len(ref) > 60:
+        return fail('the title or reference is too long')
+    picture, err = _read_image_upload(request)
+    if err:
+        return fail(err)
+    keeps_image = bool(obj.image) and p.get('remove_image') != 'on'
+    if not text and not picture and not keeps_image:
+        return fail('give it some text or a picture')
+    if ref and ExamPassage.objects.filter(subject_name=subject, ref__iexact=ref).exclude(pk=obj.pk).exists():
+        return fail(f'another passage in {subject} already uses the reference "{ref}"')
+
+    obj.subject_name, obj.title, obj.text, obj.ref = subject, title, text, ref
+    if picture:
+        obj.image = picture
+    elif p.get('remove_image') == 'on':
+        obj.image = None
+    obj.save()
+    messages.success(request, 'Passage saved. You can now attach questions to it with "Add a question" or "Edit".')
+    return _bank_redirect(request, subject)
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_passage_delete(request, pk):
+    obj = get_object_or_404(ExamPassage, pk=pk)
+    n = obj.questions.count()
+    obj.delete()      # its questions are kept; they simply stop sharing a passage
+    messages.success(request, 'Passage deleted.' + (f' Its {n} question{"s" if n != 1 else ""} {"were" if n != 1 else "was"} kept without a passage.' if n else ''))
+    return _bank_redirect(request)
+
+
+@_exam_teacher_only
 @require_GET
 def cbt_question_template(request):
     """A ready-to-fill CSV template (opens in Excel / Google Sheets)."""
@@ -1703,9 +1836,14 @@ def cbt_question_template(request):
     resp['Content-Disposition'] = 'attachment; filename="exam_questions_template.csv"'
     resp.write('\ufeff')   # so Excel reads UTF-8 correctly
     w = csv.writer(resp)
-    w.writerow(['subject', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer', 'explanation'])
-    w.writerow(['Mathematics', 'Solve for x: 3x - 7 = 11', '6', '4', '5', '18', 'A', '3x = 18, so x = 6'])
-    w.writerow(['English Language', 'Choose the plural of "child"', 'childs', 'children', 'childes', 'childrens', 'B', ''])
+    w.writerow(['subject', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer', 'explanation',
+                'image', 'passage', 'passage_title', 'passage_text', 'passage_image'])
+    w.writerow(['Mathematics', 'Solve for x: 3x - 7 = 11', '6', '4', '5', '18', 'A', '3x = 18, so x = 6', '', '', '', '', ''])
+    w.writerow(['Physics', 'The diagram shows a simple circuit. What is the reading of the ammeter?', '1 A', '2 A', '3 A', '6 A', 'B', '', 'circuit1.png', '', '', '', ''])
+    w.writerow(['Geography', 'Which feature is marked X on the map?', 'A delta', 'A lagoon', 'A plateau', 'A spit', 'A', '', '', 'MAP1', 'Map of a coastline', '', 'coast_map.png'])
+    w.writerow(['Geography', 'Which of the places marked on the map is a port?', 'P', 'Q', 'R', 'S', 'C', '', '', 'MAP1', '', '', ''])
+    w.writerow(['English Language', 'According to the passage, why did Ade return home?', 'He was sick', 'He was tired', 'He lost his job', 'He missed his family', 'D', '', '', 'P1', 'Comprehension passage', 'Write or paste the whole passage here...', ''])
+    w.writerow(['English Language', 'The word "reluctantly" in the passage means', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', 'P1', '', '', ''])
     return resp
 
 

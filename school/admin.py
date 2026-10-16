@@ -1,5 +1,5 @@
 from django.contrib import admin
-from school.models import Profile, Post, PostComment, Notification, ExamQuestion, ExaminationAttempt
+from school.models import Profile, Post, PostComment, Notification, ExamQuestion, ExamPassage, ExaminationAttempt
 
 # Register your models here.
 admin.site.register(Profile)
@@ -18,6 +18,13 @@ class ExamQuestionAdmin(admin.ModelAdmin):
     @admin.display(description='Question')
     def short_text(self, obj):
         return obj.text[:90]
+
+
+@admin.register(ExamPassage)
+class ExamPassageAdmin(admin.ModelAdmin):
+    list_display = ('subject_name', 'ref', 'title')
+    list_filter = ('subject_name',)
+    search_fields = ('title', 'text', 'ref')
 
 
 @admin.register(ExaminationAttempt)

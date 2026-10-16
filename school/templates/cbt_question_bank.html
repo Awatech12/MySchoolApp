@@ -61,6 +61,14 @@
   .pager { display:flex; justify-content:center; gap:10px; align-items:center; margin-top:14px; font-size:13px; font-weight:700; }
   .empty { text-align:center; padding:26px 8px; color:var(--gray3); font-weight:600; }
 
+  .thumb { height:46px; max-width:90px; object-fit:contain; border:1px solid var(--line); border-radius:6px; background:#fff; margin-top:6px; display:block; }
+  .tag { display:inline-block; font-size:11px; font-weight:800; border-radius:6px; padding:2px 8px; background:var(--blue-lt); color:var(--blue-dk); margin:6px 6px 0 0; }
+  .plist { display:grid; gap:10px; }
+  .pitem { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .pitem .pinfo { display:flex; gap:12px; align-items:center; min-width:0; flex:1; }
+  .pitem b { font-size:13px; display:block; } .pitem small { color:var(--gray3); font-weight:600; font-size:12px; }
+  .curimg { display:none; align-items:center; gap:10px; font-size:12px; font-weight:600; margin-top:6px; }
+  .curimg img { height:46px; border:1px solid var(--line); border-radius:6px; }
   .modal { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:14px; }
   .modal.open { display:flex; }
   .box { background:#fff; border-radius:14px; padding:20px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; }
@@ -116,6 +124,12 @@
           <input type="file" name="file" id="upFile" accept=".csv,.xlsx,.txt,.tsv">
         </div>
       </div>
+      <div class="row">
+        <div>
+          <label class="f" for="upImages">Pictures used by the questions (optional &ndash; you can select many)</label>
+          <input type="file" name="images" id="upImages" accept=".png,.jpg,.jpeg,.gif,.webp" multiple>
+        </div>
+      </div>
       <details class="help">
         <summary>Or paste questions instead / see the file format</summary>
         <textarea name="pasted" placeholder="Solve for x: 3x - 7 = 11 | 6 | 4 | 5 | 18 | A"></textarea>
@@ -123,11 +137,14 @@
           <b>Spreadsheet (CSV / Excel)</b>: one question per row with a header row:
         </p>
         <pre>subject, question, option_a, option_b, option_c, option_d, answer, explanation</pre>
-        <p>The <b>answer</b> is the letter A, B, C or D. <b>subject</b> and <b>explanation</b> are optional; leave out the subject column if you picked a subject above.
+        <p>The <b>answer</b> is the letter A, B, C or D. <b>subject</b> and <b>explanation</b> are optional; leave out the subject column if you picked a subject above.</p>
+        <p><b>Pictures and diagrams:</b> add an <code>image</code> column holding the picture's file name (e.g. <code>circuit1.png</code>) and attach that picture in the &ldquo;Pictures&rdquo; box above.</p>
+        <p><b>Shared information</b> (a reading passage, table, map or diagram for several questions): give those questions the same label in a <code>passage</code> column (P1, MAP1&hellip;). On the <u>first</u> question of the group also fill <code>passage_title</code>, <code>passage_text</code> and/or <code>passage_image</code>. The questions are always given to students together, in the order they appear in your file.</p>
+        <p>
           <a href="{% url 'cbt_question_template' %}">Download a CSV template</a>.</p>
         <p><b>Text / pasted</b>: one question per line, separated by <code>|</code>:</p>
         <pre>question | option A | option B | option C | option D | answer letter</pre>
-        <p>Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
+        <p>Pasted text and .txt files cannot carry pictures or passages; use a spreadsheet for those. Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
       </details>
       <label class="chk" style="margin-bottom:14px">
         <input type="checkbox" name="replace">
@@ -135,6 +152,35 @@
       </label>
       <button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload"></i> Upload</button>
     </form>
+  </div>
+
+  <div class="card">
+    <div class="top" style="align-items:center;margin-bottom:10px">
+      <h2 style="margin:0"><i class="fa-solid fa-image"></i> Passages &amp; shared diagrams{% if subject %} &ndash; {{ subject }}{% endif %}</h2>
+      <button class="btn btn-ghost btn-sm" type="button" id="addPassageBtn"><i class="fa-solid fa-plus"></i> Add passage</button>
+    </div>
+    <p class="sub" style="margin-bottom:12px">Use these when several questions share the same information, e.g. &ldquo;Use the information above to answer questions 11 to 14&rdquo;. Create the passage, then choose it when you add or edit each question.</p>
+    {% if passages %}
+    <div class="plist">
+      {% for p in passages %}
+      <div class="pitem">
+        <div class="pinfo">
+          {% if p.image_url %}<a href="{{ p.image_url }}" target="_blank" rel="noopener"><img class="thumb" style="margin:0" src="{{ p.image_url }}" alt=""></a>{% endif %}
+          <div style="min-width:0"><b>{% firstof p.title p.ref "Untitled passage" %}</b>
+            <small>{{ p.subject_name }}{% if p.ref %} &middot; ref {{ p.ref }}{% endif %} &middot; {{ p.n }} question{{ p.n|pluralize }}{% if p.text %} &middot; {{ p.text|truncatechars:60 }}{% endif %}</small></div>
+        </div>
+        <div class="acts">
+          <button type="button" class="btn btn-ghost btn-sm edit-passage"
+            data-id="{{ p.pk }}" data-subject="{{ p.subject_name }}" data-ref="{{ p.ref }}" data-title="{{ p.title }}"
+            data-text="{{ p.text }}" data-image="{{ p.image_url }}">Edit</button>
+          <form method="post" action="{% url 'cbt_passage_delete' p.pk %}" onsubmit="return confirm('Delete this passage? Its questions are kept but will no longer share it.')">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm btn-red" type="submit">Delete</button></form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty" style="padding:14px">No passages yet.</div>
+    {% endif %}
   </div>
 
   <div class="card">
@@ -157,14 +203,17 @@
           <tr{% if not q.is_active %} class="off"{% endif %}>
             <td>{{ q.subject_name }}{% if not q.is_active %}<small style="display:block;color:var(--amber)">switched off</small>{% endif %}</td>
             <td class="q">{{ q.text }}
-              <small>A. {{ q.option_a }} &nbsp; B. {{ q.option_b }} &nbsp; C. {{ q.option_c }} &nbsp; D. {{ q.option_d }}</small></td>
+              <small>A. {{ q.option_a }} &nbsp; B. {{ q.option_b }} &nbsp; C. {{ q.option_c }} &nbsp; D. {{ q.option_d }}</small>
+              {% if q.passage %}<span class="tag"><i class="fa-solid fa-link"></i> {% firstof q.passage.title q.passage.ref "Passage" %}</span>{% endif %}
+              {% if q.image_url %}<a href="{{ q.image_url }}" target="_blank" rel="noopener"><img class="thumb" src="{{ q.image_url }}" alt="Question picture"></a>{% endif %}</td>
             <td><span class="ans">{{ q.answer }}</span></td>
             <td>
               <div class="acts">
                 <button type="button" class="btn btn-ghost btn-sm edit-btn"
                   data-id="{{ q.pk }}" data-subject="{{ q.subject_name }}" data-text="{{ q.text }}"
                   data-a="{{ q.option_a }}" data-b="{{ q.option_b }}" data-c="{{ q.option_c }}" data-d="{{ q.option_d }}"
-                  data-answer="{{ q.answer }}" data-expl="{{ q.explanation }}">Edit</button>
+                  data-answer="{{ q.answer }}" data-expl="{{ q.explanation }}"
+                  data-passage="{{ q.passage_id|default_if_none:'' }}" data-order="{{ q.order }}" data-image="{{ q.image_url }}">Edit</button>
                 <form method="post" action="{% url 'cbt_question_toggle' q.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm" type="submit">{% if q.is_active %}Switch off{% else %}Switch on{% endif %}</button></form>
                 <form method="post" action="{% url 'cbt_question_delete' q.pk %}" onsubmit="return confirm('Delete this question permanently?')">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm btn-red" type="submit">Delete</button></form>
               </div>
@@ -190,7 +239,7 @@
 <div class="modal" id="qModal" role="dialog" aria-modal="true">
   <div class="box">
     <h3 id="qTitle">Add a question</h3>
-    <form method="post" id="qForm" action="{% url 'cbt_question_add' %}">
+    <form method="post" id="qForm" action="{% url 'cbt_question_add' %}" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
       <div class="row two">
@@ -208,10 +257,47 @@
         <div><label class="f">Option C</label><input type="text" name="option_c" id="fC" maxlength="300" required></div>
         <div><label class="f">Option D</label><input type="text" name="option_d" id="fD" maxlength="300" required></div>
       </div>
+      <div class="row two">
+        <div><label class="f">Shared passage / diagram (optional)</label>
+          <select name="passage" id="fPassage"><option value="">None &ndash; this question stands alone</option>
+            {% for p in passage_options %}<option value="{{ p.pk }}" data-subject="{{ p.subject_name }}">{% firstof p.title p.ref "Untitled passage" %}{% if p.ref and p.title %} ({{ p.ref }}){% endif %}</option>{% endfor %}
+          </select></div>
+        <div><label class="f">Position within the passage</label><input type="text" name="order" id="fOrder" inputmode="numeric" placeholder="1, 2, 3&hellip;"></div>
+      </div>
+      <div class="row"><div><label class="f">Picture / diagram for this question (optional)</label>
+        <input type="file" name="image" id="fImage" accept=".png,.jpg,.jpeg,.gif,.webp">
+        <div class="curimg" id="fCur"><img id="fCurImg" alt=""><label><input type="checkbox" name="remove_image"> Remove current picture</label></div></div></div>
       <div class="row"><div><label class="f">Explanation (optional, shown in the student’s review)</label><textarea name="explanation" id="fExpl" style="min-height:60px"></textarea></div></div>
       <div class="acts-end">
         <button type="button" class="btn btn-ghost" id="qCancel">Cancel</button>
         <button type="submit" class="btn btn-primary">Save question</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="pModal" role="dialog" aria-modal="true">
+  <div class="box">
+    <h3 id="pTitleH">Add a passage</h3>
+    <form method="post" id="pForm" action="{% url 'cbt_passage_add' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <div class="row two">
+        <div><label class="f">Subject</label>
+          <select name="subject" id="pSubject" required>
+            {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
+          </select></div>
+        <div><label class="f">Reference (optional)</label><input type="text" name="ref" id="pRef" maxlength="60" placeholder="e.g. P1 &ndash; used in spreadsheets"></div>
+      </div>
+      <div class="row"><div><label class="f">Title (optional)</label><input type="text" name="title" id="pTitle" maxlength="150" placeholder="e.g. Read the passage below"></div></div>
+      <div class="row"><div><label class="f">Text (passage, table or description)</label><textarea name="text" id="pText" style="min-height:130px"></textarea></div></div>
+      <div class="row"><div><label class="f">Picture / diagram (optional)</label>
+        <input type="file" name="image" id="pImage" accept=".png,.jpg,.jpeg,.gif,.webp">
+        <div class="curimg" id="pCur"><img id="pCurImg" alt=""><label><input type="checkbox" name="remove_image"> Remove current picture</label></div></div></div>
+      <p class="sub" style="margin:0 0 10px">A passage needs some text, a picture, or both.</p>
+      <div class="acts-end">
+        <button type="button" class="btn btn-ghost" id="pCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save passage</button>
       </div>
     </form>
   </div>
@@ -222,6 +308,19 @@
   var modal = document.getElementById('qModal'), form = document.getElementById('qForm');
   var addUrl = "{% url 'cbt_question_add' %}", editUrl = "{% url 'cbt_question_edit' 0 %}";
   function $(id) { return document.getElementById(id); }
+  function filterPassages() {
+    var subj = $('fSubject').value, sel = $('fPassage');
+    Array.prototype.forEach.call(sel.options, function (o) {
+      if (!o.value) return;
+      var ok = o.dataset.subject === subj;
+      o.hidden = !ok; o.disabled = !ok;
+      if (!ok && o.selected) sel.value = '';
+    });
+  }
+  function showCurrent(box, img, url) {
+    box.style.display = url ? 'flex' : 'none';
+    if (url) img.src = url;
+  }
   function open(d) {
     form.action = d ? editUrl.replace('/0/', '/' + d.id + '/') : addUrl;
     $('qTitle').textContent = d ? 'Edit question' : 'Add a question';
@@ -230,9 +329,35 @@
     $('fA').value = d ? d.a : ''; $('fB').value = d ? d.b : ''; $('fC').value = d ? d.c : ''; $('fD').value = d ? d.d : '';
     $('fAnswer').value = d ? d.answer : 'A';
     $('fExpl').value = d ? d.expl : '';
+    $('fImage').value = '';
+    form.querySelector('[name=remove_image]').checked = false;
+    showCurrent($('fCur'), $('fCurImg'), d ? d.image : '');
+    filterPassages();
+    $('fPassage').value = d ? (d.passage || '') : '';
+    $('fOrder').value = d && d.passage ? d.order : '';
     modal.classList.add('open');
     $('fText').focus();
   }
+  $('fSubject').addEventListener('change', filterPassages);
+
+  var pModal = $('pModal'), pForm = $('pForm');
+  var pAddUrl = "{% url 'cbt_passage_add' %}", pEditUrl = "{% url 'cbt_passage_edit' 0 %}";
+  function openPassage(d) {
+    pForm.action = d ? pEditUrl.replace('/0/', '/' + d.id + '/') : pAddUrl;
+    $('pTitleH').textContent = d ? 'Edit passage' : 'Add a passage';
+    $('pSubject').value = d ? d.subject : ($('pSubject').value);
+    $('pRef').value = d ? d.ref : ''; $('pTitle').value = d ? d.title : ''; $('pText').value = d ? d.text : '';
+    $('pImage').value = '';
+    pForm.querySelector('[name=remove_image]').checked = false;
+    showCurrent($('pCur'), $('pCurImg'), d ? d.image : '');
+    pModal.classList.add('open');
+  }
+  $('addPassageBtn').onclick = function () { openPassage(null); };
+  $('pCancel').onclick = function () { pModal.classList.remove('open'); };
+  pModal.addEventListener('click', function (e) { if (e.target === pModal) pModal.classList.remove('open'); });
+  Array.prototype.forEach.call(document.querySelectorAll('.edit-passage'), function (b) {
+    b.onclick = function () { openPassage(b.dataset); };
+  });
   $('addBtn').onclick = function () { open(null); };
   $('qCancel').onclick = function () { modal.classList.remove('open'); };
   modal.addEventListener('click', function (e) { if (e.target === modal) modal.classList.remove('open'); });
