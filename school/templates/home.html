@@ -297,10 +297,10 @@
     <!-- WELCOME BANNER -->
     <section class="TopMark-welcome">
       <div>
-        <h1>Welcome back, <span>{{ user.first_name|default:user.username }}</span> 👋</h1>
-        <p>Classes hold Thursday to Sunday, 4:00pm - 6:00pm. Learn. Grow. Succeed.</p>
+        <h1>Welcome back, <span>{% if user.teacher_profile.title %}{{ user.teacher_profile.title }}. {% endif %}{{ user.first_name|default:user.username }}</span> 👋</h1>
+        <p>Classes hold Thursday to Sunday, 4:00pm - 6:00pm. {% if user.teacher_profile %}Teach. Guide. Inspire.{% else %}Learn. Grow. Succeed.{% endif %}</p>
       </div>
-      <a href="{% url 'live_room_list' %}" class="TopMark-welcome-btn">Join a live class</a>
+      <a href="{% url 'live_room_list' %}" class="TopMark-welcome-btn">{% if user.teacher_profile %}Go to live classes{% else %}Join a live class{% endif %}</a>
     </section>
 
     <!-- EXAM SCHEDULE: stays until the student has finished the examination -->
@@ -341,7 +341,7 @@
 
     <!-- FEATURE CARDS SECTION (Live Classes + CBT Exams together) -->
     <div class="section-spacing">
-      <h2 class="TopMark-section-title">Learning Tools</h2>
+      <h2 class="TopMark-section-title">{% if user.teacher_profile %}Teaching Tools{% else %}Learning Tools{% endif %}</h2>
       <div class="TopMark-features-grid">
         <!-- Live Classes Card -->
         <a href="{% url 'live_room_list' %}" class="TopMark-feature-tile">
@@ -351,6 +351,7 @@
           <p class="TopMark-feature-name">Live Classes</p>
         </a>
 
+        {% if not user.teacher_profile %}
         <!-- CBT Exams Card -->
         <a href="{% url 'cbt_exams' %}" class="TopMark-feature-tile">
           <div class="TopMark-feature-icon">
@@ -374,6 +375,7 @@
           </div>
           <p class="TopMark-feature-name">My Results</p>
         </a>
+        {% endif %}
 
         <!-- Student ID Card -->
         <a href="{% url 'id_card' %}" class="TopMark-feature-tile">
@@ -383,6 +385,17 @@
           <p class="TopMark-feature-name">My ID Card</p>
         </a>
 
+        {% if user.teacher_profile %}
+        <!-- Teacher profile -->
+        <a href="{% url 'profile' user.username %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
+            <i class="fa-solid fa-user-tie" style="font-size:44px;color:#0074cc;"></i>
+          </div>
+          <p class="TopMark-feature-name">My Profile</p>
+        </a>
+        {% endif %}
+
+        {% if not user.teacher_profile %}
         <!-- My Subjects (opens modal) -->
         <a href="#" class="TopMark-feature-tile" data-my-subjects role="button" aria-haspopup="dialog">
           <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
@@ -390,6 +403,7 @@
           </div>
           <p class="TopMark-feature-name">My Subjects</p>
         </a>
+        {% endif %}
       </div>
     </div>
 

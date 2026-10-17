@@ -4,7 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.index, name='index'),
     path('register', views.register, name='register'),
-    path('register/complete', views.register_with_picture, name='register_with_picture'),
+    path('register/complete', views.register, name='register_with_picture'),
     path('home', views.home, name='home'),
     path('logout', views.user_logout, name='logout'),
 
@@ -87,6 +87,13 @@ urlpatterns = [
     path('dashboard/api/students/<int:pk>/reset-password/', views.api_student_reset_password, name='dash_student_reset'),
     path('dashboard/api/students/<int:pk>/results/', views.api_student_results, name='dash_student_results'),
     path('dashboard/api/students/<int:pk>/clear-results/', views.api_student_clear_results, name='dash_student_clear'),
+    path('dashboard/api/teachers/', views.api_teachers, name='dash_teachers'),
+    path('dashboard/api/teachers/create/', views.api_teacher_create, name='dash_teacher_create'),
+    path('dashboard/api/teachers/<int:pk>/update/', views.api_teacher_update, name='dash_teacher_update'),
+    path('dashboard/api/teachers/<int:pk>/delete/', views.api_teacher_delete, name='dash_teacher_delete'),
+    path('dashboard/api/teachers/<int:pk>/toggle/', views.api_teacher_toggle, name='dash_teacher_toggle'),
+    path('dashboard/api/teachers/<int:pk>/approve/', views.api_teacher_approve, name='dash_teacher_approve'),
+    path('dashboard/api/teachers/<int:pk>/reset-password/', views.api_teacher_reset_password, name='dash_teacher_reset'),
     path('dashboard/api/exams/<uuid:exam_id>/delete/', views.api_exam_delete, name='dash_exam_delete'),
     path('dashboard/api/content/', views.api_content, name='dash_content'),
     path('dashboard/api/content/delete/', views.api_content_delete, name='dash_content_delete'),

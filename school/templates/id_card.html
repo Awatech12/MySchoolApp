@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <title>ID Card | {{ full_name }} | TopMark Tutorial Center</title>
+  <title>{% if is_teacher %}Staff {% endif %}ID Card | {{ full_name }} | TopMark Tutorial Center</title>
 
   <style>
     :root {
@@ -137,8 +137,8 @@
 
 <div class="toolbar">
   <div>
-    <h1>Student ID Card</h1>
-    <p>{{ full_name }} &middot; {{ admission_number }}</p>
+    <h1>{% if is_teacher %}Teacher{% else %}Student{% endif %} ID Card</h1>
+    <p>{{ full_name }}{% if not is_teacher %} &middot; {{ admission_number }}{% endif %}</p>
   </div>
   <div class="btns">
     <a class="btn btn-light" href="{% url 'profile' student.username %}">Back to profile</a>
@@ -155,7 +155,7 @@
       <div class="f-head">
         <img src="{% static 'images/logo.png' %}" alt="">
         <div class="f-title">TopMark<small>Tutorial Center &middot; Kishi</small></div>
-        <span class="f-tag">STUDENT ID</span>
+        <span class="f-tag">{% if is_teacher %}STAFF ID{% else %}STUDENT ID{% endif %}</span>
       </div>
 
       <div class="f-body">
@@ -163,10 +163,17 @@
         <div class="info">
           <div class="name">{{ full_name }}</div>
           <dl class="rows">
+            {% if is_teacher %}
+            <dt>Role</dt><dd class="adm">Teacher</dd>
+            {% if teacher.qualification %}<dt>Qual.</dt><dd>{{ teacher.qualification|truncatechars:34 }}</dd>{% endif %}
+            {% if teacher.subjects_list %}<dt>Subjects</dt><dd>{{ teacher.subjects_list|join:", "|truncatechars:44 }}</dd>{% endif %}
+            {% if teacher.classes_list %}<dt>Classes</dt><dd>{{ teacher.classes_list|join:", " }}</dd>{% endif %}
+            {% else %}
             <dt>Adm. No</dt><dd class="adm">{{ admission_number }}</dd>
             {% if class_level %}<dt>Class</dt><dd>{{ class_level }}</dd>{% endif %}
             {% if profile.specialization %}<dt>Dept.</dt><dd>{{ profile.specialization }}</dd>{% endif %}
-            {% if profile.gender %}<dt>Gender</dt><dd>{{ profile.gender }}</dd>{% endif %}
+            {% endif %}
+            {% if profile.gender and not is_teacher %}<dt>Gender</dt><dd>{{ profile.gender }}</dd>{% endif %}
             {% if dob %}<dt>D.O.B</dt><dd>{{ dob|date:"d M Y" }}</dd>{% endif %}
             {% if profile.phone %}<dt>Phone</dt><dd>{{ profile.phone }}</dd>{% endif %}
           </dl>
@@ -185,7 +192,7 @@
       <div class="b-body">
         <h3>Terms of use</h3>
         <ul class="terms">
-          <li>This card is the property of TopMark Tutorial Center and must be carried to every class.</li>
+          <li>This card is the property of TopMark Tutorial Center and must be carried {% if is_teacher %}while on duty{% else %}to every class{% endif %}.</li>
           <li>It is not transferable. Report a lost card to the center immediately.</li>
           <li>If found, please return it to the address below.</li>
         </ul>
@@ -198,7 +205,7 @@
       </div>
 
       <div class="sign-row">
-        <div class="sign"><div class="line"></div><span>Student's signature</span></div>
+        <div class="sign"><div class="line"></div><span>{% if is_teacher %}Teacher's{% else %}Student's{% endif %} signature</span></div>
         <div class="sign"><div class="line"></div><span>Authorised signature</span></div>
       </div>
       <div class="b-foot">Learn. Grow. Succeed.</div>

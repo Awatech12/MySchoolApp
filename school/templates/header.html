@@ -188,8 +188,12 @@
       <span class="ac-notif-badge">{{ unread_count }}</span>
       {% endif %}
     </a>
-    <a href="{% url 'profile' user.username %}" class="ac-header-icon-btn" title="Profile">
+    <a href="{% url 'profile' user.username %}" class="ac-header-icon-btn" title="{% if user.teacher_profile %}My profile (teacher){% else %}Profile{% endif %}">
+      {% if user.teacher_profile %}
+      <img src="{{ user.teacher_profile.get_picture_url }}" alt="Profile" class="ac-header-avatar">
+      {% else %}
       <img src="{{ user.profile.picture.url }}" alt="Profile" class="ac-header-avatar">
+      {% endif %}
     </a>
   </div>
 </header>

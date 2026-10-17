@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, EXAM_CLASSES, check_image, clean_class, clean_question,
                                 image_blobs_from_uploads, import_questions, parse_rows, rows_from_text, rows_from_upload)
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule, TeacherProfile
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
 import uuid, json, re, logging, random
@@ -257,8 +257,12 @@ def _login_candidates(identifier):
     if not identifier:
         return candidates
 
-    # 1) Username exactly as typed
+    # 1) Username exactly as typed, then any username that differs only by letter case
+    #    (phone keyboards often capitalise the first letter)
     candidates.append(identifier)
+    candidates.extend(
+        User.objects.filter(username__iexact=identifier).values_list('username', flat=True)
+    )
 
     # 2) Admission No
     m = _ADMISSION_RE.match(identifier)
@@ -280,125 +284,244 @@ def _login_candidates(identifier):
 
 def index(request):
     if request.user.is_authenticated:
-        messages.info(request, f'Welcome back {request.user.username}')
         return redirect('home')
     if request.method == 'POST':
-        user_check = request.POST.get('user_check')
-        password   = request.POST.get('password')
+        role       = 'teacher' if request.POST.get('login_type') == 'teacher' else 'student'
+        user_check = (request.POST.get('user_check') or '').strip()
+        password   = request.POST.get('password') or ''
+        nxt        = request.GET.get('next') or request.POST.get('next') or ''
+        back       = '/?login=' + role
+
         user = None
         for username in _login_candidates(user_check):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 break
-        if user is not None:
-            login(request, user)
-            messages.info(request, f'Welcome back {user.username}')
-            request.session.set_expiry(None)
-            return redirect(request.GET.get('next', 'home'))
-        else:
-            messages.info(request, 'Check Login details')
-            return redirect('/')
+
+        if user is None:
+            messages.error(request, 'Check your login details and try again.')
+            return redirect(back)
+
+        teacher = getattr(user, 'teacher_profile', None)
+        if role == 'student' and teacher is not None:
+            messages.error(request, 'This is a teacher account. Use "Are you a teacher? Login here".')
+            return redirect('/?login=teacher')
+        if role == 'teacher' and teacher is None and not (user.is_staff or user.is_superuser):
+            messages.error(request, 'This is a student account. Sign in with your Admission Number on the student login.')
+            return redirect('/?login=student')
+        if teacher is not None and not teacher.is_approved:
+            messages.warning(request, 'Your teacher account is waiting for approval by the administrator. '
+                                      'You can sign in once it has been approved.')
+            return redirect(back)
+
+        login(request, user)
+        request.session.set_expiry(None)
+        if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()},
+                                                   require_https=request.is_secure()):
+            return redirect(nxt)
+        return redirect('home')
     return render(request, 'index.html')
 
 
-def register(request):
-    if request.method == 'POST':
-        username  = request.POST.get('username')
-        email     = request.POST.get('email')
-        fname     = request.POST.get('fname')
-        lname     = request.POST.get('lname')
-        password  = request.POST.get('pass1')
-        password2 = request.POST.get('pass2')
-        if len(username) < 5:
-            messages.info(request, 'Username Characters Can not Less than 5 characters')
-            return redirect('register')
-        elif User.objects.filter(username=username).exists():
-            messages.info(request, 'Username is taken Alredy')
-            return redirect('register')
-        elif User.objects.filter(email=email).exists():
-            messages.info(request, 'Email is taken Alredy')
-            return redirect('register')
-        elif password != password2:
-            messages.info(request, 'Password not Match')
-            return redirect('register')
+# ── Teacher registration ────────────────────────────────────────────────
+# Students are registered by the admin (Admin Dashboard > Add student / Import CSV).
+# This public page is for TEACHERS only. A self-registered teacher is created as
+# "pending" and can sign in once the admin approves the account. Teachers have no
+# admission number (that belongs to the student Profile only).
+
+TEACHER_TITLES = ['Mr', 'Mrs', 'Miss', 'Ms', 'Dr', 'Prof', 'Engr']
+TEACHER_QUALIFICATIONS = [
+    'SSCE / WAEC', 'OND', 'NCE', 'HND',
+    "Bachelor's degree (B.Sc / B.A / B.Ed / B.Eng)",
+    'PGDE / Postgraduate Diploma',
+    "Master's degree (M.Sc / M.A / M.Ed)",
+    'Ph.D / Doctorate',
+    'Other',
+]
+
+
+def _teacher_form_context(post=None):
+    post = post if post is not None else {}
+    getlist = post.getlist if hasattr(post, 'getlist') else (lambda key: [])
+    return {
+        'subjects':        SENIOR_SECONDARY_SUBJECTS,
+        'classes':         CLASS_LEVEL_CHOICES,
+        'qualifications':  TEACHER_QUALIFICATIONS,
+        'titles':          TEACHER_TITLES,
+        'genders':         GENDER_CHOICES,
+        'form':            post,
+        'picked_subjects': getlist('subjects'),
+        'picked_classes':  getlist('classes'),
+        'this_year':       timezone.localdate().year,
+    }
+
+
+def _clean_teacher_fields(data, files):
+    """
+    Validate the teacher details (registration page and admin Add/Edit teacher).
+    Returns (fields for TeacherProfile, None) or (None, error message).
+    """
+    def text(key, max_len, label, required=False):
+        value = ' '.join((data.get(key) or '').split())
+        if required and not value:
+            raise ValueError(f'{label} is required.')
+        if len(value) > max_len:
+            raise ValueError(f'{label} must be {max_len} characters or fewer.')
+        return value
+
+    try:
+        out = {}
+        out['title'] = text('title', 10, 'Title')
+        if out['title'] and out['title'] not in TEACHER_TITLES:
+            raise ValueError('Please choose a valid title.')
+
+        gender = (data.get('gender') or '').strip()
+        if gender and gender not in GENDER_CHOICES:
+            raise ValueError('Please choose a valid gender option.')
+        out['gender'] = gender
+
+        out['phone'] = text('phone', 20, 'Phone number', required=True)
+        if not _PHONE_RE.match(out['phone']):
+            raise ValueError('Please enter a valid phone number.')
+
+        dob = (data.get('date_of_birth') or '').strip()
+        if dob:
+            try:
+                parsed = date_type.fromisoformat(dob)
+            except ValueError:
+                raise ValueError('Please enter a valid date of birth.')
+            today = date_type.today()
+            age = today.year - parsed.year - ((today.month, today.day) < (parsed.month, parsed.day))
+            if age < 18 or age > 100:
+                raise ValueError('A teacher must be between 18 and 100 years old.')
+            out['date_of_birth'] = parsed
         else:
-            user = User.objects.create_user(
-                username=username, email=email,
-                first_name=fname, last_name=lname, password=password
-            )
-            Profile.objects.create(user=user)
-            CBTScore.objects.create(user=user)        # ← create score row on register
-            messages.info(request, "You Successfully joined Login Now")
-            return redirect('/')
-    return render(request, 'register.html')
+            out['date_of_birth'] = None
+
+        out['address']  = text('address', 200, 'Address')
+        out['location'] = text('location', 300, 'Location')
+
+        qualification = (data.get('qualification') or '').strip()
+        if qualification not in TEACHER_QUALIFICATIONS:
+            raise ValueError('Please choose your highest qualification.')
+        out['qualification']   = qualification
+        out['course_of_study'] = text('course_of_study', 150, 'Course of study', required=True)
+        out['institution']     = text('institution', 200, 'Institution attended', required=True)
+
+        try:
+            year = int((data.get('graduation_year') or '').strip())
+        except ValueError:
+            raise ValueError('Please enter the year you graduated (e.g. 2015).')
+        if year < 1950 or year > date_type.today().year:
+            raise ValueError('Please enter a realistic graduation year.')
+        out['graduation_year'] = year
+
+        out['teaching_certificate'] = text('teaching_certificate', 60, 'Teaching registration number')
+
+        try:
+            exp = int((data.get('years_experience') or '0').strip() or 0)
+        except ValueError:
+            raise ValueError('Years of experience must be a number.')
+        if exp < 0 or exp > 60:
+            raise ValueError('Years of experience must be between 0 and 60.')
+        out['years_experience'] = exp
+
+        picked = dict.fromkeys((s or '').strip() for s in data.getlist('subjects'))
+        subjects = [s for s in picked if s in SENIOR_SECONDARY_SUBJECTS]
+        if not subjects:
+            raise ValueError('Choose at least one subject you teach.')
+        out['subjects_taught'] = '; '.join(subjects)
+
+        picked_classes = set(c.strip() for c in data.getlist('classes'))
+        classes = [c for c in CLASS_LEVEL_CHOICES if c in picked_classes]
+        if not classes:
+            raise ValueError('Choose at least one class you teach (SS1, SS2 or SS3).')
+        out['classes_taught'] = ','.join(classes)
+
+        bio = (data.get('bio') or '').strip()
+        if len(bio) > 500:
+            raise ValueError('About you must be 500 characters or fewer.')
+        out['bio'] = bio
+
+        image = files.get('image')
+        if image:
+            err = _valid_picture(image)
+            if err:
+                raise ValueError(err)
+            out['picture'] = image
+    except ValueError as exc:
+        return None, str(exc)
+    return out, None
 
 
-@require_POST
-def register_with_picture(request):
-   
-    username  = request.POST.get('username', '').strip()
-    email     = request.POST.get('email', '').strip()
-    fname     = request.POST.get('fname', '').strip()
-    lname     = request.POST.get('lname', '').strip()
-    password  = request.POST.get('pass1', '')
-    password2 = request.POST.get('pass2', '')
-    picture   = request.FILES.get('profile_picture')
+def _create_teacher(data, files, approved, password):
+    """Create user + TeacherProfile atomically. Raises ValueError with a readable message."""
+    username = (data.get('username') or '').strip()
+    email    = (data.get('email') or '').strip().lower()
+    fname    = (data.get('fname') or '').strip()
+    lname    = (data.get('lname') or '').strip()
 
-    student_category  = 'senior'  # platform is Senior Secondary only
-    selected_subjects = [s.strip() for s in request.POST.getlist('subjects') if s.strip()]
-    career_goal        = request.POST.get('career_goal', '').strip()
-
-    # --- Server-side validation ---
-    if len(username) < 5:
-        return JsonResponse({'success': False, 'error': 'Username must be at least 5 characters.'})
-    if User.objects.filter(username=username).exists():
-        return JsonResponse({'success': False, 'error': 'Username is already taken.'})
-    if User.objects.filter(email=email).exists():
-        return JsonResponse({'success': False, 'error': 'Email is already registered.'})
-    if password != password2:
-        return JsonResponse({'success': False, 'error': 'Passwords do not match.'})
+    err = _validate_identity(username, email)
+    if err:
+        raise ValueError(err)
+    if not fname or not lname:
+        raise ValueError('First name and last name are required.')
     if len(password) < 6:
-        return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters.'})
-    if not selected_subjects:
-        return JsonResponse({'success': False, 'error': 'Please select at least one subject to register for.'})
-    if not career_goal:
-        return JsonResponse({'success': False, 'error': 'Please tell us what you want to become in the future.'})
+        raise ValueError('Password must be at least 6 characters.')
+    if len(password) > 128:
+        raise ValueError('Password is too long (max 128 characters).')
+    fields, err = _clean_teacher_fields(data, files)
+    if err:
+        raise ValueError(err)
 
-    # --- Create user ---
-    user = User.objects.create_user(
-        username=username, email=email,
-        first_name=fname, last_name=lname, password=password
-    )
-    profile = Profile.objects.create(
-        user=user,
-        student_category=student_category,
-        career_goal=career_goal,
-    )
-    CBTScore.objects.create(user=user)
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username, email=email, first_name=fname, last_name=lname, password=password)
+            teacher = TeacherProfile(user=user, is_approved=approved, **fields)
+            if approved:
+                teacher.approved_at = timezone.now()
+            teacher.save()
+    except IntegrityError:
+        raise ValueError('That username is already taken.')
+    return user
 
-    # --- Save profile picture if provided ---
-    if picture:
-        allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-        if picture.content_type in allowed_types and picture.size <= 5 * 1024 * 1024:
-            profile.picture = picture
-            profile.save()
 
-    # --- Save the ticked subjects (only ones that are valid for the chosen category) ---
-    valid_subjects = SUBJECTS_BY_CATEGORY[student_category]
-    RegisteredSubject.objects.bulk_create(
-        [
-            RegisteredSubject(student=user, category=student_category, subject_name=name)
-            for name in selected_subjects if name in valid_subjects
-        ],
-        ignore_conflicts=True,
-    )
+def register(request):
+    """Public teacher registration."""
+    if request.user.is_authenticated:
+        return redirect('home')
 
-    # --- Log the user in immediately ---
-    from django.contrib.auth import login as auth_login
-    user.backend = 'django.contrib.auth.backends.ModelBackend'
-    auth_login(request, user)
+    if request.method == 'POST':
+        def fail(msg):
+            messages.error(request, msg)
+            return render(request, 'register.html', _teacher_form_context(request.POST))
 
-    return JsonResponse({'success': True, 'redirect': '/home', 'admission_number': profile.admission_number})
+        pass1 = request.POST.get('pass1', '')
+        pass2 = request.POST.get('pass2', '')
+        if pass1 != pass2:
+            return fail('Passwords do not match.')
+        try:
+            _create_teacher(request.POST, request.FILES, approved=False, password=pass1)
+        except ValueError as exc:
+            return fail(str(exc))
+
+        messages.success(request, 'Registration received. The administrator will review and approve '
+                                  'your account, then you can sign in.')
+        return redirect('/')
+
+    return render(request, 'register.html', _teacher_form_context())
+
+
+def _teacher_profile_page(request, target, teacher):
+    """Profile page for a teacher (used by the shared /<username> profile route)."""
+    can_private = _can_view_private(request, target)
+    if not teacher.is_approved and not can_private:
+        raise Http404
+    return render(request, 'teacher_profile.html', {
+        'teacher': teacher, 'tuser': target,
+        'can_private': can_private, 'is_owner': request.user.pk == target.pk,
+    })
 
 
 def _get_student_level(points):
@@ -456,6 +579,9 @@ def profile(request, username):
     from django.db.models import Max, Avg, Count, Sum
 
     user    = get_object_or_404(User, username=username)
+    teacher = TeacherProfile.objects.filter(user=user).first()
+    if teacher:
+        return _teacher_profile_page(request, user, teacher)
     profile = get_object_or_404(Profile, user=user)
 
     is_owner         = request.user.pk == user.pk
@@ -717,7 +843,7 @@ def print_test_results(request, username):
 @require_GET
 def id_card(request, username=None):
     """
-    Printable Student ID card (front and back, CR80 / 85.6 x 54 mm).
+    Printable Student / Teacher ID card (front and back, CR80 / 85.6 x 54 mm).
 
     Students open their own card at /id-card/. Staff may open any student's card
     at /id-card/<username>/. Everyone else is refused (same privacy rule as the
@@ -726,6 +852,19 @@ def id_card(request, username=None):
     target = request.user if username is None else get_object_or_404(User, username=username)
     if not _can_view_private(request, target):
         raise PermissionDenied
+
+    teacher = TeacherProfile.objects.filter(user=target).first()
+    if teacher:
+        return render(request, 'id_card.html', {
+            'is_teacher':       True,
+            'teacher':          teacher,
+            'student':          target,
+            'profile':          teacher,
+            'full_name':        teacher.display_name,
+            'dob':              teacher.date_of_birth,
+            'issue_year':       teacher.created_at.year if teacher.created_at else timezone.now().year,
+            'autoprint':        request.GET.get('autoprint') == '1',
+        })
 
     profile = get_object_or_404(Profile, user=target)
     dob = profile.date_of_birth
@@ -788,7 +927,7 @@ def update_passport(request):
     Accepts multipart/form-data: image (file). Returns JSON { success, error?, url? }.
     """
     user    = request.user
-    profile = user.profile
+    profile = getattr(user, 'teacher_profile', None) or user.profile
     image   = request.FILES.get('image')
 
     if not image:
@@ -803,7 +942,7 @@ def update_passport(request):
     except Exception:
         logger.exception('update_passport failed for user %s', user.pk)
         return JsonResponse({'success': False, 'error': 'Could not save your photo. Please try again.'}, status=500)
-    return JsonResponse({'success': True, 'url': profile.get_picture_url()})
+    return JsonResponse({'success': True, 'url': profile.get_picture_url})
 
 
 @login_required
@@ -1721,6 +1860,43 @@ def _exam_teacher_only(view):
     return wrapper
 
 
+def _teacher_scope(user):
+    """
+    What a user may manage in the question bank.
+      None                  -> unrestricted (staff / superusers see every subject and class)
+      (subjects, classes)   -> an approved teacher: only the subjects AND classes on their teacher
+                               profile (e.g. Mathematics + SS1 means Mathematics questions of SS1 only).
+    """
+    if user.is_staff or user.is_superuser:
+        return None
+    teacher = getattr(user, 'teacher_profile', None)
+    if teacher is None:
+        return ([], [])
+    subjects = [s for s in teacher.subjects_list if s in SENIOR_SECONDARY_SUBJECTS]
+    classes = [c for c in teacher.classes_list if c in EXAM_CLASSES]
+    return (subjects, classes)
+
+
+def _scoped_questions(user):
+    """Questions this user may see or change. Questions with no class are staff-only."""
+    scope = _teacher_scope(user)
+    qs = ExamQuestion.objects.all()
+    return qs if scope is None else qs.filter(subject_name__in=scope[0], class_level__in=scope[1])
+
+
+def _scoped_passages(user):
+    """Passages this user may see or change. Passages with no class are staff-only."""
+    scope = _teacher_scope(user)
+    qs = ExamPassage.objects.all()
+    return qs if scope is None else qs.filter(subject_name__in=scope[0], class_level__in=scope[1])
+
+
+def _in_scope(user, subject, class_level):
+    """True when this user may add / change questions for this subject and class."""
+    scope = _teacher_scope(user)
+    return scope is None or (subject in scope[0] and class_level in scope[1])
+
+
 def _bank_redirect(request, subject='', class_level=''):
     nxt = request.POST.get('next', '')
     if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
@@ -1739,12 +1915,24 @@ def _bank_fail(request, msg, subject='', class_level=''):
 @ensure_csrf_cookie
 def cbt_question_bank(request):
     """Overview of the bank per subject and class (SS1 / SS2 / SS3), upload / add forms, passages and a searchable list."""
+    user = request.user
+    scope = _teacher_scope(user)                      # None = staff, sees everything
+    is_restricted = scope is not None
+    my_subjects = sorted(SENIOR_SECONDARY_SUBJECTS) if not is_restricted else sorted(scope[0])
+    my_classes = list(EXAM_CLASSES) if not is_restricted else [c for c in EXAM_CLASSES if c in scope[1]]
+
     subject = request.GET.get('subject', '').strip()
-    class_filter = clean_class(request.GET.get('class', '')) or ('unassigned' if request.GET.get('class') == 'unassigned' else '')
+    if is_restricted and subject not in my_subjects:
+        subject = ''
+    raw_class = request.GET.get('class', '')
+    class_filter = clean_class(raw_class) or ('unassigned' if raw_class == 'unassigned' else '')
+    if is_restricted and class_filter not in ('', *my_classes):
+        class_filter = ''            # a teacher can never filter to a class (or "no class") that is not theirs
     search = request.GET.get('q', '').strip()
 
+    base = _scoped_questions(user)
     rows = {}
-    for r in ExamQuestion.objects.values('subject_name', 'class_level').annotate(
+    for r in base.values('subject_name', 'class_level').annotate(
             total=Count('id'), active=Count('id', filter=Q(is_active=True))):
         rows[(r['subject_name'], r['class_level'])] = r
 
@@ -1753,17 +1941,17 @@ def cbt_question_bank(request):
         return {'active': r.get('active', 0), 'total': r.get('total', 0)}
 
     stats = []
-    for n in sorted(SENIOR_SECONDARY_SUBJECTS):
-        row = {'name': n, 'unassigned': cell(n, '')}
-        for lvl in EXAM_CLASSES:
-            row[lvl.lower()] = cell(n, lvl)          # row.ss1.active, row.ss2.total ...
-        row['active'] = sum(row[l.lower()]['active'] for l in EXAM_CLASSES) + row['unassigned']['active']
-        row['total'] = sum(row[l.lower()]['total'] for l in EXAM_CLASSES) + row['unassigned']['total']
+    for n in my_subjects:
+        row = {'name': n, 'unassigned': cell(n, ''),
+               'cells': [dict(label=lvl, **cell(n, lvl)) for lvl in my_classes]}
+        row['active'] = sum(c['active'] for c in row['cells']) + row['unassigned']['active']
+        row['total'] = sum(c['total'] for c in row['cells']) + row['unassigned']['total']
         stats.append(row)
-    class_totals = {lvl: sum(r[lvl.lower()]['active'] for r in stats) for lvl in EXAM_CLASSES}
+    class_tabs = [{'label': lvl, 'n': sum(c['active'] for r in stats for c in r['cells'] if c['label'] == lvl)}
+                  for lvl in my_classes]
     unassigned_total = sum(r['unassigned']['total'] for r in stats)
 
-    qs = ExamQuestion.objects.select_related('passage')
+    qs = base.select_related('passage')
     if subject:
         qs = qs.filter(subject_name=subject)
     if class_filter == 'unassigned':
@@ -1774,19 +1962,20 @@ def cbt_question_bank(request):
         qs = qs.filter(text__icontains=search)
     page = Paginator(qs, EXAM_BANK_PAGE_SIZE).get_page(request.GET.get('page'))
 
-    all_passages = list(ExamPassage.objects.annotate(n=Count('questions')).order_by('subject_name', 'id')[:500])
+    all_passages = list(_scoped_passages(user).annotate(n=Count('questions')).order_by('subject_name', 'id')[:500])
     shown_passages = [p for p in all_passages
                       if (not subject or p.subject_name == subject)
                       and (not class_filter or (p.class_level == '' if class_filter == 'unassigned' else p.class_level == class_filter))]
 
     return render(request, 'cbt_question_bank.html', {
         'stats': stats,
-        'subject_names': sorted(SENIOR_SECONDARY_SUBJECTS),
+        'subject_names': my_subjects,                 # only the subjects this teacher teaches
         'page_obj': page,
         'subject': subject,
-        'class_options': list(EXAM_CLASSES),          # ['SS1', 'SS2'] for the class pickers / filter
+        'class_options': my_classes,                  # only the classes this teacher teaches
         'class_filter': class_filter,                 # 'SS1' / 'SS2' / 'unassigned' / ''
-        'class_totals': class_totals,                 # active questions per class
+        'class_tabs': class_tabs,                     # [{'label': 'SS1', 'n': active questions}]
+        'is_restricted': is_restricted,               # True for a teacher, False for staff / admin
         'unassigned_total': unassigned_total,         # older questions with no class yet
         'search': search,
         'query': urlencode({k: v for k, v in (('subject', subject), ('class', class_filter), ('q', search)) if v}),
@@ -1813,6 +2002,15 @@ def cbt_question_upload(request):
         return _bank_fail(request, 'Please choose a valid subject.')
     if raw_class and not default_class:
         return _bank_fail(request, 'Please choose SS1, SS2 or SS3 as the class.', default_subject)
+    scope = _teacher_scope(request.user)
+    if scope is not None:
+        if not scope[0] or not scope[1]:
+            return _bank_fail(request, 'No subjects or classes are assigned to your teacher account yet. '
+                                       'Please ask the administrator.')
+        if default_subject and default_subject not in scope[0]:
+            return _bank_fail(request, f'You are not assigned to teach {default_subject}.')
+        if default_class and default_class not in scope[1]:
+            return _bank_fail(request, f'You are not assigned to teach {default_class}.', default_subject)
     if not upload and not pasted:
         return _bank_fail(request, 'Choose a file to upload or paste your questions.', default_subject, default_class)
 
@@ -1831,6 +2029,14 @@ def cbt_question_upload(request):
 
     blobs, image_errors = image_blobs_from_uploads(request.FILES.getlist('images'))
     questions, errors = parse_rows(rows, SENIOR_SECONDARY_SUBJECTS, default_subject, images=blobs, default_class=default_class)
+    # A teacher can only upload for their own subject + class combinations (spreadsheet columns included).
+    allowed = []
+    for q in questions:
+        if _in_scope(request.user, q['subject_name'], q['class_level']):
+            allowed.append(q)
+        else:
+            errors.append((q['line'], f'you are not assigned to teach {q["subject_name"]} for {q["class_level"]}'))
+    questions = allowed
     problems = [(0, e) for e in image_errors] + errors
 
     if replace and problems:
@@ -1889,11 +2095,13 @@ def _save_question_from_post(request, obj):
     class_level = clean_class(p.get('class_level', ''))
     if not class_level:
         return 'choose the class (SS1, SS2 or SS3) this question is set for'
+    if not _in_scope(request.user, data['subject_name'], class_level):
+        return f'you are not assigned to teach {data["subject_name"]} for {class_level}'
 
     passage = None
     pid = p.get('passage', '').strip()
     if pid:
-        passage = ExamPassage.objects.filter(pk=int(pid) if pid.isdigit() else 0).first()
+        passage = _scoped_passages(request.user).filter(pk=int(pid) if pid.isdigit() else 0).first()
         if not passage:
             return 'the chosen passage no longer exists'
         if passage.subject_name != data['subject_name']:
@@ -1939,7 +2147,7 @@ def cbt_question_add(request):
 @_exam_teacher_only
 @require_POST
 def cbt_question_edit(request, pk):
-    err = _save_question_from_post(request, get_object_or_404(ExamQuestion, pk=pk))
+    err = _save_question_from_post(request, get_object_or_404(_scoped_questions(request.user), pk=pk))
     if err:
         return _bank_fail(request, 'Changes not saved: ' + err + '.')
     messages.success(request, 'Question updated.')
@@ -1949,7 +2157,7 @@ def cbt_question_edit(request, pk):
 @_exam_teacher_only
 @require_POST
 def cbt_question_toggle(request, pk):
-    obj = get_object_or_404(ExamQuestion, pk=pk)
+    obj = get_object_or_404(_scoped_questions(request.user), pk=pk)
     obj.is_active = not obj.is_active
     obj.save(update_fields=['is_active'])
     messages.success(request, 'Question is now ' + ('active.' if obj.is_active else 'switched off (students will not get it).'))
@@ -1959,7 +2167,7 @@ def cbt_question_toggle(request, pk):
 @_exam_teacher_only
 @require_POST
 def cbt_question_delete(request, pk):
-    get_object_or_404(ExamQuestion, pk=pk).delete()
+    get_object_or_404(_scoped_questions(request.user), pk=pk).delete()
     messages.success(request, 'Question deleted.')
     return _bank_redirect(request)
 
@@ -1968,7 +2176,7 @@ def cbt_question_delete(request, pk):
 @require_POST
 def cbt_passage_save(request, pk=None):
     """Create (no pk) or edit a passage: shared text and/or picture for a group of questions."""
-    obj = get_object_or_404(ExamPassage, pk=pk) if pk else ExamPassage()
+    obj = get_object_or_404(_scoped_passages(request.user), pk=pk) if pk else ExamPassage()
     p = request.POST
     subject = p.get('subject', '').strip()
     class_level = clean_class(p.get('class_level', '')) or ''
@@ -1981,6 +2189,8 @@ def cbt_passage_save(request, pk=None):
         return fail('please choose a subject')
     if not class_level:
         return fail('please choose the class (SS1, SS2 or SS3)')
+    if not _in_scope(request.user, subject, class_level):
+        return fail(f'you are not assigned to teach {subject} for {class_level}')
     if pk and obj.subject_name != subject and obj.questions.exists():
         return fail('its questions belong to ' + obj.subject_name + ', so the subject cannot be changed')
     if pk and obj.class_level != class_level and obj.questions.exclude(class_level=class_level).exists():
@@ -2010,7 +2220,7 @@ def cbt_passage_save(request, pk=None):
 @_exam_teacher_only
 @require_POST
 def cbt_passage_delete(request, pk):
-    obj = get_object_or_404(ExamPassage, pk=pk)
+    obj = get_object_or_404(_scoped_passages(request.user), pk=pk)
     n = obj.questions.count()
     obj.delete()      # its questions are kept; they simply stop sharing a passage
     messages.success(request, 'Passage deleted.' + (f' Its {n} question{"s" if n != 1 else ""} {"were" if n != 1 else "was"} kept without a passage.' if n else ''))
@@ -2181,8 +2391,13 @@ QA_ANSWER_SORT_CHOICES = [
 
 
 def _is_teacher(user):
-    """Teachers/administrators = staff or superusers (existing role system)."""
-    return bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+    """Teachers/administrators = staff, superusers, or admin-approved registered teachers."""
+    if not (user and user.is_authenticated):
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    teacher = getattr(user, 'teacher_profile', None)
+    return bool(teacher and teacher.is_approved and user.is_active)
 
 
 def _wants_json(request):
@@ -2940,6 +3155,8 @@ def _temp_password(n=8):
 def _guard(request, target, destructive=False):
     """Return an error string if request.user may not act on target, else None."""
     me = request.user
+    if hasattr(target, 'teacher_profile'):
+        return 'This is a teacher account. Manage it from the Teachers tab.'
     if (target.is_staff or target.is_superuser) and not me.is_superuser:
         return 'Only a superuser can manage staff accounts.'
     if destructive and target.pk == me.pk:
@@ -3073,7 +3290,7 @@ def _csv_safe(v):
 
 @staff_required
 def dashboard_home(request):
-    students = User.objects.filter(is_staff=False, is_superuser=False)
+    students = User.objects.filter(is_staff=False, is_superuser=False, teacher_profile__isnull=True)
     now = timezone.now()
 
     stats = {
@@ -3123,6 +3340,13 @@ def dashboard_home(request):
         'class_levels': CLASS_LEVEL_CHOICES,
         'gender_choices': GENDER_CHOICES,
         'specializations': [c[0] for c in Profile.SPECIALIZATION_CHOICES],
+        'teacher_stats': {
+            'total':    TeacherProfile.objects.count(),
+            'pending':  TeacherProfile.objects.filter(is_approved=False).count(),
+            'approved': TeacherProfile.objects.filter(is_approved=True).count(),
+        },
+        'qualifications': TEACHER_QUALIFICATIONS,
+        'teacher_titles': TEACHER_TITLES,
     })
 
 
@@ -3131,7 +3355,7 @@ def dashboard_home(request):
 @staff_required
 @require_GET
 def api_students(request):
-    qs = (User.objects.filter(is_staff=False, is_superuser=False)
+    qs = (User.objects.filter(is_staff=False, is_superuser=False, teacher_profile__isnull=True)
           .select_related('profile', 'cbt_score')
           .prefetch_related('registered_subjects')
           .annotate(exam_count=Count('cbt_exams', distinct=True)))
@@ -3352,7 +3576,7 @@ def api_students_export(request):
     w.writerow(['admission_no', 'username', 'first_name', 'last_name', 'email', 'class_level',
                 'school', 'gender', 'phone', 'specialization', 'career_goal', 'subjects',
                 'points', 'active', 'joined'])
-    qs = (User.objects.filter(is_staff=False, is_superuser=False)
+    qs = (User.objects.filter(is_staff=False, is_superuser=False, teacher_profile__isnull=True)
           .select_related('profile', 'cbt_score').prefetch_related('registered_subjects')
           .order_by('date_joined'))
     for u in qs:
@@ -3446,3 +3670,197 @@ def api_content_delete(request):
         return _err('Item not found.', 404)
     obj.delete()
     return JsonResponse({'ok': True})
+
+
+# ════════════════════════════════════════════════════════════════════
+#  ADMIN DASHBOARD: TEACHERS (staff only)
+# ════════════════════════════════════════════════════════════════════
+
+def _teachers_qs():
+    return User.objects.filter(teacher_profile__isnull=False).select_related('teacher_profile')
+
+
+def _teacher_guard(request, target):
+    if target.is_staff or target.is_superuser:
+        return 'Staff accounts must be managed from the Django admin.'
+    return None
+
+
+def _serialize_teacher(u):
+    t = u.teacher_profile
+    return {
+        'id': u.pk,
+        'username': u.username,
+        'email': u.email,
+        'first_name': u.first_name,
+        'last_name': u.last_name,
+        'full_name': u.get_full_name() or u.username,
+        'title': t.title,
+        'gender': t.gender,
+        'phone': t.phone,
+        'date_of_birth': t.date_of_birth.isoformat() if t.date_of_birth else '',
+        'address': t.address,
+        'location': t.location,
+        'qualification': t.qualification,
+        'course_of_study': t.course_of_study,
+        'institution': t.institution,
+        'graduation_year': t.graduation_year or '',
+        'teaching_certificate': t.teaching_certificate,
+        'years_experience': t.years_experience,
+        'subjects': t.subjects_list,
+        'classes': t.classes_list,
+        'bio': t.bio,
+        'picture': t.get_picture_url,
+        'is_active': u.is_active,
+        'is_approved': t.is_approved,
+        'joined': localtime(u.date_joined).strftime('%d %b %Y'),
+    }
+
+
+@staff_required
+@require_GET
+def api_teachers(request):
+    qs = _teachers_qs()
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(
+            Q(username__icontains=q) | Q(email__icontains=q) |
+            Q(first_name__icontains=q) | Q(last_name__icontains=q) |
+            Q(teacher_profile__course_of_study__icontains=q) |
+            Q(teacher_profile__institution__icontains=q) |
+            Q(teacher_profile__subjects_taught__icontains=q) |
+            Q(teacher_profile__phone__icontains=q)
+        )
+    status = request.GET.get('status', '')
+    if status == 'pending':
+        qs = qs.filter(teacher_profile__is_approved=False)
+    elif status == 'approved':
+        qs = qs.filter(teacher_profile__is_approved=True)
+    elif status == 'inactive':
+        qs = qs.filter(is_active=False)
+
+    qs = qs.order_by({'oldest': 'date_joined', 'name': 'first_name'}.get(request.GET.get('sort', 'newest'), '-date_joined'), 'pk')
+    try:
+        page_no = int(request.GET.get('page', 1))
+    except ValueError:
+        page_no = 1
+    page = Paginator(qs, PAGE_SIZE).get_page(page_no)
+    return JsonResponse({
+        'ok': True,
+        'teachers': [_serialize_teacher(u) for u in page.object_list],
+        'page': page.number,
+        'pages': page.paginator.num_pages,
+        'count': page.paginator.count,
+    })
+
+
+@staff_required
+@require_POST
+def api_teacher_create(request):
+    password = request.POST.get('password') or ''
+    generated = not password
+    if generated:
+        password = _temp_password()
+    try:
+        user = _create_teacher(request.POST, request.FILES, approved=True, password=password)
+    except ValueError as exc:
+        return _err(str(exc))
+    return JsonResponse({'ok': True, 'username': user.username, 'password': password, 'generated': generated})
+
+
+@staff_required
+@require_POST
+def api_teacher_update(request, pk):
+    user = get_object_or_404(_teachers_qs(), pk=pk)
+    guard = _teacher_guard(request, user)
+    if guard:
+        return _err(guard, 403)
+
+    username = (request.POST.get('username') or user.username).strip()
+    email    = (request.POST.get('email') or user.email).strip().lower()
+    fname    = (request.POST.get('fname') or '').strip()
+    lname    = (request.POST.get('lname') or '').strip()
+    err = _validate_identity(username, email, exclude_pk=user.pk)
+    if err:
+        return _err(err)
+    if not fname or not lname:
+        return _err('First name and last name are required.')
+    fields, err = _clean_teacher_fields(request.POST, request.FILES)
+    if err:
+        return _err(err)
+
+    new_password = request.POST.get('password') or ''
+    if new_password and not 6 <= len(new_password) <= 128:
+        return _err('Password must be between 6 and 128 characters.')
+
+    with transaction.atomic():
+        user.username, user.email = username, email
+        user.first_name, user.last_name = fname, lname
+        user.is_active = request.POST.get('is_active', '1') != '0'
+        if new_password:
+            user.set_password(new_password)
+        teacher = user.teacher_profile            # shares this user instance, so teacher.save() persists it
+        for attr, val in fields.items():
+            setattr(teacher, attr, val)
+        teacher.save()
+    return JsonResponse({'ok': True})
+
+
+@staff_required
+@require_POST
+def api_teacher_delete(request, pk):
+    user = get_object_or_404(_teachers_qs(), pk=pk)
+    guard = _teacher_guard(request, user)
+    if guard:
+        return _err(guard, 403)
+    name = user.username
+    user.delete()
+    return JsonResponse({'ok': True, 'deleted': name})
+
+
+@staff_required
+@require_POST
+def api_teacher_toggle(request, pk):
+    user = get_object_or_404(_teachers_qs(), pk=pk)
+    guard = _teacher_guard(request, user)
+    if guard:
+        return _err(guard, 403)
+    user.is_active = not user.is_active
+    user.save(update_fields=['is_active'])
+    return JsonResponse({'ok': True, 'is_active': user.is_active})
+
+
+@staff_required
+@require_POST
+def api_teacher_approve(request, pk):
+    """POST approved=1 to approve, approved=0 to revoke approval."""
+    user = get_object_or_404(_teachers_qs(), pk=pk)
+    guard = _teacher_guard(request, user)
+    if guard:
+        return _err(guard, 403)
+    teacher = user.teacher_profile
+    teacher.is_approved = request.POST.get('approved', '1') != '0'
+    teacher.approved_at = timezone.now() if teacher.is_approved else None
+    TeacherProfile.objects.filter(pk=teacher.pk).update(
+        is_approved=teacher.is_approved, approved_at=teacher.approved_at)
+    return JsonResponse({'ok': True, 'is_approved': teacher.is_approved})
+
+
+@staff_required
+@require_POST
+def api_teacher_reset_password(request, pk):
+    user = get_object_or_404(_teachers_qs(), pk=pk)
+    guard = _teacher_guard(request, user)
+    if guard:
+        return _err(guard, 403)
+    password = request.POST.get('password') or ''
+    generated = not password
+    if generated:
+        password = _temp_password()
+    elif len(password) < 6:
+        return _err('Password must be at least 6 characters.')
+    elif len(password) > 128:
+        return _err('Password is too long (max 128 characters).')
+    user.set_password(password)
+    user.save(update_fields=['password'])
+    return JsonResponse({'ok': True, 'username': user.username, 'password': password, 'generated': generated})

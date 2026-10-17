@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <title>awaClass | Join the learning revolution</title>
+  <title>awaClass | Teacher registration</title>
 
   <style>
     * {
@@ -767,754 +767,303 @@
     .ac-pp-btn-skip:hover { background: #e4e4e4; }
     .ac-pp-upload-zone { background: var(--ac-surface); }
     .ac-pp-avatar { background: var(--ac-surface); }
+
+    /* ── teacher registration additions ── */
+    @media (min-width: 860px) { .ac-form-panel { width: 640px; } }
+    .ac-form-panel { align-items: flex-start; }
+    .ac-form-wrap { max-width: 560px; margin: auto; }
+    .ac-sec { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--ac-text-light); margin: 22px 0 12px; }
+    .ac-grid2 { display: grid; gap: 0 16px; grid-template-columns: 1fr; }
+    @media (min-width: 560px) { .ac-grid2 { grid-template-columns: 1fr 1fr; } }
+    select.ac-input { appearance: auto; }
+    textarea.ac-input { resize: vertical; min-height: 70px; }
+    .ac-checks { display: grid; gap: 8px; grid-template-columns: 1fr; margin-bottom: 16px; }
+    @media (min-width: 480px) { .ac-checks { grid-template-columns: 1fr 1fr; } }
+    .ac-chip { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--ac-surface); cursor: pointer; font-size: 13px; font-weight: 600; user-select: none; }
+    .ac-chip input { accent-color: var(--ac-primary); width: 16px; height: 16px; flex: none; }
+    .ac-chip:has(input:checked) { background: var(--ac-primary-lt); color: var(--ac-primary-dk); }
+    .ac-checks.small { grid-template-columns: repeat(3, 1fr); }
+    .ac-photo { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+    .ac-photo img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--ac-surface); }
+    .ac-note { background: var(--ac-primary-lt); color: var(--ac-primary-dk); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; font-weight: 600; margin-bottom: 18px; }
   </style>
 </head>
 <body>
 
 <div class="ac-page">
 
-  <!-- LEFT PANEL: Desktop slideshow (inspired by index) -->
+  <!-- LEFT PANEL -->
   <div class="ac-hero-panel">
     <div class="ac-slideshow-container">
-      <!-- Slide 1 -->
-      <div class="ac-dslide active" data-dindex="0">
-        <img src="{% static 'images/slide1.png' %}" alt="Learn it Properly" class="ac-dslide-img">
+      <div class="ac-dslide active">
+        <img src="{% static 'images/slide1.png' %}" alt="Teach with awaClass" class="ac-dslide-img">
         <div class="ac-dslide-overlay"></div>
         <div class="ac-dslide-content">
-          <div class="ac-hero-tag">🎓 Mathematics · Physics · Science</div>
-          <h1 class="ac-dslide-title">Learn it Properly.<br>Use it <em>Confidently.</em></h1>
-          <p class="ac-dslide-sub">awaClass breaks Maths and Physics into clear, step-by-step lessons — from the fundamentals to SSS advanced topics.</p>
+          <div class="ac-hero-tag">👩🏽‍🏫 For Teachers</div>
+          <h1 class="ac-dslide-title">Teach. Guide. <em>Inspire.</em></h1>
+          <p class="ac-dslide-sub">Join awaClass as a teacher — answer student questions, host live classes and build the CBT question bank.</p>
         </div>
       </div>
-      <!-- Slide 2 -->
-      <div class="ac-dslide" data-dindex="1">
-        <img src="{% static 'images/slide2.png' %}" alt="Watch lessons or join live classes" class="ac-dslide-img">
+      <div class="ac-dslide">
+        <img src="{% static 'images/slide2.png' %}" alt="Live classes" class="ac-dslide-img">
         <div class="ac-dslide-overlay"></div>
         <div class="ac-dslide-content">
-          <div class="ac-hero-tag">🎬 Video Lessons · Live Classes</div>
-          <h1 class="ac-dslide-title">Watch lessons or join <em>live classes</em></h1>
-          <p class="ac-dslide-sub">Easy-to-follow video explanations and live classroom sessions — learn at your own pace, from anywhere.</p>
+          <div class="ac-hero-tag">🎬 Live Classes</div>
+          <h1 class="ac-dslide-title">Run <em>live classes</em> for your students</h1>
+          <p class="ac-dslide-sub">Teach SS1, SS2 and SS3 students from anywhere, in real time.</p>
         </div>
       </div>
-      <!-- Slide 3 -->
-      <div class="ac-dslide" data-dindex="2">
-        <img src="{% static 'images/slide3.png' %}" alt="Ace your exams" class="ac-dslide-img">
+      <div class="ac-dslide">
+        <img src="{% static 'images/slide3.png' %}" alt="CBT exams" class="ac-dslide-img">
         <div class="ac-dslide-overlay"></div>
         <div class="ac-dslide-content">
           <div class="ac-hero-tag">📝 JAMB · WAEC · NECO</div>
-          <h1 class="ac-dslide-title">Ace your <em>JAMB, WAEC</em> &amp; NECO exams</h1>
-          <p class="ac-dslide-sub">Realistic CBT mock tests with full explanations — practice the way you'll be examined.</p>
+          <h1 class="ac-dslide-title">Set <em>CBT questions</em> and schedule exams</h1>
+          <p class="ac-dslide-sub">Upload questions for your subjects and classes, and let the system mark them for you.</p>
         </div>
       </div>
-      <!-- Slide 4 -->
-      <div class="ac-dslide" data-dindex="3">
-        <img src="{% static 'images/slide4.png' %}" alt="Understand the why" class="ac-dslide-img">
-        <div class="ac-dslide-overlay"></div>
-        <div class="ac-dslide-content">
-          <div class="ac-hero-tag">🏆 Concepts that Stick</div>
-          <h1 class="ac-dslide-title">Understand the <em>"why"</em>, not just the "how"</h1>
-          <p class="ac-dslide-sub">Build the understanding that takes you from average to excellent — one concept at a time.</p>
-        </div>
-      </div>
-      <!-- Dots -->
       <div class="ac-ddots">
         <div class="ac-ddot active" data-ddot="0"></div>
         <div class="ac-ddot" data-ddot="1"></div>
         <div class="ac-ddot" data-ddot="2"></div>
-        <div class="ac-ddot" data-ddot="3"></div>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT PANEL: Registration Form -->
+  <!-- RIGHT PANEL -->
   <div class="ac-form-panel">
-    <div class="ac-form-wrap" id="ac-register-card">
+    <div class="ac-form-wrap">
+      <div class="ac-modal-logo">A</div>
+      <h1 class="ac-form-title">Teacher registration</h1>
+      <p class="ac-form-subtitle">Tell us about your qualifications and what you teach</p>
 
-      <!-- Skeleton Loader -->
-      <div id="ac-skeleton">
-        <div class="ac-skeleton ac-sk-logo"></div>
-        <div class="ac-skeleton ac-sk-title"></div>
-        <div class="ac-skeleton ac-sk-sub"></div>
-        <div class="ac-skeleton ac-sk-field"></div>
-        <div class="ac-skeleton ac-sk-field"></div>
-        <div class="ac-sk-inline">
-          <div class="ac-skeleton ac-sk-field"></div>
-          <div class="ac-skeleton ac-sk-field"></div>
-        </div>
-        <div class="ac-sk-inline">
-          <div class="ac-skeleton ac-sk-field"></div>
-          <div class="ac-skeleton ac-sk-field"></div>
-        </div>
-        <div class="ac-skeleton ac-sk-btn"></div>
+      <div class="ac-note">Students are registered by the school administrator. Your teacher account is activated once the administrator approves it.</div>
+
+      <div class="ac-messages">
+        {% for message in messages %}
+          <div class="ac-message {% if 'error' in message.tags %}ac-message-error{% else %}ac-message-success{% endif %}">{{ message }}</div>
+        {% endfor %}
       </div>
+      <div id="ac-dynamic-messages" class="ac-messages"></div>
 
-      <!-- Real Content (visible after skeleton) -->
-      <div id="ac-content" style="display: none;">
-        <div class="ac-modal-logo">A</div>
-        <h1 class="ac-form-title">Create your account ✨</h1>
-        <p class="ac-form-subtitle">Join our learning community — it's free</p>
+      <form method="post" action="{% url 'register' %}" enctype="multipart/form-data" class="ac-form" id="ac-register-form" novalidate>
+        {% csrf_token %}
 
-        <!-- Django messages block -->
-        <div class="ac-messages">
-          {% for message in messages %}
-            <div class="ac-message {% if 'error' in message.tags %}ac-message-error{% else %}ac-message-success{% endif %}">
-              {{ message }}
-            </div>
-          {% endfor %}
+        <div class="ac-photo">
+          <img id="ac-photo-prev" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'%3E%3Crect width='72' height='72' fill='%23efefef'/%3E%3Ccircle cx='36' cy='28' r='12' fill='%23c7c7c7'/%3E%3Cellipse cx='36' cy='62' rx='20' ry='14' fill='%23c7c7c7'/%3E%3C/svg%3E">
+          <div>
+            <label class="ac-label" for="ac-photo">Passport photo <span style="font-weight:400;color:#8e8e8e">(optional)</span></label>
+            <input type="file" name="image" id="ac-photo" accept="image/jpeg,image/png,image/webp,image/gif">
+            <div class="ac-hint">JPG, PNG, WEBP or GIF · max 5 MB</div>
+          </div>
         </div>
-        <!-- Client-side messages container -->
-        <div id="ac-dynamic-messages" class="ac-messages"></div>
 
-        <form method="post" action="{% url 'register' %}" class="ac-form" id="ac-register-form" novalidate>
-          {% csrf_token %}
-
-          <!-- Username field -->
+        <div class="ac-sec">Account</div>
+        <div class="ac-grid2">
           <div class="ac-field">
             <label class="ac-label">Username *</label>
-            <input type="text" name="username" id="ac-username" class="ac-input" placeholder="Choose a username" autocomplete="username">
+            <input type="text" name="username" id="ac-username" class="ac-input" value="{{ form.username }}" placeholder="At least 5 characters" autocomplete="username">
             <div class="ac-hint" id="ac-username-hint"></div>
           </div>
-
-          <!-- Email field -->
           <div class="ac-field">
-            <label class="ac-label">Email Address *</label>
-            <input type="email" name="email" id="ac-email" class="ac-input" placeholder="student@example.com" autocomplete="email">
+            <label class="ac-label">Email address *</label>
+            <input type="email" name="email" id="ac-email" class="ac-input" value="{{ form.email }}" placeholder="teacher@example.com" autocomplete="email">
           </div>
-
-          <!-- First & Last name inline -->
-          <div class="ac-inline-row">
-            <div class="ac-field">
-              <label class="ac-label">First Name *</label>
-              <input type="text" name="fname" id="ac-fname" class="ac-input" placeholder="First name">
-            </div>
-            <div class="ac-field">
-              <label class="ac-label">Last Name *</label>
-              <input type="text" name="lname" id="ac-lname" class="ac-input" placeholder="Last name">
+          <div class="ac-field">
+            <label class="ac-label">Password *</label>
+            <div class="ac-pw-wrap">
+              <input type="password" name="pass1" id="ac-pass1" class="ac-input" placeholder="At least 6 characters" autocomplete="new-password">
+              <button type="button" class="ac-pw-toggle" data-target="ac-pass1" aria-label="Show password">👁️</button>
             </div>
           </div>
-
-          <!-- Password & Confirm Password inline -->
-          <div class="ac-inline-row">
-            <div class="ac-field">
-              <label class="ac-label">Password *</label>
-              <div class="ac-pw-wrap">
-                <input type="password" name="pass1" id="ac-pass1" class="ac-input" placeholder="Create password">
-                <button type="button" class="ac-pw-toggle" data-target="ac-pass1">👁️</button>
-              </div>
+          <div class="ac-field">
+            <label class="ac-label">Confirm password *</label>
+            <div class="ac-pw-wrap">
+              <input type="password" name="pass2" id="ac-pass2" class="ac-input" placeholder="Repeat password" autocomplete="new-password">
+              <button type="button" class="ac-pw-toggle" data-target="ac-pass2" aria-label="Show password">👁️</button>
             </div>
-            <div class="ac-field">
-              <label class="ac-label">Confirm Password *</label>
-              <div class="ac-pw-wrap">
-                <input type="password" name="pass2" id="ac-pass2" class="ac-input" placeholder="Confirm password">
-                <button type="button" class="ac-pw-toggle" data-target="ac-pass2">👁️</button>
-              </div>
-              <div class="ac-hint" id="ac-pw-hint"></div>
-            </div>
+            <div class="ac-hint" id="ac-pw-hint"></div>
           </div>
+        </div>
 
-          <button type="submit" class="ac-btn-primary" id="ac-register-submit">Create Account →</button>
-        </form>
+        <div class="ac-sec">Personal details</div>
+        <div class="ac-grid2">
+          <div class="ac-field">
+            <label class="ac-label">Title</label>
+            <select name="title" class="ac-input">
+              <option value="">Select</option>
+              {% for t in titles %}<option value="{{ t }}"{% if t == form.title %} selected{% endif %}>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Gender</label>
+            <select name="gender" class="ac-input">
+              <option value="">Select</option>
+              {% for g in genders %}<option value="{{ g }}"{% if g == form.gender %} selected{% endif %}>{{ g }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">First name *</label>
+            <input type="text" name="fname" id="ac-fname" class="ac-input" value="{{ form.fname }}" autocomplete="given-name">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Last name *</label>
+            <input type="text" name="lname" id="ac-lname" class="ac-input" value="{{ form.lname }}" autocomplete="family-name">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Phone number *</label>
+            <input type="tel" name="phone" id="ac-phone" class="ac-input" value="{{ form.phone }}" placeholder="08012345678" autocomplete="tel">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Date of birth</label>
+            <input type="date" name="date_of_birth" class="ac-input" value="{{ form.date_of_birth }}">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Location</label>
+            <input type="text" name="location" class="ac-input" value="{{ form.location }}" placeholder="City, State">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Home address</label>
+            <input type="text" name="address" class="ac-input" value="{{ form.address }}">
+          </div>
+        </div>
 
-        <div class="ac-divider"><span>already have an account?</span></div>
-        <a href="{% url 'index' %}" class="ac-btn-outline">Sign in instead →</a>
-      </div>
-    </div>
-  </div>
-</div>
+        <div class="ac-sec">Qualifications</div>
+        <div class="ac-grid2">
+          <div class="ac-field">
+            <label class="ac-label">Highest qualification *</label>
+            <select name="qualification" id="ac-qualification" class="ac-input">
+              <option value="">Select</option>
+              {% for q in qualifications %}<option value="{{ q }}"{% if q == form.qualification %} selected{% endif %}>{{ q }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Course of study *</label>
+            <input type="text" name="course_of_study" id="ac-course" class="ac-input" value="{{ form.course_of_study }}" placeholder="e.g. Mathematics Education">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Institution attended *</label>
+            <input type="text" name="institution" id="ac-institution" class="ac-input" value="{{ form.institution }}" placeholder="e.g. University of Ilorin">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Year graduated *</label>
+            <input type="number" name="graduation_year" id="ac-year" class="ac-input" value="{{ form.graduation_year }}" min="1950" max="{{ this_year }}" placeholder="e.g. 2015">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Teaching registration no. <span style="font-weight:400;color:#8e8e8e">(optional)</span></label>
+            <input type="text" name="teaching_certificate" class="ac-input" value="{{ form.teaching_certificate }}" placeholder="e.g. TRCN number">
+          </div>
+          <div class="ac-field">
+            <label class="ac-label">Years of teaching experience</label>
+            <input type="number" name="years_experience" class="ac-input" value="{{ form.years_experience|default:'0' }}" min="0" max="60">
+          </div>
+        </div>
 
-<!-- ===== PROFILE PICTURE MODAL ===== -->
-<div class="ac-pp-backdrop" id="ac-pp-backdrop">
-  <div class="ac-pp-modal" role="dialog" aria-modal="true" aria-labelledby="ac-pp-title">
+        <div class="ac-sec">What you teach *</div>
+        <div class="ac-checks">
+          {% for s in subjects %}<label class="ac-chip"><input type="checkbox" name="subjects" value="{{ s }}"{% if s in picked_subjects %} checked{% endif %}><span>{{ s }}</span></label>{% endfor %}
+        </div>
+        <label class="ac-label">Classes you teach *</label>
+        <div class="ac-checks small">
+          {% for c in classes %}<label class="ac-chip"><input type="checkbox" name="classes" value="{{ c }}"{% if c in picked_classes %} checked{% endif %}><span>{{ c }}</span></label>{% endfor %}
+        </div>
 
-    <div class="ac-pp-icon">🎉</div>
-    <h2 class="ac-pp-title" id="ac-pp-title">Almost done!</h2>
-    <p class="ac-pp-sub">Add a profile picture so your classmates can recognise you.<br>You can always change it later.</p>
+        <div class="ac-field">
+          <label class="ac-label">About you <span style="font-weight:400;color:#8e8e8e">(optional)</span></label>
+          <textarea name="bio" class="ac-input" maxlength="500" rows="3" placeholder="A short introduction students and staff will see">{{ form.bio }}</textarea>
+        </div>
 
-    <!-- Avatar preview -->
-    <div class="ac-pp-avatar-wrap" id="ac-pp-avatar-wrap" title="Tap to choose a photo">
-      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 110'%3E%3Crect width='110' height='110' fill='%23f5f5f4'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%23d6d3d1'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%23d6d3d1'/%3E%3C/svg%3E"
-           alt="Profile preview" class="ac-pp-avatar" id="ac-pp-preview">
-      <div class="ac-pp-avatar-edit">📷</div>
-    </div>
+        <button type="submit" class="ac-btn-primary" id="ac-register-submit">Submit registration →</button>
+      </form>
 
-    <!-- Hidden file input -->
-    <input type="file" id="ac-pp-file-input" accept="image/jpeg,image/png,image/webp,image/gif">
-
-    <!-- Tap-to-upload zone (also acts as label for file input) -->
-    <div class="ac-pp-upload-zone" id="ac-pp-upload-zone">
-      <span id="ac-pp-zone-text">Tap to choose a photo from your device</span>
-      <div class="ac-pp-file-name" id="ac-pp-file-name" style="display:none;"></div>
-    </div>
-
-    <!-- Action buttons -->
-    <div class="ac-pp-actions">
-      <button class="ac-pp-btn-finish" id="ac-pp-finish-btn">Finish Registration →</button>
-      <button class="ac-pp-btn-skip" id="ac-pp-skip-btn">Skip for now</button>
-    </div>
-
-  </div>
-</div>
-
-<!-- ===== SUBJECT SELECTION MODAL ===== -->
-<div class="ac-pp-backdrop" id="ac-subj-backdrop">
-  <div class="ac-pp-modal ac-subj-modal" role="dialog" aria-modal="true" aria-labelledby="ac-subj-title" style="position:relative;">
-    <button type="button" class="ac-modal-back" id="ac-subj-back-btn" title="Back">←</button>
-
-    <div class="ac-pp-icon">📚</div>
-    <h2 class="ac-pp-title" id="ac-subj-title">Pick your subjects</h2>
-    <p class="ac-pp-sub" id="ac-subj-sub">Tick every subject you want to register for.</p>
-
-    <div class="ac-subj-counter" id="ac-subj-counter">0 subjects selected</div>
-    <div class="ac-subj-grid" id="ac-subj-grid"></div>
-
-    <div class="ac-pp-actions">
-      <button class="ac-pp-btn-finish" id="ac-subj-finish-btn" disabled>Continue →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== CAREER GOAL MODAL ===== -->
-<div class="ac-pp-backdrop" id="ac-career-backdrop">
-  <div class="ac-pp-modal" role="dialog" aria-modal="true" aria-labelledby="ac-career-title" style="position:relative;">
-    <button type="button" class="ac-modal-back" id="ac-career-back-btn" title="Back">←</button>
-
-    <div class="ac-pp-icon">🚀</div>
-    <h2 class="ac-pp-title" id="ac-career-title">What do you want to become?</h2>
-    <p class="ac-pp-sub">Pick one below, or type your own dream career.</p>
-
-    <div class="ac-career-grid" id="ac-career-grid"></div>
-    <div class="ac-career-or">or write your own</div>
-    <input type="text" id="ac-career-input" class="ac-input" placeholder="e.g. Doctor, Pilot, Software Engineer" style="margin-bottom:20px;text-align:center;" maxlength="100">
-
-    <div class="ac-pp-actions">
-      <button class="ac-pp-btn-finish" id="ac-career-finish-btn" disabled>Finish Registration →</button>
+      <div class="ac-divider"><span>already have an account?</span></div>
+      <a href="{% url 'index' %}" class="ac-btn-outline">Sign in instead →</a>
     </div>
   </div>
 </div>
 
 <script>
-  (function() {
+(function () {
+  // slideshow
+  var slides = document.querySelectorAll('.ac-dslide'), dots = document.querySelectorAll('.ac-ddot'), cur = 0, timer = null;
+  function go(n) {
+    if (!slides.length) return;
+    slides[cur].classList.remove('active'); dots[cur].classList.remove('active');
+    cur = (n + slides.length) % slides.length;
+    slides[cur].classList.add('active'); dots[cur].classList.add('active');
+  }
+  function auto() { if (timer) clearInterval(timer); timer = setInterval(function () { go(cur + 1); }, 3800); }
+  dots.forEach(function (d) { d.addEventListener('click', function () { go(parseInt(this.dataset.ddot, 10)); auto(); }); });
+  if (dots.length) auto();
 
-    // ========== 1. Desktop slideshow ==========
-    const dslides = document.querySelectorAll('.ac-dslide');
-    const ddots   = document.querySelectorAll('.ac-ddot');
-    let dcurrent  = 0;
-    const dtotal  = dslides.length;
-    let dtimer    = null;
-
-    function dGoTo(n) {
-      if (!dslides.length) return;
-      dslides[dcurrent].classList.remove('active');
-      ddots[dcurrent].classList.remove('active');
-      dcurrent = (n + dtotal) % dtotal;
-      dslides[dcurrent].classList.add('active');
-      ddots[dcurrent].classList.add('active');
-    }
-
-    function dStartAuto() {
-      if (dtimer) clearInterval(dtimer);
-      dtimer = setInterval(() => dGoTo(dcurrent + 1), 3800);
-    }
-
-    if (ddots.length) {
-      ddots.forEach(dot => {
-        dot.addEventListener('click', function() {
-          dGoTo(parseInt(this.dataset.ddot));
-          dStartAuto();
-        });
-      });
-      dStartAuto();
-    }
-
-    // ========== 2. Skeleton removal ==========
-    setTimeout(function() {
-      const skeleton = document.getElementById('ac-skeleton');
-      const content = document.getElementById('ac-content');
-      if (skeleton && content) {
-        skeleton.style.display = 'none';
-        content.style.display = 'block';
-      }
-    }, 280);
-
-    // ========== 3. Password visibility toggle ==========
-    const toggles = document.querySelectorAll('.ac-pw-toggle');
-    toggles.forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const targetId = this.getAttribute('data-target');
-        const inputField = document.getElementById(targetId);
-        if (inputField) {
-          const isPassword = inputField.type === 'password';
-          inputField.type = isPassword ? 'text' : 'password';
-          this.textContent = isPassword ? '🙈' : '👁️';
-        }
-      });
+  // password toggles
+  document.querySelectorAll('.ac-pw-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var inp = document.getElementById(this.getAttribute('data-target'));
+      if (!inp) return;
+      var hide = inp.type === 'password';
+      inp.type = hide ? 'text' : 'password';
+      this.textContent = hide ? '🙈' : '👁️';
     });
+  });
 
-    // ========== 4. Real-time field validation ==========
-    const usernameField = document.getElementById('ac-username');
-    const usernameHint  = document.getElementById('ac-username-hint');
-    const emailField    = document.getElementById('ac-email');
-    const pass1Field    = document.getElementById('ac-pass1');
-    const pass2Field    = document.getElementById('ac-pass2');
-    const pwHint        = document.getElementById('ac-pw-hint');
+  var $ = function (id) { return document.getElementById(id); };
 
-    if (usernameField && usernameHint) {
-      usernameField.addEventListener('input', function() {
-        const val = usernameField.value.trim();
-        if (val.length > 0 && val.length < 5) {
-          usernameHint.textContent = '✗ Username must be at least 5 characters';
-          usernameHint.className = 'ac-hint ac-hint-error';
-          usernameField.classList.add('ac-error');
-          usernameField.classList.remove('ac-success');
-        } else if (val.length >= 5) {
-          usernameHint.textContent = '✓ Valid username';
-          usernameHint.className = 'ac-hint ac-hint-success';
-          usernameField.classList.remove('ac-error');
-          usernameField.classList.add('ac-success');
-        } else {
-          usernameHint.textContent = '';
-          usernameField.classList.remove('ac-error', 'ac-success');
-        }
+  // live hints
+  var u = $('ac-username'), uh = $('ac-username-hint');
+  u.addEventListener('input', function () {
+    var v = u.value.trim();
+    if (v.length > 0 && v.length < 5) { uh.textContent = '✗ Username must be at least 5 characters'; uh.className = 'ac-hint ac-hint-error'; }
+    else if (/\s/.test(v)) { uh.textContent = '✗ No spaces allowed'; uh.className = 'ac-hint ac-hint-error'; }
+    else if (v.length >= 5) { uh.textContent = '✓ Looks good'; uh.className = 'ac-hint ac-hint-success'; }
+    else { uh.textContent = ''; }
+  });
+  var p1 = $('ac-pass1'), p2 = $('ac-pass2'), ph = $('ac-pw-hint');
+  function match() {
+    if (!p2.value) { ph.textContent = ''; return; }
+    var ok = p1.value === p2.value;
+    ph.textContent = ok ? '✓ Passwords match' : '✗ Passwords do not match';
+    ph.className = 'ac-hint ' + (ok ? 'ac-hint-success' : 'ac-hint-error');
+  }
+  p1.addEventListener('input', match); p2.addEventListener('input', match);
+
+  // photo preview
+  $('ac-photo').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    if (['image/jpeg', 'image/png', 'image/webp', 'image/gif'].indexOf(f.type) < 0 || f.size > 5 * 1024 * 1024) {
+      alert('Choose a JPG, PNG, WEBP or GIF image up to 5 MB.'); this.value = ''; return;
+    }
+    $('ac-photo-prev').src = URL.createObjectURL(f);
+  });
+
+  // client-side check (the server validates everything again)
+  var form = $('ac-register-form'), box = $('ac-dynamic-messages');
+  form.addEventListener('submit', function (e) {
+    box.innerHTML = '';
+    var problems = [], val = function (id) { return ($(id).value || '').trim(); };
+    if (val('ac-username').length < 5) problems.push('Username must be at least 5 characters.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('ac-email'))) problems.push('Please provide a valid email address.');
+    if (!val('ac-fname') || !val('ac-lname')) problems.push('First name and last name are required.');
+    if (p1.value.length < 6) problems.push('Password must be at least 6 characters.');
+    if (p1.value !== p2.value) problems.push('Passwords do not match.');
+    if (!val('ac-phone')) problems.push('Phone number is required.');
+    if (!val('ac-qualification')) problems.push('Choose your highest qualification.');
+    if (!val('ac-course') || !val('ac-institution') || !val('ac-year')) problems.push('Course of study, institution and graduation year are required.');
+    if (!form.querySelector('input[name=subjects]:checked')) problems.push('Choose at least one subject you teach.');
+    if (!form.querySelector('input[name=classes]:checked')) problems.push('Choose at least one class you teach.');
+    if (problems.length) {
+      e.preventDefault();
+      problems.forEach(function (t) {
+        var d = document.createElement('div'); d.className = 'ac-message ac-message-error'; d.textContent = t; box.appendChild(d);
       });
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
     }
-
-    if (emailField) {
-      function validateEmail() {
-        const email = emailField.value.trim();
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (email && !emailPattern.test(email)) {
-          emailField.classList.add('ac-error');
-          emailField.classList.remove('ac-success');
-          let emailHint = document.getElementById('ac-email-dynamic-hint');
-          if (!emailHint) {
-            emailHint = document.createElement('div');
-            emailHint.id = 'ac-email-dynamic-hint';
-            emailHint.className = 'ac-hint ac-hint-error';
-            emailField.parentNode.appendChild(emailHint);
-          }
-          emailHint.textContent = 'Enter a valid email (e.g., name@domain.com)';
-        } else {
-          emailField.classList.remove('ac-error');
-          if (email) emailField.classList.add('ac-success');
-          const existingHint = document.getElementById('ac-email-dynamic-hint');
-          if (existingHint) existingHint.remove();
-        }
-      }
-      emailField.addEventListener('input', validateEmail);
-    }
-
-    if (pass2Field && pwHint) {
-      function checkPasswordMatch() {
-        const p1 = pass1Field ? pass1Field.value : '';
-        const p2 = pass2Field.value;
-        if (!p2) {
-          pwHint.textContent = '';
-          pass2Field.classList.remove('ac-error', 'ac-success');
-          return;
-        }
-        if (p1 === p2 && p1.length > 0) {
-          pwHint.textContent = '✓ Passwords match';
-          pwHint.className = 'ac-hint ac-hint-success';
-          pass2Field.classList.remove('ac-error');
-          pass2Field.classList.add('ac-success');
-        } else if (p1 !== p2) {
-          pwHint.textContent = '✗ Passwords do not match';
-          pwHint.className = 'ac-hint ac-hint-error';
-          pass2Field.classList.remove('ac-success');
-          pass2Field.classList.add('ac-error');
-        } else {
-          pwHint.textContent = '';
-          pass2Field.classList.remove('ac-error', 'ac-success');
-        }
-      }
-      pass2Field.addEventListener('input', checkPasswordMatch);
-      if (pass1Field) pass1Field.addEventListener('input', function() {
-        if (pass2Field.value) checkPasswordMatch();
-        else pass2Field.classList.remove('ac-error', 'ac-success');
-      });
-    }
-
-    // ========== 5. Input focus styling ==========
-    const allInputs = document.querySelectorAll('.ac-input');
-    allInputs.forEach(inp => {
-      inp.addEventListener('focus', () => {
-        
-      });
-      inp.addEventListener('blur', () => {
-        if (!inp.classList.contains('ac-error') && !inp.classList.contains('ac-success')) {
-          
-        }
-      });
-    });
-
-    // ========== 6. Messages helpers ==========
-    const dynamicMsgDiv = document.getElementById('ac-dynamic-messages');
-
-    function showClientMessage(text, type) {
-      if (!dynamicMsgDiv) return;
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `ac-message ${type === 'error' ? 'ac-message-error' : 'ac-message-success'}`;
-      msgDiv.textContent = text;
-      dynamicMsgDiv.appendChild(msgDiv);
-      dynamicMsgDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function clearClientMessages() {
-      if (dynamicMsgDiv) dynamicMsgDiv.innerHTML = '';
-    }
-
-    // ========== 7. Form submit → validate → open modal ==========
-    const form      = document.getElementById('ac-register-form');
-    const submitBtn = document.getElementById('ac-register-submit');
-    const backdrop  = document.getElementById('ac-pp-backdrop');
-
-    // Store collected form data here once validated
-    let pendingFormData = null;
-
-    if (form) {
-      form.addEventListener('submit', function(event) {
-        // Always prevent default — we handle submission via AJAX after modal
-        event.preventDefault();
-        clearClientMessages();
-
-        const username = usernameField ? usernameField.value.trim() : '';
-        const email    = emailField    ? emailField.value.trim()    : '';
-        const fname    = document.getElementById('ac-fname') ? document.getElementById('ac-fname').value.trim() : '';
-        const lname    = document.getElementById('ac-lname') ? document.getElementById('ac-lname').value.trim() : '';
-        const password = pass1Field ? pass1Field.value : '';
-        const confirm  = pass2Field ? pass2Field.value : '';
-
-        let hasError = false;
-
-        if (!username || username.length < 5) {
-          showClientMessage('Username must be at least 5 characters.', 'error');
-          hasError = true;
-        }
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email || !emailPattern.test(email)) {
-          showClientMessage('Please provide a valid email address.', 'error');
-          hasError = true;
-        }
-        if (!fname) {
-          showClientMessage('First name is required.', 'error');
-          hasError = true;
-        }
-        if (!lname) {
-          showClientMessage('Last name is required.', 'error');
-          hasError = true;
-        }
-        if (!password || password.length < 6) {
-          showClientMessage('Password must be at least 6 characters.', 'error');
-          hasError = true;
-        }
-        if (password !== confirm) {
-          showClientMessage('Passwords do not match.', 'error');
-          hasError = true;
-        }
-
-        if (hasError) return;
-
-        // All good — collect data and open the profile picture modal
-        pendingFormData = { username, email, fname, lname, password, confirm };
-        openPpModal();
-      });
-    }
-
-    // ========== 8. Profile picture modal logic ==========
-    const ppFileInput  = document.getElementById('ac-pp-file-input');
-    const ppPreview    = document.getElementById('ac-pp-preview');
-    const ppAvatarWrap = document.getElementById('ac-pp-avatar-wrap');
-    const ppUploadZone = document.getElementById('ac-pp-upload-zone');
-    const ppZoneText   = document.getElementById('ac-pp-zone-text');
-    const ppFileName   = document.getElementById('ac-pp-file-name');
-    const ppFinishBtn  = document.getElementById('ac-pp-finish-btn');
-    const ppSkipBtn    = document.getElementById('ac-pp-skip-btn');
-
-    let selectedPicFile = null;
-
-    // Default placeholder SVG (reused when clearing)
-    const defaultAvatarSrc = ppPreview ? ppPreview.src : '';
-
-    function openPpModal() {
-      backdrop.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closePpModal() {
-      backdrop.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-
-    // Avatar wrap / upload zone both trigger file picker
-    if (ppAvatarWrap) {
-      ppAvatarWrap.addEventListener('click', () => ppFileInput && ppFileInput.click());
-    }
-    if (ppUploadZone) {
-      ppUploadZone.addEventListener('click', () => ppFileInput && ppFileInput.click());
-    }
-
-    if (ppFileInput) {
-      ppFileInput.addEventListener('change', function() {
-        const file = this.files[0];
-        if (!file) return;
-
-        // Validate type & size (max 5 MB)
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!allowed.includes(file.type)) {
-          alert('Please choose a JPEG, PNG, WEBP, or GIF image.');
-          this.value = '';
-          return;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          alert('Image is too large. Maximum size is 5 MB.');
-          this.value = '';
-          return;
-        }
-
-        selectedPicFile = file;
-
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          ppPreview.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-
-        // Update zone text
-        ppZoneText.textContent = 'Photo selected ✓ Tap to change';
-        ppFileName.textContent = file.name;
-        ppFileName.style.display = 'block';
-        ppUploadZone.classList.add('has-file');
-      });
-    }
-
-    // ---- Submit registration (picture + category/subjects + career goal) ----
-    function submitRegistration(withPicture) {
-      if (!pendingFormData) return;
-
-      careerFinishBtn.disabled = true;
-      careerFinishBtn.innerHTML = '<span class="ac-pp-spinner"></span> Creating account…';
-
-      const fd = new FormData();
-      // Grab CSRF token from the existing form
-      const csrfInput = document.querySelector('#ac-register-form [name=csrfmiddlewaretoken]');
-      if (csrfInput) fd.append('csrfmiddlewaretoken', csrfInput.value);
-
-      fd.append('username', pendingFormData.username);
-      fd.append('email',    pendingFormData.email);
-      fd.append('fname',    pendingFormData.fname);
-      fd.append('lname',    pendingFormData.lname);
-      fd.append('pass1',    pendingFormData.password);
-      fd.append('pass2',    pendingFormData.confirm);
-      fd.append('student_category', selectedCategory || '');
-      selectedSubjects.forEach(name => fd.append('subjects', name));
-      fd.append('career_goal', selectedCareer || '');
-
-      if (withPicture && selectedPicFile) {
-        fd.append('profile_picture', selectedPicFile);
-      }
-
-      fetch('{% url "register_with_picture" %}', {
-        method: 'POST',
-        body: fd,
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          // Show success state before redirecting
-          careerFinishBtn.innerHTML = '✓ Account created! Redirecting…';
-          setTimeout(() => {
-            window.location.href = data.redirect || '/';
-          }, 900);
-        } else {
-          // Server-side error — close modal, show error on the main form
-          closeCareerModal();
-          careerFinishBtn.disabled = false;
-          careerFinishBtn.innerHTML = 'Finish Registration →';
-          clearClientMessages();
-          showClientMessage(data.error || 'Registration failed. Please try again.', 'error');
-        }
-      })
-      .catch(() => {
-        closeCareerModal();
-        careerFinishBtn.disabled = false;
-        careerFinishBtn.innerHTML = 'Finish Registration →';
-        clearClientMessages();
-        showClientMessage('Network error. Please check your connection and try again.', 'error');
-      });
-    }
-
-    // ========== 9. Subject & Career-goal selection modals ==========
-    // Keep these lists in sync with SENIOR_SECONDARY_SUBJECTS in views.py
-    const SENIOR_SUBJECTS = [
-      'Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology',
-      'Economics', 'Government', 'Literature in English', 'Geography',
-      'Further Mathematics', 'Agricultural Science', 'Accounting', 'Commerce',
-      'Christian Religious Studies', 'Islamic Religious Studies', 'Civic Education',
-      'Computer Studies', 'French', 'Technical Drawing', 'Food and Nutrition'
-    ];
-    const COMMON_CAREERS = [
-      'Doctor', 'Nurse', 'Engineer', 'Lawyer', 'Teacher', 'Pilot',
-      'Accountant', 'Scientist', 'Software Developer', 'Architect',
-      'Banker', 'Entrepreneur', 'Pharmacist', 'Journalist'
-    ];
-
-    const subjBackdrop    = document.getElementById('ac-subj-backdrop');
-    const subjBackBtn     = document.getElementById('ac-subj-back-btn');
-    const subjGrid        = document.getElementById('ac-subj-grid');
-    const subjCounter     = document.getElementById('ac-subj-counter');
-    const subjSub         = document.getElementById('ac-subj-sub');
-    const subjFinishBtn   = document.getElementById('ac-subj-finish-btn');
-    const careerBackdrop  = document.getElementById('ac-career-backdrop');
-    const careerBackBtn   = document.getElementById('ac-career-back-btn');
-    const careerGrid      = document.getElementById('ac-career-grid');
-    const careerInput     = document.getElementById('ac-career-input');
-    const careerFinishBtn = document.getElementById('ac-career-finish-btn');
-
-    const selectedCategory = 'senior'; // Senior Secondary only
-    let selectedSubjects   = new Set();
-    let selectedCareer     = '';
-    let pendingWithPicture = false;
-
-    // keepSelection=true preserves already-ticked subjects (used when coming back from the career step)
-    function openSubjModal(keepSelection) {
-      if (!keepSelection) {
-        selectedSubjects = new Set();
-      }
-      const list = SENIOR_SUBJECTS;
-      subjSub.textContent = 'Tick every Senior Secondary subject you want to register for.';
-      subjGrid.innerHTML = list.map(name => `
-        <label class="ac-subj-chip ${selectedSubjects.has(name) ? 'selected' : ''}" data-name="${name}">
-          <input type="checkbox" value="${name}" ${selectedSubjects.has(name) ? 'checked' : ''}>
-          <span>${name}</span>
-        </label>
-      `).join('');
-      updateSubjCounter();
-      subjBackdrop.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeSubjModal() {
-      subjBackdrop.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-    function updateSubjCounter() {
-      const n = selectedSubjects.size;
-      subjCounter.textContent = `${n} subject${n === 1 ? '' : 's'} selected`;
-      subjFinishBtn.disabled = n === 0;
-    }
-
-    function openCareerModal() {
-      careerGrid.innerHTML = COMMON_CAREERS.map(name => `
-        <button type="button" class="ac-career-chip${selectedCareer.toLowerCase() === name.toLowerCase() ? ' selected' : ''}" data-name="${name}">${name}</button>
-      `).join('');
-      careerInput.value = selectedCareer;
-      updateCareerFinishState();
-      careerBackdrop.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeCareerModal() {
-      careerBackdrop.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-    function updateCareerFinishState() {
-      careerFinishBtn.disabled = careerInput.value.trim().length === 0;
-    }
-
-    // pp modal's Finish / Skip now move on to the subject picker instead of submitting
-    if (ppFinishBtn) {
-      ppFinishBtn.addEventListener('click', () => {
-        pendingWithPicture = true;
-        closePpModal();
-        openSubjModal(false);
-      });
-    }
-    if (ppSkipBtn) {
-      ppSkipBtn.addEventListener('click', () => {
-        pendingWithPicture = false;
-        closePpModal();
-        openSubjModal(false);
-      });
-    }
-
-    if (subjGrid) {
-      subjGrid.addEventListener('click', function(e) {
-        const chip = e.target.closest('.ac-subj-chip');
-        if (!chip) return;
-        const checkbox = chip.querySelector('input');
-        checkbox.checked = !checkbox.checked;
-        const name = chip.dataset.name;
-        if (checkbox.checked) {
-          selectedSubjects.add(name);
-          chip.classList.add('selected');
-        } else {
-          selectedSubjects.delete(name);
-          chip.classList.remove('selected');
-        }
-        updateSubjCounter();
-      });
-    }
-
-    if (careerGrid) {
-      careerGrid.addEventListener('click', function(e) {
-        const chip = e.target.closest('.ac-career-chip');
-        if (!chip) return;
-        const name = chip.dataset.name;
-        careerInput.value = name;
-        careerGrid.querySelectorAll('.ac-career-chip').forEach(c => c.classList.toggle('selected', c === chip));
-        updateCareerFinishState();
-      });
-    }
-    if (careerInput) {
-      careerInput.addEventListener('input', function() {
-        const val = careerInput.value.trim().toLowerCase();
-        careerGrid.querySelectorAll('.ac-career-chip').forEach(c => {
-          c.classList.toggle('selected', c.dataset.name.toLowerCase() === val);
-        });
-        updateCareerFinishState();
-      });
-    }
-
-    if (subjBackBtn) {
-      subjBackBtn.addEventListener('click', () => {
-        closeSubjModal();
-        openPpModal();
-      });
-    }
-    if (subjFinishBtn) {
-      subjFinishBtn.addEventListener('click', () => {
-        if (selectedSubjects.size === 0) return;
-        closeSubjModal();
-        openCareerModal();
-      });
-    }
-    if (careerBackBtn) {
-      careerBackBtn.addEventListener('click', () => {
-        selectedCareer = careerInput.value;
-        closeCareerModal();
-        openSubjModal(true);
-      });
-    }
-    if (careerFinishBtn) {
-      careerFinishBtn.addEventListener('click', () => {
-        selectedCareer = careerInput.value.trim();
-        if (!selectedCareer) return;
-        submitRegistration(pendingWithPicture);
-      });
-    }
-
-    // Close on backdrop click (outside modal box)
-    [backdrop, subjBackdrop, careerBackdrop].forEach(bd => {
-      if (bd) {
-        bd.addEventListener('click', function(e) {
-          if (e.target !== bd) return;
-          bd.classList.remove('open');
-          document.body.style.overflow = '';
-        });
-      }
-    });
-
-  })();
+    $('ac-register-submit').disabled = true;
+    $('ac-register-submit').textContent = 'Submitting…';
+  });
+})();
 </script>
 
 </body>

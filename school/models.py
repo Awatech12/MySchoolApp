@@ -905,3 +905,104 @@ class ExaminationAttempt(models.Model):
         used = min(self.duration_sec, int((self.submitted_at - self.started_at).total_seconds()))
         return f"{used // 60:02d}:{used % 60:02d}"
 
+
+# ── Teachers ──────────────────────────────────────────────────────────
+# Teachers register themselves (register.html) and are managed by the admin
+# (Admin Dashboard > Teachers). Students are registered by the admin only.
+# Teachers have NO admission number: that exists only on the student Profile.
+
+class TeacherProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
+
+    if settings.USE_CLOUDINARY:
+        picture = CloudinaryField('picture', folder='teacher_image', default='logo_iowyea')
+    else:
+        picture = models.ImageField(upload_to='teacher_image/', default='male.png')
+
+    # Personal
+    title         = models.CharField(max_length=10, blank=True)               # Mr, Mrs, Dr ...
+    gender        = models.CharField(max_length=10, blank=True)
+    phone         = models.CharField(max_length=20, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    address       = models.CharField(max_length=200, blank=True)
+    location      = models.CharField(max_length=300, blank=True)
+
+    # Qualifications
+    qualification        = models.CharField(max_length=80, blank=True)        # highest qualification (e.g. B.Sc / B.Ed)
+    course_of_study      = models.CharField(max_length=150, blank=True)       # e.g. Mathematics Education
+    institution          = models.CharField(max_length=200, blank=True)       # where they studied
+    graduation_year      = models.PositiveSmallIntegerField(null=True, blank=True)
+    teaching_certificate = models.CharField(max_length=60, blank=True)        # e.g. TRCN registration number (optional)
+
+    # Teaching
+    years_experience = models.PositiveSmallIntegerField(default=0)
+    subjects_taught  = models.CharField(max_length=400, blank=True)           # "Mathematics; Physics"
+    classes_taught   = models.CharField(max_length=20, blank=True)            # "SS1,SS2"
+    bio              = models.CharField(max_length=500, blank=True)
+
+    # Admin approval: a self-registered teacher cannot sign in until approved
+    is_approved = models.BooleanField(default=False)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.user.first_name:
+            self.user.first_name = self.user.first_name.capitalize()
+        if self.user.last_name:
+            self.user.last_name = self.user.last_name.capitalize()
+        if self.address:
+            self.address = self.address.title()
+        if self.location:
+            self.location = self.location.title()
+        if self.institution:
+            self.institution = self.institution.title()
+        if self.course_of_study:
+            self.course_of_study = self.course_of_study.title()
+        if self.teaching_certificate:
+            self.teaching_certificate = self.teaching_certificate.upper()
+        self.user.save()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Teacher: {self.user.username}"
+
+    @property
+    def subjects_list(self):
+        return [s.strip() for s in self.subjects_taught.split(';') if s.strip()]
+
+    @property
+    def classes_list(self):
+        return [c.strip() for c in self.classes_taught.split(',') if c.strip()]
+
+    @property
+    def display_name(self):
+        name = self.user.get_full_name() or self.user.username
+        return f'{self.title}. {name}' if self.title else name
+
+    @property
+    def get_picture_url(self):
+        """Full usable picture URL in both environments (same logic as Profile.get_picture_url)."""
+        try:
+            if getattr(settings, 'USE_CLOUDINARY', False):
+                import cloudinary
+                pic = self.picture
+                public_id = None
+                if hasattr(pic, 'public_id') and pic.public_id:
+                    public_id = str(pic.public_id).strip()
+                elif pic and str(pic).strip() not in ('', 'None'):
+                    public_id = str(pic).strip()
+                return cloudinary.CloudinaryImage(public_id or 'logo_iowyea').build_url(secure=True)
+            pic = self.picture
+            if pic and hasattr(pic, 'url'):
+                try:
+                    if pic.url:
+                        return pic.url
+                except Exception:
+                    pass
+            return static('images/male.png')
+        except Exception:
+            pass
+        return 'https://placehold.co/40x40/dbdbdb/8e8e8e?text=T'

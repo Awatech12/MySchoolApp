@@ -121,6 +121,7 @@
     <div><h1>Admin Dashboard</h1><p>Manage students, results and content</p></div>
     <div class="ad-head-actions">
       <button class="btn btn-primary" id="btnAdd"><i class="fa-solid fa-user-plus"></i> Add student</button>
+      <button class="btn" id="btnAddT"><i class="fa-solid fa-chalkboard-user"></i> Add teacher</button>
       <button class="btn" id="btnImport"><i class="fa-solid fa-file-import"></i> Import CSV</button>
       <a class="btn" href="/dashboard/api/students/export/"><i class="fa-solid fa-file-export"></i> Export CSV</a>
       {% if user.is_superuser %}<a class="btn" href="/admin/"><i class="fa-solid fa-gear"></i> Django admin</a>{% endif %}
@@ -136,6 +137,7 @@
 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true" data-tab="students">Students</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="teachers">Teachers{% if teacher_stats.pending %} <span class="pill off" id="tPendBadge">{{ teacher_stats.pending }} pending</span>{% endif %}</button>
     <button class="tab" role="tab" aria-selected="false" data-tab="overview">Overview</button>
     <button class="tab" role="tab" aria-selected="false" data-tab="content">Content</button>
   </div>
@@ -168,6 +170,24 @@
     </div>
   </section>
 
+  <!-- ══ TEACHERS ══ -->
+  <section class="panel" id="panel-teachers" hidden>
+    <div class="card">
+      <div class="toolbar">
+        <input class="input" id="tQ" type="search" placeholder="Search name, username, email, course, subject, phone…">
+        <select class="select" id="tStatus"><option value="">All teachers</option><option value="pending">Pending approval</option><option value="approved">Approved</option><option value="inactive">Inactive</option></select>
+        <select class="select" id="tSort"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="name">Name A–Z</option></select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Teacher</th><th>Qualification</th><th>Subjects</th><th>Classes</th><th>Exp.</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tRows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager"><span id="tPagerInfo"></span><div style="display:flex;gap:6px"><button class="btn btn-sm" id="tPrev">← Prev</button><button class="btn btn-sm" id="tNext">Next →</button></div></div>
+    </div>
+  </section>
+
   <!-- ══ OVERVIEW ══ -->
   <section class="panel" id="panel-overview" hidden>
     <div class="grid2">
@@ -178,6 +198,7 @@
       <div class="card"><h2>Platform</h2>
         <div class="mini"><div>{{ stats.questions }}<small>Discussion questions</small></div></div>
         <div class="mini"><div>{{ stats.live }}<small>Live classes running now</small></div></div>
+        <div class="mini"><div>{{ teacher_stats.approved }} approved · {{ teacher_stats.pending }} pending<small>Teachers ({{ teacher_stats.total }} total)</small></div></div>
       </div>
       <div class="card"><h2>Top students</h2>
         {% for s in top_students %}<div class="mini"><img src="{{ s.picture }}" alt=""><div>{{ s.name }}<small>@{{ s.username }}</small></div><b>{{ s.points }} pts</b></div>
@@ -243,6 +264,51 @@
   <div class="sheet-f"><button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="fSave">Save student</button></div>
 </div></div>
 
+<!-- ══ ADD / EDIT TEACHER ══ -->
+<div class="modal" id="mTeacher"><div class="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-h"><h2 id="tTitle">Add teacher</h2><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-b">
+    <div class="alert" id="tMsg"></div>
+    <form id="tForm" class="form" enctype="multipart/form-data" novalidate>
+      <input type="hidden" id="tId">
+      <div class="photo"><img id="tPhotoPrev" src="" alt=""><div><input type="file" name="image" id="tPhoto" accept="image/jpeg,image/png,image/webp,image/gif"><p class="hint">JPG, PNG, WEBP or GIF · max 5 MB</p></div></div>
+      <div class="sec">Account</div>
+      <div class="two">
+        <div class="field"><label>Username *</label><input class="input" name="username" id="tUsername" autocomplete="off"></div>
+        <div class="field"><label>Email *</label><input class="input" type="email" name="email" id="tEmail" autocomplete="off"></div>
+        <div class="field"><label>First name *</label><input class="input" name="fname" id="tFname"></div>
+        <div class="field"><label>Last name *</label><input class="input" name="lname" id="tLname"></div>
+        <div class="field"><label id="tPwLabel">Password</label><input class="input" type="text" name="password" id="tPassword" autocomplete="new-password"><p class="hint" id="tPwHint">Leave blank to auto-generate.</p></div>
+        <div class="field"><label>Account status</label><select class="select" name="is_active" id="tActive"><option value="1">Active</option><option value="0">Inactive (cannot log in)</option></select></div>
+      </div>
+      <div class="sec">Personal</div>
+      <div class="two">
+        <div class="field"><label>Title</label><select class="select" name="title" id="tTitleSel"><option value="">Select</option>{% for x in teacher_titles %}<option>{{ x }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Gender</label><select class="select" name="gender" id="tGender"><option value="">Select</option>{% for g in gender_choices %}<option>{{ g }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Phone *</label><input class="input" type="tel" name="phone" id="tPhone"></div>
+        <div class="field"><label>Date of birth</label><input class="input" type="date" name="date_of_birth" id="tDob"></div>
+        <div class="field"><label>Location</label><input class="input" name="location" id="tLocation" placeholder="City, State"></div>
+        <div class="field"><label>Address</label><input class="input" name="address" id="tAddress"></div>
+      </div>
+      <div class="sec">Qualifications</div>
+      <div class="two">
+        <div class="field"><label>Highest qualification *</label><select class="select" name="qualification" id="tQual"><option value="">Select</option>{% for q in qualifications %}<option>{{ q }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Course of study *</label><input class="input" name="course_of_study" id="tCourse"></div>
+        <div class="field"><label>Institution *</label><input class="input" name="institution" id="tInst"></div>
+        <div class="field"><label>Year graduated *</label><input class="input" type="number" name="graduation_year" id="tYear" min="1950"></div>
+        <div class="field"><label>Teaching reg. no.</label><input class="input" name="teaching_certificate" id="tCert"></div>
+        <div class="field"><label>Years of experience</label><input class="input" type="number" name="years_experience" id="tExp" min="0" max="60" value="0"></div>
+      </div>
+      <div class="sec">Subjects taught <span id="tSubjCount" class="hint"></span></div>
+      <div class="checks" id="tSubjBox">{% for s in subjects %}<label class="check"><input type="checkbox" name="tsubjects" value="{{ s }}"><span>{{ s }}</span></label>{% endfor %}</div>
+      <div class="sec">Classes taught</div>
+      <div class="checks" id="tClassBox">{% for c in class_levels %}<label class="check"><input type="checkbox" name="classes" value="{{ c }}"><span>{{ c }}</span></label>{% endfor %}</div>
+      <div class="field"><label>About</label><textarea class="textarea" name="bio" id="tBio" maxlength="500" rows="2"></textarea></div>
+    </form>
+  </div>
+  <div class="sheet-f"><button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="tSave">Save teacher</button></div>
+</div></div>
+
 <!-- ══ RESULTS ══ -->
 <div class="modal" id="mResults"><div class="sheet" role="dialog" aria-modal="true">
   <div class="sheet-h"><h2 id="rTitle">Exam results</h2><button class="x" data-close aria-label="Close">✕</button></div>
@@ -269,7 +335,7 @@
     <div class="alert" id="pMsg"></div>
     <div class="field"><label for="pNew">New password</label>
       <input class="input" type="text" id="pNew" autocomplete="new-password" minlength="6" maxlength="128" placeholder="At least 6 characters">
-      <p class="hint">Leave blank to generate a random password. The student's current password stops working immediately.</p>
+      <p class="hint">Leave blank to generate a random password. The current password stops working immediately.</p>
     </div>
     <button type="button" class="btn" id="pGen" style="margin-top:10px"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate random</button>
   </div>
@@ -307,6 +373,7 @@
     $$('.tab').forEach(function(x){x.setAttribute('aria-selected',x===t)});
     $$('.panel').forEach(function(p){p.hidden=p.id!=='panel-'+t.dataset.tab});
     if(t.dataset.tab==='content')loadContent();
+    if(t.dataset.tab==='teachers')loadTeachers();
   })});
 
   /* ── students list ── */
@@ -366,16 +433,16 @@
     switch(b.dataset.act){
       case'edit':openForm(s);break;
       case'results':openResults(s);break;
-      case'reset':openPass(id,s);break;
+      case'reset':openPass(id,s,'students');break;
       case'toggle':post('students/'+id+'/toggle/').then(function(d){d.ok?(toast(d.is_active?'Account activated':'Account deactivated'),load()):toast(d.error)});break;
       case'delete':if(confirm('Permanently delete '+s.full_name+' (@'+s.username+') and all their results? This cannot be undone.'))post('students/'+id+'/delete/').then(function(d){d.ok?(toast('Student deleted'),load()):toast(d.error)});break;
     }
   });
 
   /* ── change password ── */
-  var passId=null;
-  function openPass(id,s){
-    passId=id;$('#pTitle').textContent='Change password — '+s.full_name;
+  var passId=null,passKind='students';
+  function openPass(id,s,kind){
+    passId=id;passKind=kind||'students';$('#pTitle').textContent='Change password — '+s.full_name;
     $('#pNew').value='';$('#pMsg').textContent='';$('#pMsg').className='alert';
     open('#mPass');setTimeout(function(){$('#pNew').focus()},50);
   }
@@ -390,7 +457,7 @@
     var pw=$('#pNew').value,msg=$('#pMsg');
     if(pw&&pw.length<6){msg.textContent='Password must be at least 6 characters.';msg.className='alert err';return}
     var btn=this;btn.disabled=true;
-    post('students/'+passId+'/reset-password/',pw?{password:pw}:{}).then(function(d){
+    post(passKind+'/'+passId+'/reset-password/',pw?{password:pw}:{}).then(function(d){
       btn.disabled=false;
       if(!d.ok){msg.textContent=d.error;msg.className='alert err';return}
       closeAll();showCred('Password changed',d.username,d.password);
@@ -427,6 +494,90 @@
       if(!d.ok){msg.textContent=d.error;msg.className='alert err';$('#mForm .sheet-b').scrollTop=0;return}
       closeAll();load();
       if(!id&&(d.generated||d.username_generated))showCred('Student created',d.username,d.password,d.admission_number);else toast(id?'Student updated':'Student created');
+    });
+  });
+
+  /* ── teachers ── */
+  var tt={page:1,pages:1},trows={},tdeb,tLoaded=false;
+  function tParams(){return new URLSearchParams({q:$('#tQ').value,status:$('#tStatus').value,sort:$('#tSort').value,page:tt.page}).toString()}
+  function loadTeachers(){
+    tLoaded=true;
+    call('teachers/?'+tParams()).then(function(d){
+      var body=$('#tRows');
+      if(!d.ok){body.innerHTML='<tr><td colspan="7" class="empty">'+esc(d.error)+'</td></tr>';return}
+      tt.pages=d.pages;trows={};
+      if(!d.teachers.length){body.innerHTML='<tr><td colspan="7" class="empty">No teachers found.</td></tr>'}
+      else body.innerHTML=d.teachers.map(function(s){trows[s.id]=s;
+        var status=!s.is_approved?'<span class="pill off">Pending</span>':(s.is_active?'<span class="pill ok">Approved</span>':'<span class="pill off">Inactive</span>');
+        return '<tr data-id="'+s.id+'"><td><div class="who"><img src="'+esc(s.picture)+'" alt=""><div><b><a href="'+profileUrl(s.username)+'" target="_blank" rel="noopener">'+esc((s.title?s.title+'. ':'')+s.full_name)+'</a></b><small>@'+esc(s.username)+' · '+esc(s.phone)+'</small></div></div></td>'+
+        '<td>'+esc(s.qualification||'—')+'<small style="display:block;color:#737373">'+esc(s.course_of_study)+(s.institution?' · '+esc(s.institution):'')+'</small></td>'+
+        '<td style="max-width:220px">'+esc(s.subjects.join(', ')||'—')+'</td><td>'+esc(s.classes.join(', ')||'—')+'</td><td>'+s.years_experience+' yr'+(s.years_experience===1?'':'s')+'</td><td>'+status+'</td>'+
+        '<td><div class="row-actions">'+
+          '<a class="icon-btn" href="'+profileUrl(s.username)+'" target="_blank" rel="noopener" title="View profile"><i class="fa-solid fa-user"></i></a>'+
+          '<button class="icon-btn" data-act="edit" title="Edit"><i class="fa-solid fa-pen"></i></button>'+
+          '<button class="icon-btn" data-act="approve" title="'+(s.is_approved?'Revoke approval':'Approve')+'"><i class="fa-solid '+(s.is_approved?'fa-ban':'fa-circle-check')+'"></i></button>'+
+          '<button class="icon-btn" data-act="reset" title="Change password"><i class="fa-solid fa-key"></i></button>'+
+          '<button class="icon-btn" data-act="toggle" title="'+(s.is_active?'Deactivate':'Activate')+'"><i class="fa-solid '+(s.is_active?'fa-user-slash':'fa-user-check')+'"></i></button>'+
+          '<button class="icon-btn del" data-act="delete" title="Delete"><i class="fa-solid fa-trash"></i></button>'+
+        '</div></td></tr>'}).join('');
+      $('#tPagerInfo').textContent=d.count+' teacher'+(d.count===1?'':'s')+' · page '+d.page+' of '+d.pages;
+      $('#tPrev').disabled=d.page<=1;$('#tNext').disabled=d.page>=d.pages;
+    });
+  }
+  function refreshPending(){
+    call('teachers/?status=pending').then(function(d){
+      var b=$('#tPendBadge'),tab=$('[data-tab=teachers]');
+      if(!d.ok)return;
+      if(!d.count){if(b)b.remove();return}
+      if(!b){b=document.createElement('span');b.id='tPendBadge';b.className='pill off';tab.appendChild(document.createTextNode(' '));tab.appendChild(b)}
+      b.textContent=d.count+' pending';
+    });
+  }
+  ['tStatus','tSort'].forEach(function(id){$('#'+id).addEventListener('change',function(){tt.page=1;loadTeachers()})});
+  $('#tQ').addEventListener('input',function(){clearTimeout(tdeb);tdeb=setTimeout(function(){tt.page=1;loadTeachers()},300)});
+  $('#tPrev').addEventListener('click',function(){if(tt.page>1){tt.page--;loadTeachers()}});
+  $('#tNext').addEventListener('click',function(){if(tt.page<tt.pages){tt.page++;loadTeachers()}});
+  $('#tRows').addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]');if(!b)return;
+    var id=b.closest('tr').dataset.id,s=trows[id];
+    switch(b.dataset.act){
+      case'edit':openTeacherForm(s);break;
+      case'reset':openPass(id,s,'teachers');break;
+      case'approve':post('teachers/'+id+'/approve/',{approved:s.is_approved?'0':'1'}).then(function(d){d.ok?(toast(d.is_approved?'Teacher approved':'Approval revoked'),loadTeachers(),refreshPending()):toast(d.error)});break;
+      case'toggle':post('teachers/'+id+'/toggle/').then(function(d){d.ok?(toast(d.is_active?'Account activated':'Account deactivated'),loadTeachers()):toast(d.error)});break;
+      case'delete':if(confirm('Permanently delete '+s.full_name+' (@'+s.username+')? This cannot be undone.'))post('teachers/'+id+'/delete/').then(function(d){d.ok?(toast('Teacher deleted'),loadTeachers(),refreshPending()):toast(d.error)});break;
+    }
+  });
+  var tForm=$('#tForm');
+  function openTeacherForm(s){
+    tForm.reset();$('#tMsg').textContent='';$('#tMsg').className='alert';
+    $('#tId').value=s?s.id:'';$('#tTitle').textContent=s?'Edit '+s.full_name:'Add teacher';
+    $('#tPwLabel').textContent=s?'New password':'Password';$('#tPwHint').textContent=s?'Leave blank to keep the current password.':'Leave blank to auto-generate.';
+    $('#tPhotoPrev').src=s?s.picture:'';$('#tPhotoPrev').style.visibility=s?'visible':'hidden';
+    if(s){
+      setVal('#tUsername',s.username);setVal('#tEmail',s.email);setVal('#tFname',s.first_name);setVal('#tLname',s.last_name);
+      setVal('#tTitleSel',s.title);setVal('#tGender',s.gender);setVal('#tPhone',s.phone);setVal('#tDob',s.date_of_birth);setVal('#tLocation',s.location);setVal('#tAddress',s.address);
+      setVal('#tQual',s.qualification);setVal('#tCourse',s.course_of_study);setVal('#tInst',s.institution);setVal('#tYear',s.graduation_year);setVal('#tCert',s.teaching_certificate);
+      $('#tExp').value=s.years_experience||0;setVal('#tBio',s.bio);$('#tActive').value=s.is_active?'1':'0';
+      $$('input[name=tsubjects]').forEach(function(c){c.checked=s.subjects.indexOf(c.value)>-1});
+      $$('#tClassBox input').forEach(function(c){c.checked=s.classes.indexOf(c.value)>-1});
+    }
+    countTSubj();open('#mTeacher');$('#tUsername').focus();
+  }
+  function countTSubj(){$('#tSubjCount').textContent='· '+$$('input[name=tsubjects]:checked').length+' selected'}
+  $('#tSubjBox').addEventListener('change',countTSubj);
+  $('#btnAddT').addEventListener('click',function(){openTeacherForm(null)});
+  $('#tPhoto').addEventListener('change',function(){var f=this.files[0];if(f){$('#tPhotoPrev').src=URL.createObjectURL(f);$('#tPhotoPrev').style.visibility='visible'}});
+  $('#tSave').addEventListener('click',function(){
+    var btn=this,id=$('#tId').value,msg=$('#tMsg');
+    var fd=new FormData();
+    new FormData(tForm).forEach(function(v,k){fd.append(k==='tsubjects'?'subjects':k,v)});
+    btn.disabled=true;
+    call(id?'teachers/'+id+'/update/':'teachers/create/',{method:'POST',body:fd}).then(function(d){
+      btn.disabled=false;
+      if(!d.ok){msg.textContent=d.error;msg.className='alert err';$('#mTeacher .sheet-b').scrollTop=0;return}
+      closeAll();loadTeachers();
+      if(!id&&d.generated)showCred('Teacher created',d.username,d.password);else toast(id?'Teacher updated':'Teacher created');
     });
   });
 

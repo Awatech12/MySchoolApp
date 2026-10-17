@@ -104,11 +104,23 @@
 
   {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
 
+  {% if is_restricted %}
+  <div class="alert">
+    {% if subject_names and class_options %}
+    <i class="fa-solid fa-user-lock"></i> You are managing your own questions only:
+    <b>{{ subject_names|join:", " }}</b> for <b>{{ class_options|join:", " }}</b>.
+    Questions set by other teachers for other subjects or classes are not shown.
+    {% else %}
+    <i class="fa-solid fa-triangle-exclamation"></i> No subjects or classes are assigned to your teacher account yet. Please ask the administrator to update your profile.
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="card">
     <h2><i class="fa-solid fa-chart-simple"></i> Questions per subject and class</h2>
     <div class="cls-tabs">
       <a href="?{% if subject %}subject={{ subject|urlencode }}{% endif %}" class="{% if not class_filter %}on{% endif %}">All classes</a>
-      {% for c in class_options %}<a href="?class={{ c }}{% if subject %}&subject={{ subject|urlencode }}{% endif %}" class="{% if c == class_filter %}on{% endif %}">{{ c }}<small>{% if c == 'SS1' %}{{ class_totals.SS1 }}{% elif c == 'SS2' %}{{ class_totals.SS2 }}{% else %}{{ class_totals.SS3 }}{% endif %}</small></a>{% endfor %}
+      {% for t in class_tabs %}<a href="?class={{ t.label }}{% if subject %}&subject={{ subject|urlencode }}{% endif %}" class="{% if t.label == class_filter %}on{% endif %}">{{ t.label }}<small>{{ t.n }}</small></a>{% endfor %}
       {% if unassigned_total %}<a href="?class=unassigned{% if subject %}&subject={{ subject|urlencode }}{% endif %}" class="{% if class_filter == 'unassigned' %}on{% endif %}">No class yet<small>{{ unassigned_total }}</small></a>{% endif %}
     </div>
     <div class="stats">
@@ -119,9 +131,7 @@
           <small>{{ s.active }} active{% if s.total != s.active %} &middot; {{ s.total }} total{% endif %}</small>
         </a>
         <div class="cls-row">
-          <a class="cls-pill{% if s.ss1.active == 0 %} none{% elif s.ss1.active < per_subject %} low{% endif %}{% if class_filter == 'SS1' and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class=SS1">SS1 {{ s.ss1.active }}</a>
-          <a class="cls-pill{% if s.ss2.active == 0 %} none{% elif s.ss2.active < per_subject %} low{% endif %}{% if class_filter == 'SS2' and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class=SS2">SS2 {{ s.ss2.active }}</a>
-          <a class="cls-pill{% if s.ss3.active == 0 %} none{% elif s.ss3.active < per_subject %} low{% endif %}{% if class_filter == 'SS3' and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class=SS3">SS3 {{ s.ss3.active }}</a>
+          {% for cl in s.cells %}<a class="cls-pill{% if cl.active == 0 %} none{% elif cl.active < per_subject %} low{% endif %}{% if class_filter == cl.label and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class={{ cl.label }}">{{ cl.label }} {{ cl.active }}</a>{% endfor %}
           {% if s.unassigned.total %}<a class="cls-pill low" href="?subject={{ s.name|urlencode }}&class=unassigned">No class {{ s.unassigned.total }}</a>{% endif %}
         </div>
       </div>
@@ -228,7 +238,7 @@
       <select name="class" onchange="this.form.submit()">
         <option value="">All classes</option>
         {% for c in class_options %}<option value="{{ c }}"{% if c == class_filter %} selected{% endif %}>{{ c }}</option>{% endfor %}
-        <option value="unassigned"{% if class_filter == 'unassigned' %} selected{% endif %}>No class yet</option>
+        {% if not is_restricted %}<option value="unassigned"{% if class_filter == 'unassigned' %} selected{% endif %}>No class yet</option>{% endif %}
       </select>
       <input type="search" name="q" value="{{ search }}" placeholder="Search question text…">
       <button class="btn btn-ghost" type="submit">Search</button>

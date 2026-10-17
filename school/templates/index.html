@@ -309,6 +309,9 @@
     .ac-message { padding: 10px 14px; font-size: 13px; border-radius: 8px; margin-bottom: 8px; background: var(--surface); }
     .ac-message-error   { background: #fef2f2; color: var(--error); }
     .ac-message-success { background: #f0fdf4; color: var(--success); }
+    .ac-message-warn    { background: #fffbeb; color: #b45309; }
+    .ac-teacher-link { display: block; margin-top: 8px; font-size: 12.5px; color: var(--muted); text-align: center; }
+    .ac-teacher-link a { color: var(--ink); font-weight: 700; }
 
     .ac-field { margin-bottom: 14px; }
     .ac-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
@@ -550,7 +553,7 @@
     <div class="wrap portal-grid">
       <div>
         <h2 class="sec-title">Student portal</h2>
-        <p class="sec-sub">Registered students can sign in with their Admission Number to join live classes and practise with CBT mock tests.</p>
+        <p class="sec-sub">Registered students can sign in with their Admission Number to join live classes and practise with CBT mock tests. </p>
         <button type="button" class="btn btn-gold" data-open-login>Sign in to your portal</button>
       </div>
       <div class="portal-list">
@@ -699,6 +702,7 @@
       <h4>Students</h4>
       <ul>
         <li><a href="#" data-open-login>Student login</a></li>
+        <li><a href="#" data-open-teacher-login>Teacher login</a></li>
         <li><a href="#portal">Student portal</a></li>
         <li><a href="#admissions">Fees &amp; schedule</a></li>
       </ul>
@@ -748,15 +752,16 @@
       {% if messages %}
       <div class="ac-messages">
         {% for message in messages %}
-        <div class="ac-message {% if message.tags == 'error' %}ac-message-error{% elif message.tags == 'success' %}ac-message-success{% endif %}">{{ message }}</div>
+        <div class="ac-message {% if 'error' in message.tags %}ac-message-error{% elif 'success' in message.tags %}ac-message-success{% elif 'warning' in message.tags %}ac-message-warn{% endif %}">{{ message }}</div>
         {% endfor %}
       </div>
       {% endif %}
 
       <form method="post" id="ac-modal-form">
         {% csrf_token %}
+        <input type="hidden" name="login_type" value="student">
         <div class="ac-field">
-          <label class="ac-label" for="ac-user-check">Admission Number, username or email</label>
+          <label class="ac-label" for="ac-user-check">Admission Number</label>
           <input type="text" name="user_check" id="ac-user-check" class="ac-input" placeholder="e.g. TMTC/2026/0007" required autocomplete="username">
         </div>
         <div class="ac-field">
@@ -771,8 +776,45 @@
         </div>
         <button type="submit" class="ac-btn-primary" id="ac-modal-signin-btn">Sign In</button>
       </form>
-      <p class="ac-modal-help">Not registered yet? <a href="#admissions" id="ac-modal-register">See how to enrol</a></p>
+      <p class="ac-teacher-link">Are you a teacher? <a href="#" data-open-teacher-login>Login here</a></p>
     </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ TEACHER LOGIN MODAL ═══════════════ -->
+<div class="ac-modal-overlay" id="ac-teacher-overlay">
+  <div class="ac-modal" role="dialog" aria-modal="true" aria-label="Teacher sign in">
+    <button class="ac-modal-close" id="ac-teacher-close" aria-label="Close">✕</button>
+    <div class="ac-modal-logo"><img src="{% static 'images/logo.png' %}" alt=""></div>
+    <h2 class="ac-modal-title">Teacher login 👩🏽‍🏫</h2>
+    <p class="ac-modal-subtitle">Sign in with your username or email</p>
+
+    {% if messages %}
+    <div class="ac-messages">
+      {% for message in messages %}
+      <div class="ac-message {% if 'error' in message.tags %}ac-message-error{% elif 'success' in message.tags %}ac-message-success{% elif 'warning' in message.tags %}ac-message-warn{% endif %}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="ac-teacher-form">
+      {% csrf_token %}
+      <input type="hidden" name="login_type" value="teacher">
+      <div class="ac-field">
+        <label class="ac-label" for="ac-t-user">Username or email</label>
+        <input type="text" name="user_check" id="ac-t-user" class="ac-input" placeholder="Your username or email" required autocomplete="username" autocapitalize="none">
+      </div>
+      <div class="ac-field">
+        <label class="ac-label" for="ac-t-pw">Password</label>
+        <div class="ac-pw-wrap">
+          <input type="password" name="password" id="ac-t-pw" class="ac-input" placeholder="Enter your password" required autocomplete="current-password">
+          <button type="button" class="ac-pw-toggle" id="ac-t-toggle" aria-label="Show password">👁️</button>
+        </div>
+      </div>
+      <button type="submit" class="ac-btn-primary">Sign In</button>
+    </form>
+    <p class="ac-teacher-link">Not a teacher? <a href="#" id="ac-back-student">Student login</a></p>
   </div>
 </div>
 
@@ -823,7 +865,35 @@
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
-  document.getElementById('ac-modal-register').addEventListener('click', closeModal);
+
+  /* ─── Teacher login modal ─── */
+  var tOverlay = document.getElementById('ac-teacher-overlay');
+  function openTeacher() {
+    closeModal();
+    tOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { var f = document.getElementById('ac-t-user'); if (f) f.focus(); }, 60);
+  }
+  function closeTeacher() {
+    tOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.querySelectorAll('[data-open-teacher-login]').forEach(function (el) {
+    el.addEventListener('click', function (e) { e.preventDefault(); setMenu(false); openTeacher(); });
+  });
+  document.getElementById('ac-teacher-close').addEventListener('click', closeTeacher);
+  tOverlay.addEventListener('click', function (e) { if (e.target === tOverlay) closeTeacher(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeTeacher(); });
+  document.getElementById('ac-back-student').addEventListener('click', function (e) {
+    e.preventDefault(); closeTeacher(); openModal(true);
+  });
+  var tt = document.getElementById('ac-t-toggle'), tp = document.getElementById('ac-t-pw');
+  tt.addEventListener('click', function () {
+    var show = tp.type === 'password';
+    tp.type = show ? 'text' : 'password';
+    tt.textContent = show ? '🙈' : '👁️';
+    tt.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
 
   /* ─── Password toggle ─── */
   var t = document.getElementById('ac-toggle-modal');
@@ -843,7 +913,7 @@
 
   /* ─── If Django returned messages (e.g. wrong password), reopen the modal ─── */
   {% if messages %}
-  openModal(true);
+  if (/[?&]login=teacher/.test(location.search)) { openTeacher(); } else { openModal(true); }
   {% endif %}
 })();
 </script>
