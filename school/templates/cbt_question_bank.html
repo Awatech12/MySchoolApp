@@ -36,6 +36,17 @@
   .bar { height:5px; background:var(--gray2); border-radius:4px; overflow:hidden; margin-top:6px; }
   .bar i { display:block; max-width:100%; height:100%; background:var(--green); }
   .stat.low .bar i { background:var(--amber); } .stat.none .bar i { background:var(--red); }
+  .cls-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .cls-pill { display:inline-flex; gap:4px; align-items:center; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:800; background:var(--green-lt); color:var(--green); text-decoration:none; }
+  .cls-pill.low { background:var(--amber-lt); color:var(--amber); }
+  .cls-pill.none { background:var(--red-lt); color:var(--red); }
+  .cls-pill.on { outline:2px solid var(--blue); }
+  .cls-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .cls-tabs a { border:1.5px solid var(--line); border-radius:999px; padding:4px 12px; font-size:12px; font-weight:800; color:var(--dark); text-decoration:none; background:#fff; }
+  .cls-tabs a.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .cls-tabs a small { opacity:.75; font-weight:700; margin-left:3px; }
+  .tag.cls { background:var(--dark); color:#fff; }
+  .tag.warn { background:var(--amber-lt); color:#8a5a12; }
 
   label.f { display:block; font-size:12px; font-weight:800; margin:0 0 4px; }
   .row { display:grid; gap:12px; grid-template-columns:1fr; margin-bottom:12px; }
@@ -94,17 +105,32 @@
   {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
 
   <div class="card">
-    <h2><i class="fa-solid fa-chart-simple"></i> Questions per subject</h2>
+    <h2><i class="fa-solid fa-chart-simple"></i> Questions per subject and class</h2>
+    <div class="cls-tabs">
+      <a href="?{% if subject %}subject={{ subject|urlencode }}{% endif %}" class="{% if not class_filter %}on{% endif %}">All classes</a>
+      {% for c in class_options %}<a href="?class={{ c }}{% if subject %}&subject={{ subject|urlencode }}{% endif %}" class="{% if c == class_filter %}on{% endif %}">{{ c }}<small>{% if c == 'SS1' %}{{ class_totals.SS1 }}{% elif c == 'SS2' %}{{ class_totals.SS2 }}{% else %}{{ class_totals.SS3 }}{% endif %}</small></a>{% endfor %}
+      {% if unassigned_total %}<a href="?class=unassigned{% if subject %}&subject={{ subject|urlencode }}{% endif %}" class="{% if class_filter == 'unassigned' %}on{% endif %}">No class yet<small>{{ unassigned_total }}</small></a>{% endif %}
+    </div>
     <div class="stats">
       {% for s in stats %}
-      <a class="stat{% if s.name == subject %} on{% endif %}{% if s.active == 0 %} none{% elif s.active < per_subject %} low{% endif %}" href="?subject={{ s.name|urlencode }}">
-        <b>{{ s.name }}</b>
-        <small>{{ s.active }} active{% if s.total != s.active %} &middot; {{ s.total }} total{% endif %}</small>
-        <div class="bar"><i style="width:{% widthratio s.active 50 100 %}%"></i></div>
-      </a>
+      <div class="stat{% if s.name == subject %} on{% endif %}{% if s.active == 0 %} none{% endif %}">
+        <a href="?subject={{ s.name|urlencode }}{% if class_filter %}&class={{ class_filter }}{% endif %}" style="text-decoration:none;color:inherit;display:block">
+          <b>{{ s.name }}</b>
+          <small>{{ s.active }} active{% if s.total != s.active %} &middot; {{ s.total }} total{% endif %}</small>
+        </a>
+        <div class="cls-row">
+          <a class="cls-pill{% if s.ss1.active == 0 %} none{% elif s.ss1.active < per_subject %} low{% endif %}{% if class_filter == 'SS1' and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class=SS1">SS1 {{ s.ss1.active }}</a>
+          <a class="cls-pill{% if s.ss2.active == 0 %} none{% elif s.ss2.active < per_subject %} low{% endif %}{% if class_filter == 'SS2' and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class=SS2">SS2 {{ s.ss2.active }}</a>
+          <a class="cls-pill{% if s.ss3.active == 0 %} none{% elif s.ss3.active < per_subject %} low{% endif %}{% if class_filter == 'SS3' and s.name == subject %} on{% endif %}" href="?subject={{ s.name|urlencode }}&class=SS3">SS3 {{ s.ss3.active }}</a>
+          {% if s.unassigned.total %}<a class="cls-pill low" href="?subject={{ s.name|urlencode }}&class=unassigned">No class {{ s.unassigned.total }}</a>{% endif %}
+        </div>
+      </div>
       {% endfor %}
     </div>
-    <p class="sub" style="margin:10px 0 0">A subject needs at least {{ per_subject }} active questions to give a full paper; with fewer, students get what is available.</p>
+    <p class="sub" style="margin:10px 0 0">Each class (SS1, SS2, SS3) has its own questions. A subject needs at least {{ per_subject }} active questions in a class to give a full paper; with fewer, students of that class get what is available.</p>
+    {% if unassigned_total %}
+    <div class="alert warning" style="margin:10px 0 0">{{ unassigned_total }} older question{{ unassigned_total|pluralize }} {{ unassigned_total|pluralize:"has,have" }} no class yet and {{ unassigned_total|pluralize:"is,are" }} given to every class. Use <b>Edit</b> on each one to set its class (SS1, SS2 or SS3).</div>
+    {% endif %}
   </div>
 
   <div class="card">
@@ -119,6 +145,15 @@
             {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
           </select>
         </div>
+        <div>
+          <label class="f" for="upClass">Class for this upload</label>
+          <select name="class_level" id="upClass">
+            <option value="">Use the “class” column in my file</option>
+            {% for c in class_options %}<option value="{{ c }}"{% if c == class_filter %} selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="row">
         <div>
           <label class="f" for="upFile">File (.csv, .xlsx or .txt)</label>
           <input type="file" name="file" id="upFile" accept=".csv,.xlsx,.txt,.tsv">
@@ -136,19 +171,19 @@
         <p>
           <b>Spreadsheet (CSV / Excel)</b>: one question per row with a header row:
         </p>
-        <pre>subject, question, option_a, option_b, option_c, option_d, answer, explanation</pre>
-        <p>The <b>answer</b> is the letter A, B, C or D. <b>subject</b> and <b>explanation</b> are optional; leave out the subject column if you picked a subject above.</p>
+        <pre>class, subject, question, option_a, option_b, option_c, option_d, answer, explanation</pre>
+        <p>The <b>answer</b> is the letter A, B, C or D. The <b>class</b> is SS1, SS2 or SS3: every question must belong to one class. <b>subject</b>, <b>class</b> and <b>explanation</b> can be left out of the file when you pick the subject and class above.</p>
         <p><b>Pictures and diagrams:</b> add an <code>image</code> column holding the picture's file name (e.g. <code>circuit1.png</code>) and attach that picture in the &ldquo;Pictures&rdquo; box above.</p>
         <p><b>Shared information</b> (a reading passage, table, map or diagram for several questions): give those questions the same label in a <code>passage</code> column (P1, MAP1&hellip;). On the <u>first</u> question of the group also fill <code>passage_title</code>, <code>passage_text</code> and/or <code>passage_image</code>. The questions are always given to students together, in the order they appear in your file.</p>
         <p>
           <a href="{% url 'cbt_question_template' %}">Download a CSV template</a>.</p>
         <p><b>Text / pasted</b>: one question per line, separated by <code>|</code>:</p>
         <pre>question | option A | option B | option C | option D | answer letter</pre>
-        <p>Pasted text and .txt files cannot carry pictures or passages; use a spreadsheet for those. Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
+        <p>Pasted text and .txt files cannot carry pictures or passages, and always need the class chosen above; use a spreadsheet for those. Passage labels are kept separate for each subject and class, so the same label (P1) can be used again in another class. Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
       </details>
       <label class="chk" style="margin-bottom:14px">
         <input type="checkbox" name="replace">
-        <span>Replace existing questions of the subjects in this upload<small>Old questions of those subjects are removed so only the uploaded ones remain. Students’ past results and reviews are not affected. Nothing is changed if the file has errors.</small></span>
+        <span>Replace existing questions of the subjects and classes in this upload<small>Old questions of those subjects in the same class are removed so only the uploaded ones remain. Other classes are never touched. Students’ past results and reviews are not affected. Nothing is changed if the file has errors.</small></span>
       </label>
       <button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload"></i> Upload</button>
     </form>
@@ -156,7 +191,7 @@
 
   <div class="card">
     <div class="top" style="align-items:center;margin-bottom:10px">
-      <h2 style="margin:0"><i class="fa-solid fa-image"></i> Passages &amp; shared diagrams{% if subject %} &ndash; {{ subject }}{% endif %}</h2>
+      <h2 style="margin:0"><i class="fa-solid fa-image"></i> Passages &amp; shared diagrams{% if subject %} &ndash; {{ subject }}{% endif %}{% if class_filter == 'unassigned' %} &ndash; no class{% elif class_filter %} &ndash; {{ class_filter }}{% endif %}</h2>
       <button class="btn btn-ghost btn-sm" type="button" id="addPassageBtn"><i class="fa-solid fa-plus"></i> Add passage</button>
     </div>
     <p class="sub" style="margin-bottom:12px">Use these when several questions share the same information, e.g. &ldquo;Use the information above to answer questions 11 to 14&rdquo;. Create the passage, then choose it when you add or edit each question.</p>
@@ -167,11 +202,11 @@
         <div class="pinfo">
           {% if p.image_url %}<a href="{{ p.image_url }}" target="_blank" rel="noopener"><img class="thumb" style="margin:0" src="{{ p.image_url }}" alt=""></a>{% endif %}
           <div style="min-width:0"><b>{% firstof p.title p.ref "Untitled passage" %}</b>
-            <small>{{ p.subject_name }}{% if p.ref %} &middot; ref {{ p.ref }}{% endif %} &middot; {{ p.n }} question{{ p.n|pluralize }}{% if p.text %} &middot; {{ p.text|truncatechars:60 }}{% endif %}</small></div>
+            <small>{{ p.subject_name }} &middot; {{ p.class_level|default:"No class" }}{% if p.ref %} &middot; ref {{ p.ref }}{% endif %} &middot; {{ p.n }} question{{ p.n|pluralize }}{% if p.text %} &middot; {{ p.text|truncatechars:60 }}{% endif %}</small></div>
         </div>
         <div class="acts">
           <button type="button" class="btn btn-ghost btn-sm edit-passage"
-            data-id="{{ p.pk }}" data-subject="{{ p.subject_name }}" data-ref="{{ p.ref }}" data-title="{{ p.title }}"
+            data-id="{{ p.pk }}" data-subject="{{ p.subject_name }}" data-class="{{ p.class_level }}" data-ref="{{ p.ref }}" data-title="{{ p.title }}"
             data-text="{{ p.text }}" data-image="{{ p.image_url }}">Edit</button>
           <form method="post" action="{% url 'cbt_passage_delete' p.pk %}" onsubmit="return confirm('Delete this passage? Its questions are kept but will no longer share it.')">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm btn-red" type="submit">Delete</button></form>
         </div>
@@ -184,11 +219,16 @@
   </div>
 
   <div class="card">
-    <h2><i class="fa-solid fa-list"></i> Questions{% if subject %} – {{ subject }}{% endif %}</h2>
+    <h2><i class="fa-solid fa-list"></i> Questions{% if subject %} – {{ subject }}{% endif %}{% if class_filter == 'unassigned' %} – no class{% elif class_filter %} – {{ class_filter }}{% endif %}</h2>
     <form class="tools" method="get">
       <select name="subject" onchange="this.form.submit()">
         <option value="">All subjects</option>
         {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+      <select name="class" onchange="this.form.submit()">
+        <option value="">All classes</option>
+        {% for c in class_options %}<option value="{{ c }}"{% if c == class_filter %} selected{% endif %}>{{ c }}</option>{% endfor %}
+        <option value="unassigned"{% if class_filter == 'unassigned' %} selected{% endif %}>No class yet</option>
       </select>
       <input type="search" name="q" value="{{ search }}" placeholder="Search question text…">
       <button class="btn btn-ghost" type="submit">Search</button>
@@ -197,11 +237,12 @@
     {% if page_obj.object_list %}
     <div class="tbl-wrap">
       <table class="tbl">
-        <thead><tr><th>Subject</th><th>Question</th><th>Ans</th><th></th></tr></thead>
+        <thead><tr><th>Subject</th><th>Class</th><th>Question</th><th>Ans</th><th></th></tr></thead>
         <tbody>
         {% for q in page_obj %}
           <tr{% if not q.is_active %} class="off"{% endif %}>
             <td>{{ q.subject_name }}{% if not q.is_active %}<small style="display:block;color:var(--amber)">switched off</small>{% endif %}</td>
+            <td>{% if q.class_level %}<span class="tag cls" style="margin:0">{{ q.class_level }}</span>{% else %}<span class="tag warn" style="margin:0">No class</span>{% endif %}</td>
             <td class="q">{{ q.text }}
               <small>A. {{ q.option_a }} &nbsp; B. {{ q.option_b }} &nbsp; C. {{ q.option_c }} &nbsp; D. {{ q.option_d }}</small>
               {% if q.passage %}<span class="tag"><i class="fa-solid fa-link"></i> {% firstof q.passage.title q.passage.ref "Passage" %}</span>{% endif %}
@@ -210,7 +251,7 @@
             <td>
               <div class="acts">
                 <button type="button" class="btn btn-ghost btn-sm edit-btn"
-                  data-id="{{ q.pk }}" data-subject="{{ q.subject_name }}" data-text="{{ q.text }}"
+                  data-id="{{ q.pk }}" data-subject="{{ q.subject_name }}" data-class="{{ q.class_level }}" data-text="{{ q.text }}"
                   data-a="{{ q.option_a }}" data-b="{{ q.option_b }}" data-c="{{ q.option_c }}" data-d="{{ q.option_d }}"
                   data-answer="{{ q.answer }}" data-expl="{{ q.explanation }}"
                   data-passage="{{ q.passage_id|default_if_none:'' }}" data-order="{{ q.order }}" data-image="{{ q.image_url }}">Edit</button>
@@ -247,6 +288,13 @@
           <select name="subject" id="fSubject" required>
             {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
           </select></div>
+        <div><label class="f">Class</label>
+          <select name="class_level" id="fClass" required>
+            <option value="">Choose class…</option>
+            {% for c in class_options %}<option value="{{ c }}"{% if c == class_filter %} selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <div class="row two">
         <div><label class="f">Correct answer</label>
           <select name="answer" id="fAnswer" required><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
       </div>
@@ -260,7 +308,7 @@
       <div class="row two">
         <div><label class="f">Shared passage / diagram (optional)</label>
           <select name="passage" id="fPassage"><option value="">None &ndash; this question stands alone</option>
-            {% for p in passage_options %}<option value="{{ p.pk }}" data-subject="{{ p.subject_name }}">{% firstof p.title p.ref "Untitled passage" %}{% if p.ref and p.title %} ({{ p.ref }}){% endif %}</option>{% endfor %}
+            {% for p in passage_options %}<option value="{{ p.pk }}" data-subject="{{ p.subject_name }}" data-class="{{ p.class_level }}">{% if p.class_level %}[{{ p.class_level }}] {% endif %}{% firstof p.title p.ref "Untitled passage" %}{% if p.ref and p.title %} ({{ p.ref }}){% endif %}</option>{% endfor %}
           </select></div>
         <div><label class="f">Position within the passage</label><input type="text" name="order" id="fOrder" inputmode="numeric" placeholder="1, 2, 3&hellip;"></div>
       </div>
@@ -287,8 +335,13 @@
           <select name="subject" id="pSubject" required>
             {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
           </select></div>
-        <div><label class="f">Reference (optional)</label><input type="text" name="ref" id="pRef" maxlength="60" placeholder="e.g. P1 &ndash; used in spreadsheets"></div>
+        <div><label class="f">Class</label>
+          <select name="class_level" id="pClass" required>
+            <option value="">Choose class…</option>
+            {% for c in class_options %}<option value="{{ c }}"{% if c == class_filter %} selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select></div>
       </div>
+      <div class="row"><div><label class="f">Reference (optional)</label><input type="text" name="ref" id="pRef" maxlength="60" placeholder="e.g. P1 &ndash; used in spreadsheets"></div></div>
       <div class="row"><div><label class="f">Title (optional)</label><input type="text" name="title" id="pTitle" maxlength="150" placeholder="e.g. Read the passage below"></div></div>
       <div class="row"><div><label class="f">Text (passage, table or description)</label><textarea name="text" id="pText" style="min-height:130px"></textarea></div></div>
       <div class="row"><div><label class="f">Picture / diagram (optional)</label>
@@ -309,10 +362,11 @@
   var addUrl = "{% url 'cbt_question_add' %}", editUrl = "{% url 'cbt_question_edit' 0 %}";
   function $(id) { return document.getElementById(id); }
   function filterPassages() {
-    var subj = $('fSubject').value, sel = $('fPassage');
+    var subj = $('fSubject').value, cls = $('fClass').value, sel = $('fPassage');
     Array.prototype.forEach.call(sel.options, function (o) {
       if (!o.value) return;
-      var ok = o.dataset.subject === subj;
+      // same subject, and same class (older passages with no class fit any class)
+      var ok = o.dataset.subject === subj && (!o.dataset.class || !cls || o.dataset.class === cls);
       o.hidden = !ok; o.disabled = !ok;
       if (!ok && o.selected) sel.value = '';
     });
@@ -324,7 +378,7 @@
   function open(d) {
     form.action = d ? editUrl.replace('/0/', '/' + d.id + '/') : addUrl;
     $('qTitle').textContent = d ? 'Edit question' : 'Add a question';
-    if (d) $('fSubject').value = d.subject;
+    if (d) { $('fSubject').value = d.subject; $('fClass').value = d.class || ''; }
     $('fText').value = d ? d.text : '';
     $('fA').value = d ? d.a : ''; $('fB').value = d ? d.b : ''; $('fC').value = d ? d.c : ''; $('fD').value = d ? d.d : '';
     $('fAnswer').value = d ? d.answer : 'A';
@@ -339,6 +393,7 @@
     $('fText').focus();
   }
   $('fSubject').addEventListener('change', filterPassages);
+  $('fClass').addEventListener('change', filterPassages);
 
   var pModal = $('pModal'), pForm = $('pForm');
   var pAddUrl = "{% url 'cbt_passage_add' %}", pEditUrl = "{% url 'cbt_passage_edit' 0 %}";
@@ -346,6 +401,7 @@
     pForm.action = d ? pEditUrl.replace('/0/', '/' + d.id + '/') : pAddUrl;
     $('pTitleH').textContent = d ? 'Edit passage' : 'Add a passage';
     $('pSubject').value = d ? d.subject : ($('pSubject').value);
+    if (d) $('pClass').value = d.class || '';
     $('pRef').value = d ? d.ref : ''; $('pTitle').value = d ? d.title : ''; $('pText').value = d ? d.text : '';
     $('pImage').value = '';
     pForm.querySelector('[name=remove_image]').checked = false;

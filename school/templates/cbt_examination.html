@@ -187,7 +187,7 @@
 {% if view_mode == 'home' %}
 
   <h1 class="exm-title">CBT Examination</h1>
-  <p class="exm-sub">A real, timed test on the subjects you registered. Your result is saved to your profile.</p>
+  <p class="exm-sub">A real, timed test on the subjects you registered{% if exam_class %}, with questions set for <strong>{{ exam_class }}</strong>{% endif %}. Your result is saved to your profile.</p>
   {% if is_teacher %}
   <div class="card resume" style="background:var(--blue-lt);border-color:var(--blue-mid,#cce9fd)">
     <div><strong><i class="fa-solid fa-chalkboard-user"></i> Teacher tools</strong><small style="color:var(--blue-dk)">Upload, edit and switch off exam questions</small></div>
@@ -211,7 +211,7 @@
     <div class="card" style="background:var(--blue-lt);border-color:var(--blue-mid)">
       <strong style="color:var(--blue-dk)"><i class="fa-regular fa-calendar"></i> The examination is not open yet</strong>
       <p style="margin:6px 0 0;font-size:13px;font-weight:600">
-        {{ next_schedule.title|default:"CBT Examination" }} opens on <b>{{ next_schedule.starts_at|date:"l, d M Y \a\t h:i A" }}</b>.
+        {{ next_schedule.title|default:"CBT Examination" }}{% if exam_class %} for {{ exam_class }}{% endif %} opens on <b>{{ next_schedule.starts_at|date:"l, d M Y \a\t h:i A" }}</b>.
         <span id="countdown" data-start="{{ next_schedule.starts_at|date:'c' }}" style="display:block;margin-top:6px;font-size:16px;font-weight:800;color:var(--blue-dk)"></span>
       </p>
     </div>
@@ -227,7 +227,7 @@
     </div>
     {% else %}
     <div class="card" style="background:var(--gray2)">
-      <strong><i class="fa-solid fa-lock"></i> No examination is scheduled</strong>
+      <strong><i class="fa-solid fa-lock"></i> No examination is scheduled{% if exam_class %} for {{ exam_class }}{% endif %}</strong>
       <p style="margin:6px 0 0;font-size:13px;font-weight:600;color:#555">The examination opens only on the date and time set by your teacher. You will be notified.</p>
     </div>
     {% endif %}
@@ -248,6 +248,7 @@
     <ul class="rules">
       <li>The examination opens only on the date and time set by your teacher, and you can sit it once per scheduled exam.</li>
       <li>You can only sit the subjects you registered (up to {{ max_subjects }} at a time).</li>
+      {% if exam_class %}<li>Your questions are set by your teachers for your class, <strong>{{ exam_class }}</strong>.</li>{% endif %}
       <li>Each subject has up to {{ per_subject }} questions picked at random, and you get {{ minutes_per_subject }} minutes per subject.</li>
       <li>The timer keeps running even if you refresh or close the page. When it reaches zero your paper is submitted automatically.</li>
       <li>Your answers are saved as you go. Correct answers are shown only after you submit.</li>
@@ -256,7 +257,13 @@
   </div>
 
   {% if not active and exam_state == 'open' %}
-    {% if subjects %}
+    {% if not has_class_level and not is_teacher %}
+    <div class="card empty">
+      <h2>Your class is not set</h2>
+      <p>The examination questions are set per class (SS1, SS2 or SS3). Set your class on your profile, or ask your teacher to do it, then come back.</p>
+      <a class="btn btn-primary" href="{{ profile_url }}">Go to my profile</a>
+    </div>
+    {% elif subjects %}
     <form method="post" action="{% url 'cbt_examination_start' %}" id="startForm">
       {% csrf_token %}
       <div class="card">
@@ -273,7 +280,7 @@
             <input type="checkbox" name="subjects" value="{{ s.name }}" data-q="{{ s.questions }}"
                    {% if s.available == 0 %}disabled{% elif forloop.counter <= max_subjects %}checked{% endif %}>
             <span class="tick"><i class="fa-solid fa-check"></i></span>
-            <span>{{ s.name }}<small>{% if s.available %}{{ s.questions }} questions{% else %}No questions yet{% endif %}</small></span>
+            <span>{{ s.name }}<small>{% if s.available %}{{ s.questions }} questions{% else %}No {{ exam_class }} questions yet{% endif %}</small></span>
           </label>
           {% endfor %}
         </div>

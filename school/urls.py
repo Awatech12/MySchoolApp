@@ -12,6 +12,7 @@ urlpatterns = [
 
     path('open_notify/<int:pk>', views.open_notify, name='open_notify'),
     path('notify', views.notifications, name='notifications'),
+    path('notify/read-all', views.notifications_mark_all_read, name='notifications_mark_all_read'),
     path('follow/<str:username>', views.follow, name='follow'),
 
     # ── CBT Exam ──────────────────────────────────────────────────

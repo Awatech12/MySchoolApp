@@ -33,6 +33,14 @@
   .item b { font-size:14px; display:block; } .item small { color:var(--gray3); font-weight:600; font-size:12px; display:block; margin-top:2px; }
   .chip { display:inline-block; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:800; margin-left:6px; }
   .chip.upcoming { background:var(--blue-lt); color:var(--blue-dk); } .chip.open { background:var(--green-lt); color:var(--green); } .chip.closed { background:var(--gray2); color:var(--gray3); }
+  .classes { display:flex; gap:8px; flex-wrap:wrap; }
+  .classes label { display:flex; align-items:center; gap:7px; border:1.5px solid var(--line); border-radius:10px; padding:8px 14px; font-size:13px; font-weight:800; cursor:pointer; background:#fff; }
+  .classes input { accent-color:var(--blue); width:16px; height:16px; }
+  .classes label:has(input:checked) { border-color:var(--blue); background:var(--blue-lt); color:var(--blue-dk); }
+  .chip.cls { background:var(--dark); color:#fff; }
+  .filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .filters a { border:1.5px solid var(--line); border-radius:999px; padding:4px 12px; font-size:12px; font-weight:800; color:var(--dark); text-decoration:none; background:#fff; }
+  .filters a.on { background:var(--blue); border-color:var(--blue); color:#fff; }
   .empty { text-align:center; padding:20px 8px; color:var(--gray3); font-weight:600; }
 </style>
 </head>
@@ -40,7 +48,7 @@
 {% include 'sidebar.html' %}
 <div class="shell">
   <h1>Exam Schedule</h1>
-  <p class="sub">Students can only start the CBT Examination between the opening and closing time you set here.</p>
+  <p class="sub">Students can only start the CBT Examination between the opening and closing time you set for their class. Each class (SS1, SS2, SS3) can have a different date and time.</p>
   <p><a class="btn btn-ghost btn-sm" href="{% url 'cbt_examination' %}"><i class="fa-solid fa-arrow-left"></i> CBT Examination</a></p>
 
   {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
@@ -51,23 +59,31 @@
       {% csrf_token %}
       <div class="row"><div><label class="f" for="title">Title (optional)</label>
         <input type="text" name="title" id="title" maxlength="150" placeholder="e.g. First Term Examination"></div></div>
+      <div class="row"><div><label class="f">Classes taking this exam</label>
+        <div class="classes">
+          {% for c in class_options %}<label><input type="checkbox" name="classes" value="{{ c }}" {% if c == class_filter %}checked{% endif %}> {{ c }}</label>{% endfor %}
+        </div></div></div>
       <div class="row two">
         <div><label class="f" for="starts_at">Exam opens (date and time)</label>
           <input type="datetime-local" name="starts_at" id="starts_at" required></div>
         <div><label class="f" for="ends_at">Last time students can start</label>
           <input type="datetime-local" name="ends_at" id="ends_at" required></div>
       </div>
-      <p class="sub" style="margin:0 0 12px">Once a student starts, their own timer runs for the full paper. All students are notified when you save.</p>
+      <p class="sub" style="margin:0 0 12px">Once a student starts, their own timer runs for the full paper. Tick one class for its own date and time, or several classes that share the same time. Only the students of the ticked classes are notified.</p>
       <button class="btn btn-primary" type="submit"><i class="fa-solid fa-calendar-check"></i> Schedule examination</button>
     </form>
   </div>
 
   <div class="card">
     <h2><i class="fa-solid fa-list"></i> Scheduled examinations</h2>
+    <div class="filters">
+      <a href="{% url 'cbt_exam_schedule' %}" class="{% if not class_filter %}on{% endif %}">All classes</a>
+      {% for c in class_options %}<a href="?class={{ c }}" class="{% if c == class_filter %}on{% endif %}">{{ c }}</a>{% endfor %}
+    </div>
     {% for s in schedules %}
     <div class="item">
       <div>
-        <b>{{ s.title|default:"CBT Examination" }}<span class="chip {{ s.phase }}">{% if s.phase == 'upcoming' %}Upcoming{% elif s.phase == 'open' %}Open now{% else %}Closed{% endif %}</span></b>
+        <b>{{ s.title|default:"CBT Examination" }}<span class="chip cls">{{ s.class_level|default:"All classes" }}</span><span class="chip {{ s.phase }}">{% if s.phase == 'upcoming' %}Upcoming{% elif s.phase == 'open' %}Open now{% else %}Closed{% endif %}</span></b>
         <small>Opens {{ s.starts_at|date:"D, d M Y, h:i A" }} &middot; closes {{ s.ends_at|date:"D, d M Y, h:i A" }} &middot; {{ s.sat }} student{{ s.sat|pluralize }} finished</small>
       </div>
       <form method="post" action="{% url 'cbt_exam_schedule_delete' s.pk %}" onsubmit="return confirm('Remove this scheduled examination?')">{% csrf_token %}
@@ -75,7 +91,7 @@
       </form>
     </div>
     {% empty %}
-    <div class="empty">No examination scheduled yet. Students cannot sit the exam until you set a date.</div>
+    <div class="empty">No examination scheduled{% if class_filter %} for {{ class_filter }}{% endif %} yet. Students cannot sit the exam until you set a date for their class.</div>
     {% endfor %}
   </div>
 </div>

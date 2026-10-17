@@ -3,18 +3,21 @@ Shared parsing / importing for the CBT Examination question bank (used by the te
 
 Accepted layouts
   * CSV / Excel (.xlsx) with a header row. Columns (names are not case sensitive):
+        class,            <- SS1, SS2 or SS3: the class the question is set for (may be left out when one class is chosen)
         subject, question, option_a, option_b, option_c, option_d, answer, explanation,
         image,            <- file name of a picture shown with this question (uploaded in the same step)
         passage,          <- a label (P1, P2 ...) shared by all questions that use the same information
         passage_title, passage_text, passage_image   <- describe the shared information once, on the first
                                                         question of the group
-    Only question, option_a-d and answer are required ("subject" may be left out when one subject is chosen).
+    Only question, option_a-d and answer are required ("subject" and "class" may be left out when one
+    subject / one class is chosen on the upload form).
   * Text file / pasted text, one question per line, fields separated by "|":
         question | A | B | C | D | answer letter [| explanation]
-    (text lines cannot carry images or passages; use a spreadsheet for those)
+    (the class comes from the upload form; text lines cannot carry images or passages, use a spreadsheet for those)
 """
 import csv
 import io
+import re
 from collections import defaultdict
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -22,6 +25,7 @@ from django.db import transaction
 
 from .models import ExamPassage, ExamQuestion
 
+EXAM_CLASSES = ('SS1', 'SS2', 'SS3')   # the classes that sit the CBT Examination
 MAX_ROWS = 2000
 MAX_IMAGES = 200
 MAX_IMAGE_BYTES = 3 * 1024 * 1024
@@ -30,6 +34,7 @@ IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
 
 _HEADERS = {
     'subject': 'subject',
+    'class': 'class', 'class_level': 'class', 'level': 'class', 'class_name': 'class',
     'question': 'text', 'text': 'text',
     'a': 'a', 'option_a': 'a', 'optiona': 'a',
     'b': 'b', 'option_b': 'b', 'optionb': 'b',
@@ -132,6 +137,13 @@ def rows_from_upload(filename, raw):
 
 # ───────────────────────────── validation ─────────────────────────────
 
+def clean_class(value):
+    """'SS1' / 'SS2' / 'SS3' for labels like ss1, SS 2, SSS3, SS2A, Senior Secondary 1 or 1; None when it is not one of them."""
+    v = re.sub(r'\s+', ' ', (value or '').strip().upper())
+    m = re.match(r'^(?:SSS?|SENIOR(?: SECONDARY)?(?: SCHOOL)?)?\s*-?\s*([123])\s*[A-Z]?$', v)
+    return f'SS{m.group(1)}' if m else None
+
+
 def clean_question(subject, text, a, b, c, d, answer, explanation, valid_subjects):
     """Validate one question. Returns (dict, None) or (None, error message)."""
     canon = {s.lower(): s for s in valid_subjects}
@@ -157,10 +169,11 @@ def clean_question(subject, text, a, b, c, d, answer, explanation, valid_subject
                 answer=ans, explanation=(explanation or '').strip()), None
 
 
-def parse_rows(rows, valid_subjects, default_subject='', images=None):
+def parse_rows(rows, valid_subjects, default_subject='', images=None, default_class=''):
     """
     Turn rows of cells into validated question dicts.
     `images` is the {file name: blob} dict from image_blobs_from_uploads.
+    Every question needs a class (SS1 / SS2): from its own "class" column, else `default_class`.
     Returns (questions, errors); errors is a list of (line number, message).
     """
     images = images or {}
@@ -194,7 +207,7 @@ def parse_rows(rows, valid_subjects, default_subject='', images=None):
             g = lambda k: row[colmap[k]] if k in colmap and colmap[k] < len(row) else ''
             fields = (g('subject') or default_subject, g('text'), g('a'), g('b'), g('c'), g('d'),
                       g('answer'), g('explanation'))
-            extra = {k: g(k) for k in ('image', 'passage', 'passage_title', 'passage_text', 'passage_image')}
+            extra = {k: g(k) for k in ('class', 'image', 'passage', 'passage_title', 'passage_text', 'passage_image')}
         elif default_subject and len(row) in (6, 7):
             fields = (default_subject,) + tuple(row[:6]) + ((row[6],) if len(row) == 7 else ('',))
         elif len(row) in (7, 8):
@@ -208,6 +221,13 @@ def parse_rows(rows, valid_subjects, default_subject='', images=None):
             errors.append((line, err))
             continue
 
+        raw_class = (extra.get('class') or default_class or '').strip()
+        q['class_level'] = clean_class(raw_class)
+        if not q['class_level']:
+            errors.append((line, 'no class given (choose SS1, SS2 or SS3)' if not raw_class
+                           else f'unknown class \"{raw_class[:20]}\" (use SS1, SS2 or SS3)'))
+            continue
+
         q['image_blob'], err = find_image(extra.get('image', ''), line, 'picture')
         if not err:
             q['passage_blob'], err = find_image(extra.get('passage_image', ''), line, 'passage picture')
@@ -217,7 +237,7 @@ def parse_rows(rows, valid_subjects, default_subject='', images=None):
         q.update(passage_key=extra.get('passage', ''), passage_title=extra.get('passage_title', ''),
                  passage_text=extra.get('passage_text', ''), line=line, order=len(questions))
 
-        key = (q['subject_name'], q['text'].lower(), q['a'].lower(), q['b'].lower(), q['c'].lower(), q['d'].lower())
+        key = (q['subject_name'], q['class_level'], q['text'].lower(), q['a'].lower(), q['b'].lower(), q['c'].lower(), q['d'].lower())
         if key in seen:
             errors.append((line, 'duplicate of an earlier line in this file'))
             continue
@@ -232,8 +252,8 @@ def parse_rows(rows, valid_subjects, default_subject='', images=None):
 def import_questions(questions, replace=False):
     """
     Save validated questions. Safe to repeat: a question is identified by its subject, text and options.
-    Questions that share a `passage` label (within one subject) are attached to the same passage.
-    With replace=True, each subject in the file ends up with exactly the uploaded questions
+    Questions that share a `passage` label (within one subject AND class) are attached to the same passage.
+    With replace=True, each subject + class in the file ends up with exactly the uploaded questions
     (papers already taken keep their own snapshot, so results and reviews are unaffected).
     Returns (created, already_present, removed, errors) where errors is a list of (line, message).
     """
@@ -244,17 +264,18 @@ def import_questions(questions, replace=False):
         passage = None
         key = (q.get('passage_key') or '').strip()
         if key:
-            pkey = (q['subject_name'], key.lower())
+            pkey = (q['subject_name'], q['class_level'], key.lower())
             passage = passages.get(pkey)
             if passage is None:
-                passage = ExamPassage.objects.filter(subject_name=q['subject_name'], ref__iexact=key).first()
+                passage = ExamPassage.objects.filter(subject_name=q['subject_name'], class_level=q['class_level'],
+                                                     ref__iexact=key).first()
                 has_content = q.get('passage_text') or q.get('passage_blob')
                 if passage is None and not has_content:
                     errors.append((q.get('line', 0), f'passage "{key}" has no text or picture. '
                                                      'Fill passage_text / passage_image on the first question of the group'))
                     continue
                 if passage is None:
-                    passage = ExamPassage(subject_name=q['subject_name'], ref=key)
+                    passage = ExamPassage(subject_name=q['subject_name'], class_level=q['class_level'], ref=key)
                 if q.get('passage_title'):
                     passage.title = q['passage_title']
                 if q.get('passage_text'):
@@ -264,8 +285,8 @@ def import_questions(questions, replace=False):
                 passage.save()
                 passages[pkey] = passage
 
-        fp = ExamQuestion.make_fingerprint(q['subject_name'], q['text'], q['a'], q['b'], q['c'], q['d'])
-        defaults = dict(subject_name=q['subject_name'], text=q['text'], option_a=q['a'], option_b=q['b'],
+        fp = ExamQuestion.make_fingerprint(q['subject_name'], q['text'], q['a'], q['b'], q['c'], q['d'], q['class_level'])
+        defaults = dict(subject_name=q['subject_name'], class_level=q['class_level'], text=q['text'], option_a=q['a'], option_b=q['b'],
                         option_c=q['c'], option_d=q['d'], answer=q['answer'], is_active=True)
         if q.get('explanation'):
             defaults['explanation'] = q['explanation']
@@ -274,7 +295,7 @@ def import_questions(questions, replace=False):
         if q.get('image_blob'):
             defaults['image'] = _file(q['image_blob'])
         obj, was_created = ExamQuestion.objects.update_or_create(fingerprint=fp, defaults=defaults)
-        ids[q['subject_name']].append(obj.pk)
+        ids[(q['subject_name'], q['class_level'])].append(obj.pk)
         created += was_created
         present += (not was_created)
 
@@ -282,8 +303,9 @@ def import_questions(questions, replace=False):
         transaction.set_rollback(True)      # a replace must never half-apply
         return 0, 0, 0, errors
     if replace:
-        for subject, pks in ids.items():
-            stale = ExamQuestion.objects.filter(subject_name=subject).exclude(pk__in=pks)
+        for (subject, class_level), pks in ids.items():
+            # Only that class's questions are replaced: uploading SS1 never touches SS2.
+            stale = ExamQuestion.objects.filter(subject_name=subject, class_level=class_level).exclude(pk__in=pks)
             removed += stale.count()
             stale.delete()
     return created, present, removed, errors

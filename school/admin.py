@@ -10,8 +10,8 @@ admin.site.register(Notification)
 
 @admin.register(ExamQuestion)
 class ExamQuestionAdmin(admin.ModelAdmin):
-    list_display = ('subject_name', 'short_text', 'answer', 'is_active')
-    list_filter = ('subject_name', 'is_active', 'answer')
+    list_display = ('subject_name', 'class_level', 'short_text', 'answer', 'is_active')
+    list_filter = ('class_level', 'subject_name', 'is_active', 'answer')
     search_fields = ('text',)
     list_editable = ('is_active',)
 
@@ -22,15 +22,15 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(ExamPassage)
 class ExamPassageAdmin(admin.ModelAdmin):
-    list_display = ('subject_name', 'ref', 'title')
-    list_filter = ('subject_name',)
+    list_display = ('subject_name', 'class_level', 'ref', 'title')
+    list_filter = ('class_level', 'subject_name')
     search_fields = ('title', 'text', 'ref')
 
 
 @admin.register(ExamSchedule)
 class ExamScheduleAdmin(admin.ModelAdmin):
-    list_display = ('title', 'starts_at', 'ends_at', 'is_active')
-    list_filter = ('is_active',)
+    list_display = ('title', 'class_level', 'starts_at', 'ends_at', 'is_active')
+    list_filter = ('class_level', 'is_active')
 
 
 @admin.register(ExaminationAttempt)

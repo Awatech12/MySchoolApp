@@ -6,8 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, check_image, clean_question, image_blobs_from_uploads,
-                                import_questions, parse_rows, rows_from_text, rows_from_upload)
+from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, EXAM_CLASSES, check_image, clean_class, clean_question,
+                                image_blobs_from_uploads, import_questions, parse_rows, rows_from_text, rows_from_upload)
 from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
@@ -203,7 +203,7 @@ def _apply_profile_updates(user, profile, data, files):
             if raw_class:
                 norm = _normalize_class_level(raw_class)
                 if not norm:
-                    return 'Class / Level must be a Senior Secondary class (SS1, SS2 or SS3).'
+                    return 'Class / Level must be SS1, SS2 or SS3.'
                 p_updates['class_level'] = norm
             else:
                 p_updates['class_level'] = ''
@@ -416,8 +416,30 @@ def _get_student_level(points):
         return ('Beginner', 1)
 
 
+@never_cache
 def home(request):
-    return render(request, 'home.html')
+    """
+    Home page. Students also get an exam card showing the schedule for THEIR class
+    (SS1 / SS2 / SS3). It stays on the page until the student has finished the scheduled examination.
+    """
+    ctx = {}
+    user = request.user
+    if user.is_authenticated and not _is_teacher(user):
+        _close_expired_examinations(user)            # a paper whose time is up is submitted first
+        active = ExaminationAttempt.objects.filter(student=user, is_submitted=False).first()
+        status = _exam_status(user)
+        state = status['state']
+        # 'done' = finished the current scheduled exam -> hide the card. 'none' = nothing scheduled.
+        if active or state in ('open', 'upcoming', 'closed'):
+            # An upcoming exam shows its own date; the "next" schedule only matters when the last one has passed.
+            shown = status['next'] if state == 'upcoming' else status['schedule']
+            ctx['home_exam'] = {
+                'state': 'active' if active else state,
+                'active': active,
+                'schedule': shown,
+                'exam_class': _exam_class(user),
+            }
+    return render(request, 'home.html', ctx)
 
 
 @login_required
@@ -883,16 +905,51 @@ def follow(request, username):
     return redirect(request.META.get('HTTP_REFERER'))
 
 
+NOTIFICATIONS_PER_PAGE = 30
+
+
+@login_required
+@never_cache
 def notifications(request):
-    return render(request, 'notification.html')
+    """All of the user's notifications, newest first, grouped by day, with an All / Unread filter."""
+    only_unread = request.GET.get('filter') == 'unread'
+    base = Notification.objects.filter(user=request.user)
+    total, unread = base.count(), base.filter(is_read=False).count()
+
+    qs = (base.filter(is_read=False) if only_unread else base).select_related(
+        'class_post', 'class_post__author__profile', 'post', 'post__author__profile')
+    page = Paginator(qs, NOTIFICATIONS_PER_PAGE).get_page(request.GET.get('page'))
+
+    today = timezone.localdate()
+    for n in page:
+        day = _as_local(n.created_at).date()
+        n.group = ('Today' if day == today else 'Yesterday' if day == today - timedelta(days=1)
+                   else 'This week' if day > today - timedelta(days=7) else 'Earlier')
+    return render(request, 'notification.html', {
+        'notif_page': page,
+        'notif_total': total,
+        'notif_unread': unread,
+        'only_unread': only_unread,
+    })
 
 
+@login_required
+@require_POST
+def notifications_mark_all_read(request):
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return redirect('notifications')
+
+
+@login_required
 def open_notify(request, pk):
     notification          = get_object_or_404(Notification, pk=pk, user=request.user)
-    notification.is_read  = True
-    notification.save()
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
     if notification.class_post:
         return redirect('chat_post_detail', post_id=notification.class_post.post_id)
+    if notification.is_exam:
+        return redirect('cbt_examination')
     return redirect('notifications')
 
 
@@ -1170,21 +1227,40 @@ def _exam_registered_subjects(user):
     )
 
 
-def _exam_bank_counts():
-    """{subject_name: number of active questions}"""
+def _exam_class(user):
+    """
+    The class (SS1, SS2 or SS3) a student sits the examination for, from their profile.
+    Returns '' when the profile has no valid class: such a student cannot start an examination.
+    """
+    profile = Profile.objects.filter(user=user).first()
+    norm = _normalize_class_level(profile.class_level) if profile else None
+    base = (norm or '')[:3]
+    return base if base in EXAM_CLASSES else ''
+
+
+def _class_questions(class_level):
+    """
+    Active questions a class may be given: the ones set for that class, plus older questions
+    that were never assigned a class (blank) until a teacher assigns them.
+    """
+    return ExamQuestion.objects.filter(is_active=True).filter(Q(class_level=class_level) | Q(class_level=''))
+
+
+def _exam_bank_counts(class_level):
+    """{subject_name: number of active questions available to this class}"""
     return dict(
-        ExamQuestion.objects.filter(is_active=True)
+        _class_questions(class_level)
         .values_list('subject_name').annotate(n=Count('id'))
     )
 
 
-def _draw_questions(name):
+def _draw_questions(name, class_level):
     """
-    Pick up to EXAM_QUESTIONS_PER_SUBJECT questions for one subject.
+    Pick up to EXAM_QUESTIONS_PER_SUBJECT questions for one subject, set for the student's class.
     Questions that share a passage / diagram are treated as one block: they are all given, together
     and in their set order, or not at all. Blocks and single questions are mixed in random order.
     """
-    pool = list(ExamQuestion.objects.filter(subject_name=name, is_active=True).select_related('passage'))
+    pool = list(_class_questions(class_level).filter(subject_name=name).select_related('passage'))
     groups = {}
     units = []
     for q in pool:
@@ -1205,11 +1281,11 @@ def _draw_questions(name):
     return [q for u in chosen for q in u]
 
 
-def _build_exam_paper(subject_names):
-    """Draw and freeze the questions for a paper. Options are shuffled; keys stay A-D."""
+def _build_exam_paper(subject_names, class_level):
+    """Draw and freeze the questions for a paper (class_level questions only). Options are shuffled; keys stay A-D."""
     paper = []
     for name in subject_names:
-        for q in _draw_questions(name):
+        for q in _draw_questions(name, class_level):
             opts = [['A', q.option_a], ['B', q.option_b], ['C', q.option_c], ['D', q.option_d]]
             random.shuffle(opts)
             p = q.passage
@@ -1283,7 +1359,8 @@ def _finalize_examination(attempt, auto=False):
     cbt_score.recalculate()
 
     # Tell the student they are done until the next scheduled examination.
-    nxt = ExamSchedule.objects.filter(is_active=True, starts_at__gt=now).order_by('starts_at').first()
+    nxt = (_class_schedules(_exam_class(attempt.student))
+           .filter(starts_at__gt=now).order_by('starts_at').first())
     msg = 'You have completed your CBT Examination. '
     msg += (f'Your next examination is on {_fmt_exam_dt(nxt.starts_at)}.' if nxt
             else 'You will be notified when the next examination is scheduled.')
@@ -1295,9 +1372,15 @@ def _fmt_exam_dt(dt):
     return _as_local(dt).strftime('%A, %d %b %Y at %I:%M %p')
 
 
+def _class_schedules(class_level):
+    """Active schedules that apply to a class: its own, plus older ones with no class (they apply to everyone)."""
+    return ExamSchedule.objects.filter(is_active=True).filter(Q(class_level=class_level) | Q(class_level=''))
+
+
 def _exam_status(user):
     """
-    Where the student stands with the scheduled examination. Returns a dict with
+    Where the student stands with the scheduled examination. Only the schedules for the student's own
+    class count, so each class can have its own date and time. Returns a dict with
       state: 'open'     - an exam window is open and the student has not sat it yet
              'done'     - the student already sat the current scheduled exam (wait for the next one)
              'upcoming' - nothing is open now, but an exam is scheduled
@@ -1306,7 +1389,7 @@ def _exam_status(user):
       schedule: the current schedule (open / last started), next: the next future schedule.
     """
     now = timezone.now()
-    live = ExamSchedule.objects.filter(is_active=True)
+    live = _class_schedules(_exam_class(user))
     nxt = live.filter(starts_at__gt=now).order_by('starts_at').first()
     current = live.filter(starts_at__lte=now).order_by('-starts_at').first()
 
@@ -1354,7 +1437,8 @@ def cbt_examination(request):
     user = request.user
     _close_expired_examinations(user)
 
-    counts = _exam_bank_counts()
+    exam_class = _exam_class(user)
+    counts = _exam_bank_counts(exam_class) if exam_class else {}
     subjects = [
         {'name': n, 'available': counts.get(n, 0), 'questions': min(counts.get(n, 0), EXAM_QUESTIONS_PER_SUBJECT)}
         for n in _exam_registered_subjects(user)
@@ -1362,6 +1446,8 @@ def cbt_examination(request):
     status = _exam_status(user)
     return render(request, 'cbt_examination.html', {
         'view_mode': 'home',
+        'exam_class': exam_class,
+        'has_class_level': bool(exam_class),
         'exam_state': status['state'],
         'exam_schedule': status['schedule'],
         'next_schedule': status['next'],
@@ -1389,6 +1475,10 @@ def cbt_examination_start(request):
     registered = _exam_registered_subjects(user)
     chosen = list(dict.fromkeys(s.strip() for s in request.POST.getlist('subjects') if s.strip()))
 
+    exam_class = _exam_class(user)
+    if not exam_class:
+        return back('Your class is not set to SS1, SS2 or SS3 yet, so no questions can be given to you. '
+                    'Please update your class on your profile or ask your teacher.')
     if not registered:
         return back('You have not registered any subjects yet. Register your subjects first, then come back.')
     if not chosen:
@@ -1398,10 +1488,10 @@ def cbt_examination_start(request):
     if len(chosen) > EXAM_MAX_SUBJECTS:
         return back(f'You can sit at most {EXAM_MAX_SUBJECTS} subjects at a time.')
 
-    counts = _exam_bank_counts()
+    counts = _exam_bank_counts(exam_class)
     empty = [s for s in chosen if counts.get(s, 0) < 1]
     if empty:
-        return back('No questions are available yet for: ' + ', '.join(empty) + '. Please untick it and try again.')
+        return back(f'No {exam_class} questions are available yet for: ' + ', '.join(empty) + '. Please untick it and try again.')
 
     with transaction.atomic():
         _close_expired_examinations(user)
@@ -1424,7 +1514,7 @@ def cbt_examination_start(request):
 
         ordered = [s for s in registered if s in chosen]
         attempt = ExaminationAttempt.objects.create(
-            student=user, schedule=status['schedule'], subjects=ordered, paper=_build_exam_paper(ordered), answers={},
+            student=user, schedule=status['schedule'], subjects=ordered, paper=_build_exam_paper(ordered, exam_class), answers={},
             duration_sec=len(ordered) * EXAM_MINUTES_PER_SUBJECT * 60,
         )
     return redirect('cbt_examination_take', attempt_id=attempt.attempt_id)
@@ -1631,48 +1721,75 @@ def _exam_teacher_only(view):
     return wrapper
 
 
-def _bank_redirect(request, subject=''):
+def _bank_redirect(request, subject='', class_level=''):
     nxt = request.POST.get('next', '')
     if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
         return redirect(nxt)
     url = reverse('cbt_question_bank')
-    return redirect(url + ('?' + urlencode({'subject': subject}) if subject else ''))
+    params = {k: v for k, v in (('subject', subject), ('class', class_level)) if v}
+    return redirect(url + ('?' + urlencode(params) if params else ''))
 
 
-def _bank_fail(request, msg, subject=''):
+def _bank_fail(request, msg, subject='', class_level=''):
     messages.error(request, msg)
-    return _bank_redirect(request, subject)
+    return _bank_redirect(request, subject, class_level)
 
 
 @_exam_teacher_only
 @ensure_csrf_cookie
 def cbt_question_bank(request):
-    """Overview of the bank per subject, upload / add forms, passages and a searchable list of questions."""
+    """Overview of the bank per subject and class (SS1 / SS2 / SS3), upload / add forms, passages and a searchable list."""
     subject = request.GET.get('subject', '').strip()
+    class_filter = clean_class(request.GET.get('class', '')) or ('unassigned' if request.GET.get('class') == 'unassigned' else '')
     search = request.GET.get('q', '').strip()
 
-    rows = {r['subject_name']: r for r in ExamQuestion.objects.values('subject_name').annotate(
-        total=Count('id'), active=Count('id', filter=Q(is_active=True)))}
-    stats = [{'name': n, 'active': rows.get(n, {}).get('active', 0), 'total': rows.get(n, {}).get('total', 0)}
-             for n in sorted(SENIOR_SECONDARY_SUBJECTS)]
+    rows = {}
+    for r in ExamQuestion.objects.values('subject_name', 'class_level').annotate(
+            total=Count('id'), active=Count('id', filter=Q(is_active=True))):
+        rows[(r['subject_name'], r['class_level'])] = r
+
+    def cell(name, lvl):
+        r = rows.get((name, lvl), {})
+        return {'active': r.get('active', 0), 'total': r.get('total', 0)}
+
+    stats = []
+    for n in sorted(SENIOR_SECONDARY_SUBJECTS):
+        row = {'name': n, 'unassigned': cell(n, '')}
+        for lvl in EXAM_CLASSES:
+            row[lvl.lower()] = cell(n, lvl)          # row.ss1.active, row.ss2.total ...
+        row['active'] = sum(row[l.lower()]['active'] for l in EXAM_CLASSES) + row['unassigned']['active']
+        row['total'] = sum(row[l.lower()]['total'] for l in EXAM_CLASSES) + row['unassigned']['total']
+        stats.append(row)
+    class_totals = {lvl: sum(r[lvl.lower()]['active'] for r in stats) for lvl in EXAM_CLASSES}
+    unassigned_total = sum(r['unassigned']['total'] for r in stats)
 
     qs = ExamQuestion.objects.select_related('passage')
     if subject:
         qs = qs.filter(subject_name=subject)
+    if class_filter == 'unassigned':
+        qs = qs.filter(class_level='')
+    elif class_filter:
+        qs = qs.filter(class_level=class_filter)
     if search:
         qs = qs.filter(text__icontains=search)
     page = Paginator(qs, EXAM_BANK_PAGE_SIZE).get_page(request.GET.get('page'))
 
     all_passages = list(ExamPassage.objects.annotate(n=Count('questions')).order_by('subject_name', 'id')[:500])
-    shown_passages = [p for p in all_passages if not subject or p.subject_name == subject]
+    shown_passages = [p for p in all_passages
+                      if (not subject or p.subject_name == subject)
+                      and (not class_filter or (p.class_level == '' if class_filter == 'unassigned' else p.class_level == class_filter))]
 
     return render(request, 'cbt_question_bank.html', {
         'stats': stats,
         'subject_names': sorted(SENIOR_SECONDARY_SUBJECTS),
         'page_obj': page,
         'subject': subject,
+        'class_options': list(EXAM_CLASSES),          # ['SS1', 'SS2'] for the class pickers / filter
+        'class_filter': class_filter,                 # 'SS1' / 'SS2' / 'unassigned' / ''
+        'class_totals': class_totals,                 # active questions per class
+        'unassigned_total': unassigned_total,         # older questions with no class yet
         'search': search,
-        'query': urlencode({k: v for k, v in (('subject', subject), ('q', search)) if v}),
+        'query': urlencode({k: v for k, v in (('subject', subject), ('class', class_filter), ('q', search)) if v}),
         'per_subject': EXAM_QUESTIONS_PER_SUBJECT,
         'total_active': sum(r['active'] for r in stats),
         'passages': shown_passages,
@@ -1686,30 +1803,34 @@ def cbt_question_bank(request):
 def cbt_question_upload(request):
     """Import questions from an uploaded CSV / Excel / text file (plus optional pictures), or pasted text."""
     default_subject = request.POST.get('subject', '').strip()
+    raw_class = request.POST.get('class_level', '').strip()
+    default_class = clean_class(raw_class) or ''
     replace = request.POST.get('replace') == 'on'
     upload = request.FILES.get('file')
     pasted = request.POST.get('pasted', '').strip()
 
     if default_subject and default_subject not in SENIOR_SECONDARY_SUBJECTS:
         return _bank_fail(request, 'Please choose a valid subject.')
+    if raw_class and not default_class:
+        return _bank_fail(request, 'Please choose SS1, SS2 or SS3 as the class.', default_subject)
     if not upload and not pasted:
-        return _bank_fail(request, 'Choose a file to upload or paste your questions.', default_subject)
+        return _bank_fail(request, 'Choose a file to upload or paste your questions.', default_subject, default_class)
 
     try:
         if upload:
             if upload.size > EXAM_UPLOAD_MAX_BYTES:
-                return _bank_fail(request, 'That file is too large (limit 2 MB).', default_subject)
+                return _bank_fail(request, 'That file is too large (limit 2 MB).', default_subject, default_class)
             rows = rows_from_upload(upload.name, upload.read())
         else:
             rows = rows_from_text(pasted)
     except ValueError as e:
-        return _bank_fail(request, str(e), default_subject)
+        return _bank_fail(request, str(e), default_subject, default_class)
 
     if len(rows) > EXAM_IMPORT_MAX_ROWS + 1:
-        return _bank_fail(request, f'Too many rows. Please upload at most {EXAM_IMPORT_MAX_ROWS} questions at a time.', default_subject)
+        return _bank_fail(request, f'Too many rows. Please upload at most {EXAM_IMPORT_MAX_ROWS} questions at a time.', default_subject, default_class)
 
     blobs, image_errors = image_blobs_from_uploads(request.FILES.getlist('images'))
-    questions, errors = parse_rows(rows, SENIOR_SECONDARY_SUBJECTS, default_subject, images=blobs)
+    questions, errors = parse_rows(rows, SENIOR_SECONDARY_SUBJECTS, default_subject, images=blobs, default_class=default_class)
     problems = [(0, e) for e in image_errors] + errors
 
     if replace and problems:
@@ -1738,7 +1859,7 @@ def cbt_question_upload(request):
             messages.warning(request, (f'Line {line}: ' if line else '') + msg)
         if len(problems) > 8:
             messages.warning(request, f'…and {len(problems) - 8} more.')
-    return _bank_redirect(request, default_subject)
+    return _bank_redirect(request, default_subject, default_class)
 
 
 def _question_from_post(request):
@@ -1765,6 +1886,10 @@ def _save_question_from_post(request, obj):
         return err
     p = request.POST
 
+    class_level = clean_class(p.get('class_level', ''))
+    if not class_level:
+        return 'choose the class (SS1, SS2 or SS3) this question is set for'
+
     passage = None
     pid = p.get('passage', '').strip()
     if pid:
@@ -1773,6 +1898,8 @@ def _save_question_from_post(request, obj):
             return 'the chosen passage no longer exists'
         if passage.subject_name != data['subject_name']:
             return 'the chosen passage belongs to a different subject'
+        if passage.class_level and passage.class_level != class_level:
+            return f'the chosen passage is set for {passage.class_level}, but this question is for {class_level}'
     try:
         order = max(0, min(int(p.get('order') or 0), 999))
     except ValueError:
@@ -1782,6 +1909,7 @@ def _save_question_from_post(request, obj):
         return err
 
     obj.subject_name, obj.text = data['subject_name'], data['text']
+    obj.class_level = class_level
     obj.option_a, obj.option_b, obj.option_c, obj.option_d = data['a'], data['b'], data['c'], data['d']
     obj.answer, obj.explanation = data['answer'], data['explanation']
     obj.passage, obj.order = passage, (order if passage else 0)
@@ -1802,9 +1930,10 @@ def _save_question_from_post(request, obj):
 def cbt_question_add(request):
     err = _save_question_from_post(request, ExamQuestion())
     if err:
-        return _bank_fail(request, 'Question not saved: ' + err + '.', request.POST.get('subject', ''))
-    messages.success(request, 'Question added.')
-    return _bank_redirect(request, request.POST.get('subject', ''))
+        return _bank_fail(request, 'Question not saved: ' + err + '.', request.POST.get('subject', ''),
+                          request.POST.get('class_level', ''))
+    messages.success(request, 'Question added for ' + (clean_class(request.POST.get('class_level', '')) or '') + '.')
+    return _bank_redirect(request, request.POST.get('subject', ''), clean_class(request.POST.get('class_level', '')) or '')
 
 
 @_exam_teacher_only
@@ -1842,15 +1971,20 @@ def cbt_passage_save(request, pk=None):
     obj = get_object_or_404(ExamPassage, pk=pk) if pk else ExamPassage()
     p = request.POST
     subject = p.get('subject', '').strip()
+    class_level = clean_class(p.get('class_level', '')) or ''
     title, text, ref = p.get('title', '').strip(), p.get('text', '').strip(), p.get('ref', '').strip()
 
     def fail(msg):
-        return _bank_fail(request, 'Passage not saved: ' + msg + '.', subject)
+        return _bank_fail(request, 'Passage not saved: ' + msg + '.', subject, class_level)
 
     if subject not in SENIOR_SECONDARY_SUBJECTS:
         return fail('please choose a subject')
+    if not class_level:
+        return fail('please choose the class (SS1, SS2 or SS3)')
     if pk and obj.subject_name != subject and obj.questions.exists():
         return fail('its questions belong to ' + obj.subject_name + ', so the subject cannot be changed')
+    if pk and obj.class_level != class_level and obj.questions.exclude(class_level=class_level).exists():
+        return fail('some of its questions are set for another class, so the class cannot be changed')
     if len(title) > 150 or len(ref) > 60:
         return fail('the title or reference is too long')
     picture, err = _read_image_upload(request)
@@ -1859,17 +1993,18 @@ def cbt_passage_save(request, pk=None):
     keeps_image = bool(obj.image) and p.get('remove_image') != 'on'
     if not text and not picture and not keeps_image:
         return fail('give it some text or a picture')
-    if ref and ExamPassage.objects.filter(subject_name=subject, ref__iexact=ref).exclude(pk=obj.pk).exists():
-        return fail(f'another passage in {subject} already uses the reference "{ref}"')
+    if ref and ExamPassage.objects.filter(subject_name=subject, class_level=class_level,
+                                          ref__iexact=ref).exclude(pk=obj.pk).exists():
+        return fail(f'another {class_level} passage in {subject} already uses the reference "{ref}"')
 
-    obj.subject_name, obj.title, obj.text, obj.ref = subject, title, text, ref
+    obj.subject_name, obj.class_level, obj.title, obj.text, obj.ref = subject, class_level, title, text, ref
     if picture:
         obj.image = picture
     elif p.get('remove_image') == 'on':
         obj.image = None
     obj.save()
     messages.success(request, 'Passage saved. You can now attach questions to it with "Add a question" or "Edit".')
-    return _bank_redirect(request, subject)
+    return _bank_redirect(request, subject, class_level)
 
 
 @_exam_teacher_only
@@ -1890,14 +2025,15 @@ def cbt_question_template(request):
     resp['Content-Disposition'] = 'attachment; filename="exam_questions_template.csv"'
     resp.write('\ufeff')   # so Excel reads UTF-8 correctly
     w = csv.writer(resp)
-    w.writerow(['subject', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer', 'explanation',
+    w.writerow(['class', 'subject', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer', 'explanation',
                 'image', 'passage', 'passage_title', 'passage_text', 'passage_image'])
-    w.writerow(['Mathematics', 'Solve for x: 3x - 7 = 11', '6', '4', '5', '18', 'A', '3x = 18, so x = 6', '', '', '', '', ''])
-    w.writerow(['Physics', 'The diagram shows a simple circuit. What is the reading of the ammeter?', '1 A', '2 A', '3 A', '6 A', 'B', '', 'circuit1.png', '', '', '', ''])
-    w.writerow(['Geography', 'Which feature is marked X on the map?', 'A delta', 'A lagoon', 'A plateau', 'A spit', 'A', '', '', 'MAP1', 'Map of a coastline', '', 'coast_map.png'])
-    w.writerow(['Geography', 'Which of the places marked on the map is a port?', 'P', 'Q', 'R', 'S', 'C', '', '', 'MAP1', '', '', ''])
-    w.writerow(['English Language', 'According to the passage, why did Ade return home?', 'He was sick', 'He was tired', 'He lost his job', 'He missed his family', 'D', '', '', 'P1', 'Comprehension passage', 'Write or paste the whole passage here...', ''])
-    w.writerow(['English Language', 'The word "reluctantly" in the passage means', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', 'P1', '', '', ''])
+    w.writerow(['SS1', 'Mathematics', 'Solve for x: 3x - 7 = 11', '6', '4', '5', '18', 'A', '3x = 18, so x = 6', '', '', '', '', ''])
+    w.writerow(['SS2', 'Physics', 'The diagram shows a simple circuit. What is the reading of the ammeter?', '1 A', '2 A', '3 A', '6 A', 'B', '', 'circuit1.png', '', '', '', ''])
+    w.writerow(['SS2', 'Geography', 'Which feature is marked X on the map?', 'A delta', 'A lagoon', 'A plateau', 'A spit', 'A', '', '', 'MAP1', 'Map of a coastline', '', 'coast_map.png'])
+    w.writerow(['SS2', 'Geography', 'Which of the places marked on the map is a port?', 'P', 'Q', 'R', 'S', 'C', '', '', 'MAP1', '', '', ''])
+    w.writerow(['SS1', 'English Language', 'According to the passage, why did Ade return home?', 'He was sick', 'He was tired', 'He lost his job', 'He missed his family', 'D', '', '', 'P1', 'Comprehension passage', 'Write or paste the whole passage here...', ''])
+    w.writerow(['SS1', 'English Language', 'The word "reluctantly" in the passage means', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', 'P1', '', '', ''])
+    w.writerow(['SS3', 'English Language', 'Choose the word nearest in meaning to "reluctantly"', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', '', '', '', ''])
     return resp
 
 
@@ -1922,42 +2058,68 @@ def _parse_local_datetime(value):
 @_exam_teacher_only
 @ensure_csrf_cookie
 def cbt_exam_schedule(request):
-    """List the scheduled examinations and create a new one."""
+    """List the scheduled examinations and create new ones, one window per class (SS1 / SS2 / SS3)."""
     now = timezone.now()
     if request.method == 'POST':
         title = ' '.join((request.POST.get('title') or '').split())[:150]
         starts = _parse_local_datetime(request.POST.get('starts_at'))
         ends = _parse_local_datetime(request.POST.get('ends_at'))
+        picked = [clean_class(c) for c in request.POST.getlist('classes')]
+        classes = [c for c in EXAM_CLASSES if c in picked]          # keeps SS1, SS2, SS3 order, no duplicates
 
         err = None
-        if not starts or not ends:
+        if not classes or None in picked:
+            err = 'Please choose at least one class (SS1, SS2 or SS3) for this examination.'
+        elif not starts or not ends:
             err = 'Please set both the date and time the exam opens and the time it closes.'
         elif ends <= starts:
             err = 'The closing time must be after the opening time.'
         elif ends <= now:
             err = 'The closing time is already in the past.'
-        elif ExamSchedule.objects.filter(is_active=True, starts_at__lt=ends, ends_at__gt=starts).exists():
-            err = 'That time overlaps another scheduled examination.'
+        else:
+            for c in classes:
+                # A class cannot have two exams at the same time (older class-less schedules count for every class).
+                if _class_schedules(c).filter(starts_at__lt=ends, ends_at__gt=starts).exists():
+                    err = f'{c} already has an examination scheduled that overlaps that time.'
+                    break
 
         if err:
             messages.error(request, err)
             return redirect('cbt_exam_schedule')
 
-        sched = ExamSchedule.objects.create(title=title, starts_at=starts, ends_at=ends, created_by=request.user)
-        msg = (f'{sched.title or "CBT Examination"} is scheduled for {_fmt_exam_dt(starts)}. '
-               f'You can start it any time until {_fmt_exam_dt(ends)}.')
-        students = User.objects.filter(is_active=True, is_staff=False, is_superuser=False).values_list('pk', flat=True)
-        Notification.objects.bulk_create([Notification(user_id=uid, message=msg) for uid in students], batch_size=500)
-        messages.success(request, 'Examination scheduled. Students have been notified.')
+        # Students of each class, by the class on their profile (SS2A counts as SS2).
+        by_class = {c: [] for c in classes}
+        for uid, lvl in (Profile.objects.filter(user__is_active=True, user__is_staff=False, user__is_superuser=False)
+                         .values_list('user_id', 'class_level')):
+            norm = (_normalize_class_level(lvl) or '')[:3]
+            if norm in by_class:
+                by_class[norm].append(uid)
+
+        with transaction.atomic():
+            for c in classes:
+                sched = ExamSchedule.objects.create(title=title, class_level=c, starts_at=starts, ends_at=ends,
+                                                    created_by=request.user)
+                msg = (f'{sched.title or "CBT Examination"} for {c} is scheduled for {_fmt_exam_dt(starts)}. '
+                       f'You can start it any time until {_fmt_exam_dt(ends)}.')
+                Notification.objects.bulk_create([Notification(user_id=uid, message=msg) for uid in by_class[c]],
+                                                 batch_size=500)
+        messages.success(request, 'Examination scheduled for ' + ', '.join(classes) + '. Students of ' +
+                         ('that class have' if len(classes) == 1 else 'those classes have') + ' been notified.')
         return redirect('cbt_exam_schedule')
 
-    schedules = list(ExamSchedule.objects.annotate(
+    class_filter = clean_class(request.GET.get('class', '')) or ''
+    qs = ExamSchedule.objects.all()
+    if class_filter:
+        qs = qs.filter(Q(class_level=class_filter) | Q(class_level=''))
+    schedules = list(qs.annotate(
         sat=Count('attempts', filter=Q(attempts__is_submitted=True), distinct=True))[:50])
     for s in schedules:
         s.phase = ('off' if not s.is_active else 'upcoming' if s.starts_at > now
                    else 'open' if s.ends_at > now else 'closed')
     return render(request, 'cbt_exam_schedule.html', {
         'schedules': schedules,
+        'class_options': list(EXAM_CLASSES),
+        'class_filter': class_filter,
         'profile_url': reverse('profile', args=[request.user.username]),
     })
 

@@ -212,6 +212,56 @@ class Notification(models.Model):
     def __str__(self):
         return f"Notif → {self.user.username}: {self.message[:50]}"
 
+    # kind -> (label shown on the page, Font Awesome icon). No database column is needed:
+    # the kind is worked out from the message text the app writes.
+    KIND_META = {
+        'exam_scheduled': ('Exam scheduled',   'fa-calendar-check'),
+        'exam_done':      ('Exam completed',   'fa-circle-check'),
+        'answer':         ('New answer',       'fa-comment-dots'),
+        'saved_answer':   ('Saved question',   'fa-bookmark'),
+        'accepted':       ('Answer accepted',  'fa-award'),
+        'like':           ('New like',         'fa-heart'),
+        'report':         ('Report',           'fa-flag'),
+        'follow':         ('New follower',     'fa-user-plus'),
+        'comment':        ('Comment',          'fa-comment'),
+        'general':        ('Notification',     'fa-bell'),
+    }
+
+    @property
+    def kind(self):
+        m = (self.message or '').lower()
+        if 'is scheduled for' in m and 'you can start it' in m:
+            return 'exam_scheduled'
+        if m.startswith('you have completed your'):
+            return 'exam_done'
+        if 'was reported on' in m:
+            return 'report'
+        if 'answer was accepted' in m:
+            return 'accepted'
+        if 'answered your question' in m:
+            return 'answer'
+        if 'on a question you saved' in m:
+            return 'saved_answer'
+        if ' liked ' in m:
+            return 'like'
+        if 'follow' in m:
+            return 'follow'
+        if any(w in m for w in ('replied', 'comment', 'image', 'audio')):
+            return 'comment'
+        return 'general'
+
+    @property
+    def kind_label(self):
+        return self.KIND_META[self.kind][0]
+
+    @property
+    def kind_icon(self):
+        return self.KIND_META[self.kind][1]
+
+    @property
+    def is_exam(self):
+        return self.kind in ('exam_scheduled', 'exam_done')
+
 
 # Live Video Models
 class LiveSession(models.Model):
@@ -688,6 +738,10 @@ def _exam_image_url(f):
         return ''
 
 
+# The school's Senior Secondary classes that sit the CBT Examination.
+EXAM_CLASS_CHOICES = [('SS1', 'SS1'), ('SS2', 'SS2'), ('SS3', 'SS3')]
+
+
 class ExamPassage(models.Model):
     """
     Shared information for a group of questions: a comprehension passage, a data table, a map,
@@ -695,6 +749,8 @@ class ExamPassage(models.Model):
     "Use the information below to answer questions X to Y", and its questions are always given together.
     """
     subject_name = models.CharField(max_length=100, db_index=True)
+    # Class this passage is set for. Blank only on passages made before classes existed.
+    class_level  = models.CharField(max_length=3, choices=EXAM_CLASS_CHOICES, blank=True, default='', db_index=True)
     # Optional label teachers use in spreadsheets to attach questions to this passage (e.g. P1).
     ref          = models.CharField(max_length=60, blank=True)
     title        = models.CharField(max_length=150, blank=True)
@@ -703,14 +759,14 @@ class ExamPassage(models.Model):
     created_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['subject_name', 'id']
+        ordering = ['subject_name', 'class_level', 'id']
 
     @property
     def image_url(self):
         return _exam_image_url(self.image)
 
     def __str__(self):
-        return f"[{self.subject_name}] {self.title or self.text[:50] or 'Passage %s' % self.pk}"
+        return f"[{self.subject_name} {self.class_level or 'all'}] {self.title or self.text[:50] or 'Passage %s' % self.pk}"
 
 
 class ExamQuestion(models.Model):
@@ -724,6 +780,9 @@ class ExamQuestion(models.Model):
     ANSWER_CHOICES = [('A', 'A'), ('B', 'B'), ('C', 'C'), ('D', 'D')]
 
     subject_name = models.CharField(max_length=100, db_index=True)
+    # Class the teacher set this question for (SS1, SS2 or SS3). Questions saved before classes existed
+    # are blank and are given to every class until a teacher assigns them.
+    class_level  = models.CharField(max_length=3, choices=EXAM_CLASS_CHOICES, blank=True, default='', db_index=True)
     text         = models.TextField()
     option_a     = models.CharField(max_length=300)
     option_b     = models.CharField(max_length=300)
@@ -742,16 +801,22 @@ class ExamQuestion(models.Model):
     created_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['subject_name', 'id']
+        ordering = ['subject_name', 'class_level', 'id']
 
     @staticmethod
-    def make_fingerprint(subject_name, text, a, b, c, d):
-        raw = '\x1f'.join([subject_name, text, a, b, c, d]).strip().lower()
+    def make_fingerprint(subject_name, text, a, b, c, d, class_level=''):
+        parts = [subject_name, text, a, b, c, d]
+        if class_level:
+            # Only added when set, so fingerprints of older (class-less) questions do not change.
+            # The same question may therefore exist once for SS1 and once for SS2.
+            parts.append(class_level)
+        raw = '\x1f'.join(parts).strip().lower()
         return hashlib.sha1(raw.encode('utf-8')).hexdigest()
 
     def save(self, *args, **kwargs):
         self.fingerprint = self.make_fingerprint(
-            self.subject_name, self.text, self.option_a, self.option_b, self.option_c, self.option_d)
+            self.subject_name, self.text, self.option_a, self.option_b, self.option_c, self.option_d,
+            self.class_level)
         super().save(*args, **kwargs)
 
     @property
@@ -759,17 +824,20 @@ class ExamQuestion(models.Model):
         return _exam_image_url(self.image)
 
     def __str__(self):
-        return f"[{self.subject_name}] {self.text[:60]}"
+        return f"[{self.subject_name} {self.class_level or 'all'}] {self.text[:60]}"
 
 
 class ExamSchedule(models.Model):
     """
-    A date and time window set by the admin/teacher during which students may start the
-    CBT Examination. Outside every window the examination is locked.
+    A date and time window set by the admin/teacher during which students of ONE class may start
+    the CBT Examination, so each class (SS1 / SS2 / SS3) can be given its own date and time.
+    Outside every window the examination is locked.
     A student can sit the exam once per schedule; after that they are told they are done
     until the next schedule opens.
+    A blank class_level (schedules made before classes existed) applies to every class.
     """
     title      = models.CharField(max_length=150, blank=True)
+    class_level = models.CharField(max_length=3, choices=EXAM_CLASS_CHOICES, blank=True, default='', db_index=True)
     starts_at  = models.DateTimeField()                    # the exam opens
     ends_at    = models.DateTimeField()                    # last moment a student can START the exam
     is_active  = models.BooleanField(default=True)
@@ -780,7 +848,7 @@ class ExamSchedule(models.Model):
         ordering = ['-starts_at']
 
     def __str__(self):
-        return f"{self.title or 'CBT Examination'} – {self.starts_at:%Y-%m-%d %H:%M}"
+        return f"{self.title or 'CBT Examination'} ({self.class_level or 'all classes'}) – {self.starts_at:%Y-%m-%d %H:%M}"
 
 
 class ExaminationAttempt(models.Model):

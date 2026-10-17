@@ -13,7 +13,10 @@
   <style>
     body {
       background-color: #ffffff;
+      font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
+    .aw-notif-wrapper a:hover { text-decoration: none; }
 
     /* ── Page wrapper ── */
     .aw-notif-wrapper {
@@ -40,7 +43,7 @@
     .aw-notif-page-title {
       font-size: 18px;
       font-weight: 700;
-      color: #0f0f0f;
+      color: #262626;
       margin: 0;
       display: flex;
       align-items: center;
@@ -50,7 +53,7 @@
     .aw-notif-page-title .aw-notif-icon {
       width: 32px;
       height: 32px;
-      background: #fff7ed;
+      background: #e8f4fd;
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -63,7 +66,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #f97316;
+      background: #0074cc;
       color: #fff;
       font-size: 10px;
       font-weight: 700;
@@ -101,7 +104,7 @@
 
     /* Read notifications appear dimmed */
     .aw-notif-item:not(.unread) .aw-notif-message {
-      color: #606060;
+      color: #737373;
       font-weight: 400;
     }
     .aw-notif-item:not(.unread) .aw-notif-avatar {
@@ -118,7 +121,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #f97316;
+      background: #0095f6;
     }
 
     /* ── Avatar ── */
@@ -148,10 +151,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 8px;
+      font-size: 9px;
     }
 
-    .aw-notif-type-badge.type-comment  { background: #f97316; color: #fff; }
+    .aw-notif-type-badge.type-comment  { background: #0074cc; color: #fff; }
     .aw-notif-type-badge.type-like     { background: #ef4444; color: #fff; }
     .aw-notif-type-badge.type-follow   { background: #3b82f6; color: #fff; }
     .aw-notif-type-badge.type-default  { background: #a3a3a3; color: #fff; }
@@ -165,7 +168,7 @@
     .aw-notif-message {
       font-size: 13px;
       font-weight: 500;
-      color: #0f0f0f;
+      color: #262626;
       line-height: 1.45;
       margin: 0 0 4px;
       /* Allow long words to break */
@@ -181,21 +184,91 @@
 
     .aw-notif-time {
       font-size: 11px;
-      color: #909090;
+      color: #737373;
       font-weight: 500;
     }
 
     .aw-notif-post-snippet {
       font-size: 11px;
-      color: #606060;
-      background: #f5f5f5;
-      border-radius: 4px;
+      color: #0074cc;
+      background: #e8f4fd;
+      border-radius: 6px;
       padding: 1px 6px;
       max-width: 160px;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
+
+
+    /* ── Header actions / tabs ── */
+    .aw-notif-actions { display:flex; align-items:center; gap:8px; }
+    .aw-notif-markall {
+      border: 1.5px solid #efefef; background:#fff; color:#262626; border-radius:999px;
+      padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;
+      display:inline-flex; align-items:center; gap:6px; font-family:inherit;
+    }
+    .aw-notif-markall:hover { background:#fafafa; }
+    .aw-notif-tabs { display:flex; gap:6px; margin-bottom:12px; }
+    .aw-notif-tabs a {
+      text-decoration:none; font-size:12px; font-weight:700; color:#737373;
+      border:1.5px solid #efefef; border-radius:999px; padding:5px 14px; background:#fff;
+    }
+    .aw-notif-tabs a.on { background:#0074cc; border-color:#0074cc; color:#fff; }
+    .aw-notif-tabs a span { opacity:.85; margin-left:3px; }
+
+    /* ── Day group heading ── */
+    .aw-notif-group {
+      font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+      color:#737373; padding:14px 16px 4px;
+    }
+
+    /* ── Big type icon (used when there is no user avatar: exams, reports, general) ── */
+    .aw-notif-bigicon {
+      width:42px; height:42px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center; font-size:17px;
+    }
+    .aw-notif-item:not(.unread) .aw-notif-bigicon { opacity:.65; }
+
+    /* ── Colours per notification type ── */
+    .k-exam_scheduled { background:#0074cc; color:#fff; }
+    .k-exam_done      { background:#e8f8ee; color:#16a34a; }
+    .k-answer         { background:#e8f4fd; color:#0074cc; }
+    .k-saved_answer   { background:#fef3c7; color:#b45309; }
+    .k-accepted       { background:#e8f8ee; color:#16a34a; }
+    .k-like           { background:#fee2e2; color:#ef4444; }
+    .k-report         { background:#fee2e2; color:#b91c1c; }
+    .k-follow         { background:#e8f4fd; color:#0095f6; }
+    .k-comment        { background:#e8f4fd; color:#0074cc; }
+    .k-general        { background:#f0f0f0; color:#737373; }
+    .aw-notif-type-badge.k-answer, .aw-notif-type-badge.k-comment { background:#0074cc; color:#fff; }
+    .aw-notif-type-badge.k-like     { background:#ef4444; color:#fff; }
+    .aw-notif-type-badge.k-follow   { background:#0095f6; color:#fff; }
+    .aw-notif-type-badge.k-accepted { background:#16a34a; color:#fff; }
+    .aw-notif-type-badge.k-saved_answer { background:#b45309; color:#fff; }
+    .aw-notif-type-badge.k-report   { background:#b91c1c; color:#fff; }
+
+    /* ── Text extras ── */
+    .aw-notif-kind {
+      font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+      margin:0 0 2px; display:flex; align-items:center; gap:6px;
+    }
+    .aw-notif-new { background:#0074cc; color:#fff; border-radius:999px; padding:1px 7px; font-size:9px; letter-spacing:.03em; }
+    .aw-notif-chip {
+      font-size:11px; font-weight:700; color:#0074cc; background:#e8f4fd; border-radius:6px; padding:1px 8px;
+      max-width:200px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    .aw-notif-go { align-self:center; color:#c4c4c4; font-size:12px; flex-shrink:0; }
+    .aw-notif-item:hover .aw-notif-go { color:#0074cc; }
+
+    /* ── Pagination ── */
+    .aw-notif-pager { display:flex; justify-content:center; gap:10px; padding:16px 0 0; }
+    .aw-notif-pager a {
+      text-decoration:none; font-size:12px; font-weight:700; color:#262626;
+      border:1.5px solid #efefef; border-radius:999px; padding:6px 16px;
+    }
+    .aw-notif-pager a:hover { background:#fafafa; }
+    .aw-notif-pager span { align-self:center; font-size:12px; color:#737373; font-weight:600; }
 
     /* ── Empty state ── */
     .aw-notif-empty {
@@ -212,7 +285,8 @@
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      background: #f5f5f5;
+      background: #e8f4fd;
+      color: #0074cc;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -222,13 +296,13 @@
     .aw-notif-empty h3 {
       font-size: 15px;
       font-weight: 600;
-      color: #0f0f0f;
+      color: #262626;
       margin: 0;
     }
 
     .aw-notif-empty p {
       font-size: 13px;
-      color: #909090;
+      color: #737373;
       margin: 0;
     }
   </style>
@@ -240,78 +314,98 @@
   <!-- Page header -->
   <div class="aw-notif-page-header">
     <h1 class="aw-notif-page-title">
-      <span class="aw-notif-icon">🔔</span>
+      <span class="aw-notif-icon" style="color:#0074cc"><i class="fa-solid fa-bell"></i></span>
       Notifications
-      {% if unread_count %}
-        <span class="aw-notif-count-badge">{{ unread_count }}</span>
+      {% if notif_unread %}
+        <span class="aw-notif-count-badge">{{ notif_unread }}</span>
       {% endif %}
     </h1>
+    {% if notif_unread %}
+    <form method="post" action="{% url 'notifications_mark_all_read' %}" class="aw-notif-actions">
+      {% csrf_token %}
+      <button type="submit" class="aw-notif-markall"><i class="fa-solid fa-check-double"></i> Mark all as read</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- All / Unread -->
+  <div class="aw-notif-tabs">
+    <a href="{% url 'notifications' %}" class="{% if not only_unread %}on{% endif %}">All <span>{{ notif_total }}</span></a>
+    <a href="?filter=unread" class="{% if only_unread %}on{% endif %}">Unread <span>{{ notif_unread }}</span></a>
   </div>
 
   <!-- Notification list -->
   <div class="aw-notif-card">
 
-    {% for n in notifications %}
+    {% for n in notif_page %}
+
+      {% ifchanged n.group %}<div class="aw-notif-group">{{ n.group }}</div>{% endifchanged %}
 
       <a href="{% url 'open_notify' n.id %}" class="aw-notif-item{% if not n.is_read %} unread{% endif %}">
 
-        <!-- Avatar -->
+        <!-- Icon / avatar -->
         <div class="aw-notif-avatar-wrap">
-          {% if n.class_post and n.class_post.author.profile.get_picture_url %}
-            <img
-              src="{{ n.class_post.author.profile.get_picture_url }}"
-              alt="{{ n.class_post.author.username }}"
-              class="aw-notif-avatar"
-              loading="lazy">
+          {% if n.class_post and n.kind != 'report' %}
+            <img src="{{ n.class_post.author.profile.get_picture_url }}"
+                 alt="{{ n.class_post.author.username }}" class="aw-notif-avatar" loading="lazy">
+            <span class="aw-notif-type-badge k-{{ n.kind }}"><i class="fas {{ n.kind_icon }}"></i></span>
           {% elif n.post and n.post.author.profile.get_picture_url %}
-            <img
-              src="{{ n.post.author.profile.get_picture_url }}"
-              alt="{{ n.post.author.username }}"
-              class="aw-notif-avatar"
-              loading="lazy">
+            <img src="{{ n.post.author.profile.get_picture_url }}"
+                 alt="{{ n.post.author.username }}" class="aw-notif-avatar" loading="lazy">
+            <span class="aw-notif-type-badge k-{{ n.kind }}"><i class="fas {{ n.kind_icon }}"></i></span>
           {% else %}
-            <img
-              src="https://placehold.co/42x42/f5f5f5/a3a3a3?text=?"
-              alt="User"
-              class="aw-notif-avatar">
-          {% endif %}
-
-          {# ── Type badge ── #}
-          {% if "replied" in n.message|lower or "comment" in n.message|lower or "image" in n.message|lower or "audio" in n.message|lower %}
-            <span class="aw-notif-type-badge type-comment"><i class="fas fa-comment"></i></span>
-          {% elif "like" in n.message|lower %}
-            <span class="aw-notif-type-badge type-like"><i class="fas fa-heart"></i></span>
-          {% elif "follow" in n.message|lower %}
-            <span class="aw-notif-type-badge type-follow"><i class="fas fa-user-plus"></i></span>
-          {% else %}
-            <span class="aw-notif-type-badge type-default"><i class="fas fa-bell"></i></span>
+            <div class="aw-notif-bigicon k-{{ n.kind }}"><i class="fas {{ n.kind_icon }}"></i></div>
           {% endif %}
         </div>
 
         <!-- Text -->
         <div class="aw-notif-body">
+          <p class="aw-notif-kind k-{{ n.kind }}" style="background:none">
+            {{ n.kind_label }}
+            {% if not n.is_read %}<span class="aw-notif-new">New</span>{% endif %}
+          </p>
           <p class="aw-notif-message">{{ n.message }}</p>
           <div class="aw-notif-meta">
-            <span class="aw-notif-time">{{ n.created_at|naturaltime }}</span>
-            {% if n.post and n.post.about %}
-              <span class="aw-notif-post-snippet">{{ n.post.about|truncatechars:30 }}</span>
+            <span class="aw-notif-time" title="{{ n.created_at|date:'D, d M Y, h:i A' }}">
+              <i class="fa-regular fa-clock"></i> {{ n.created_at|naturaltime }}
+            </span>
+            {% if n.is_exam %}
+              <span class="aw-notif-chip"><i class="fa-solid fa-laptop-file"></i> CBT Examination</span>
+            {% elif n.class_post %}
+              <span class="aw-notif-chip">{{ n.class_post.subject|default:"General" }}{% if n.class_post.class_level %} &middot; {{ n.class_post.class_level }}{% endif %}</span>
+            {% elif n.post and n.post.about %}
+              <span class="aw-notif-chip">{{ n.post.about|truncatechars:30 }}</span>
             {% endif %}
           </div>
         </div>
 
+        <i class="fa-solid fa-chevron-right aw-notif-go"></i>
       </a>
 
     {% empty %}
 
       <div class="aw-notif-empty">
-        <div class="aw-notif-empty-icon">🔔</div>
-        <h3>All caught up!</h3>
-        <p>No new notifications right now.</p>
+        <div class="aw-notif-empty-icon"><i class="fa-regular fa-bell"></i></div>
+        {% if only_unread %}
+          <h3>No unread notifications</h3>
+          <p>You have read everything. <a href="{% url 'notifications' %}" style="color:#0074cc;font-weight:700">See all notifications</a></p>
+        {% else %}
+          <h3>All caught up!</h3>
+          <p>Exam dates, answers to your questions and likes will show up here.</p>
+        {% endif %}
       </div>
 
     {% endfor %}
 
   </div><!-- /.aw-notif-card -->
+
+  {% if notif_page.has_other_pages %}
+  <div class="aw-notif-pager">
+    {% if notif_page.has_previous %}<a href="?page={{ notif_page.previous_page_number }}{% if only_unread %}&filter=unread{% endif %}">&larr; Newer</a>{% endif %}
+    <span>Page {{ notif_page.number }} of {{ notif_page.paginator.num_pages }}</span>
+    {% if notif_page.has_next %}<a href="?page={{ notif_page.next_page_number }}{% if only_unread %}&filter=unread{% endif %}">Older &rarr;</a>{% endif %}
+  </div>
+  {% endif %}
 
 </div><!-- /.aw-notif-wrapper -->
 
