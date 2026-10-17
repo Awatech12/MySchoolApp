@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction, IntegrityError
+from django.utils import timezone as dj_timezone
 from cloudinary.models import CloudinaryField
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -40,6 +41,10 @@ class Profile(models.Model):
     student_category = models.CharField(max_length=10, choices=STUDENT_CATEGORY_CHOICES, blank=True)
     career_goal = models.CharField(max_length=100, blank=True)  # "What I want to become" e.g. Doctor, Nurse, Engineer
 
+    # Student admission number, e.g. TMTC/2026/S/001. Stored so it never changes once issued.
+    # Only students get one (never admins/teachers); it is issued as soon as a department is set.
+    admission_no = models.CharField(max_length=30, unique=True, null=True, blank=True, editable=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -62,22 +67,67 @@ class Profile(models.Model):
         if self.career_goal:
             self.career_goal = self.career_goal.strip().title()
         self.user.save()
-        super().save(*args, **kwargs)
+        issue = not self.admission_no and bool(self.department_initial) and self.is_student_account
+        if issue:
+            self.admission_no = self._next_admission_no()
+        for attempt in range(5):
+            try:
+                with transaction.atomic():
+                    super().save(*args, **kwargs)
+                break
+            except IntegrityError:
+                # two students were numbered at the same moment: take the next free serial
+                if not issue or attempt == 4:
+                    raise
+                self.admission_no = self._next_admission_no()
 
     def __str__(self):
         return self.user.username
 
     @property
-    def admission_number(self):
-        """
-        Admission number, generated automatically from the moment the student
-        registers: TMTC/<year joined>/<4-digit student number>, e.g. TMTC/2026/0007.
-        Computed from the join year and the unique user id, so it never changes,
-        is unique per student, and needs no database migration.
-        """
+    def department_initial(self):
+        """First letter of the student's department (Science -> S, Arts -> A, Commercial -> C)."""
+        return (self.specialization or '').strip()[:1].upper()
+
+    @property
+    def is_student_account(self):
+        """Admins/staff and teachers are not students and never get an admission number."""
+        u = self.user
+        if u.is_staff or u.is_superuser:
+            return False
+        return not TeacherProfile.objects.filter(user_id=u.pk).exists()
+
+    def _next_admission_no(self):
+        """Next serial for this year + department: TMTC/2026/S/001, 002, ... (A for Arts, C for Commercial)."""
         from django.utils import timezone
         year = self.created_at.year if self.created_at else timezone.now().year
-        return f'TMTC/{year}/{self.user_id:04d}'
+        prefix = f'TMTC/{year}/{self.department_initial}/'
+        last = 0
+        for n in Profile.objects.filter(admission_no__startswith=prefix).values_list('admission_no', flat=True):
+            try:
+                last = max(last, int(n[len(prefix):]))
+            except ValueError:
+                pass
+        return f'{prefix}{last + 1:03d}'
+
+    @classmethod
+    def backfill_admission_numbers(cls):
+        """Number existing students who have a department but no admission number yet (oldest first)."""
+        for p in cls.objects.filter(admission_no__isnull=True).exclude(specialization='').select_related('user').order_by('created_at', 'pk'):
+            p.save()          # save() issues the next serial for students; admins/teachers are skipped
+
+    @property
+    def admission_number(self):
+        """
+        Student admission number, numbered serially per department and year:
+        Science TMTC/2026/S/001, 002 ... | Arts TMTC/2026/A/001 ... | Commercial TMTC/2026/C/001 ...
+        Issued once (when the student's department is set) and never changes afterwards.
+        Admins and teachers have NO admission number: returns ''. A student with no
+        department yet has none either, until a department is chosen.
+        """
+        if not self.is_student_account:
+            return ''
+        return self.admission_no or ''
 
     @property
     def get_picture_url(self):
@@ -224,12 +274,15 @@ class Notification(models.Model):
         'report':         ('Report',           'fa-flag'),
         'follow':         ('New follower',     'fa-user-plus'),
         'comment':        ('Comment',          'fa-comment'),
+        'announcement':   ('Announcement',     'fa-bullhorn'),
         'general':        ('Notification',     'fa-bell'),
     }
 
     @property
     def kind(self):
         m = (self.message or '').lower()
+        if m.startswith('new announcement'):
+            return 'announcement'
         if 'is scheduled for' in m and 'you can start it' in m:
             return 'exam_scheduled'
         if m.startswith('you have completed your'):
@@ -261,6 +314,42 @@ class Notification(models.Model):
     @property
     def is_exam(self):
         return self.kind in ('exam_scheduled', 'exam_done')
+
+
+class Announcement(models.Model):
+    """
+    Posted by an admin or teacher. Who sees it depends on the audience:
+      class blank + department blank  -> general (every student)
+      class SS1/SS2/SS3               -> that class only
+      department Science/Arts/Commercial -> that department only
+      both                            -> e.g. only Science SS2 students
+    """
+    CLASS_CHOICES = [('SS1', 'SS1'), ('SS2', 'SS2'), ('SS3', 'SS3')]
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    audience_class = models.CharField(max_length=3, blank=True, choices=CLASS_CHOICES)
+    audience_dept = models.CharField(max_length=20, blank=True, choices=Profile.SPECIALIZATION_CHOICES)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='announcements')
+    created_at = models.DateTimeField(auto_now_add=True)
+    # Auto post: students see it (and are notified) from this moment. Default = right away.
+    publish_at = models.DateTimeField(default=dj_timezone.now, db_index=True)
+    # Auto delete: removed automatically from this moment. Blank = never.
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # True once the students were notified. Existing rows default to True (already notified);
+    # a scheduled announcement is created with False and notified when its time comes.
+    notified = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-publish_at', '-created_at']
+
+    def __str__(self):
+        return f'{self.title} ({self.audience_label})'
+
+    @property
+    def audience_label(self):
+        parts = [p for p in (self.audience_dept, self.audience_class) if p]
+        return ' '.join(parts) + ' students' if parts else 'Everyone'
 
 
 # Live Video Models

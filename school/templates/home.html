@@ -281,6 +281,19 @@
     }
     .TopMark-exam-count { display: block; margin-top: 4px; font-size: 16px; font-weight: 800; color: #0074cc; }
     .TopMark-exam-card.open .TopMark-exam-count { color: #16a34a; }
+
+    /* ── Announcements card ── */
+    .TopMark-ann-card { border:1px solid #efefef; border-radius:var(--tm-radius); padding:18px 20px; margin-bottom:28px; background:#fff; }
+    .TopMark-ann-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .TopMark-ann-head h2 { font-size:17px; font-weight:800; margin:0; display:flex; align-items:center; gap:8px; }
+    .TopMark-ann-head h2 i { color:#d97706; }
+    .TopMark-ann-head a { font-size:13px; font-weight:700; color:#0074cc; text-decoration:none; }
+    .TopMark-ann-item { padding:10px 0; border-top:1px solid #f3f3f3; }
+    .TopMark-ann-item:first-of-type { border-top:0; }
+    .TopMark-ann-item b { display:block; font-size:14px; color:#262626; }
+    .TopMark-ann-item p { margin:2px 0 4px; font-size:13px; color:#555; white-space:pre-line; }
+    .TopMark-ann-item small { font-size:11px; color:#8e8e8e; }
+    .TopMark-ann-tag { font-size:10px; font-weight:800; color:#0074cc; background:#e8f4fd; border-radius:6px; padding:1px 7px; margin-left:6px; }
   </style>
 </head>
 <body>
@@ -302,6 +315,23 @@
       </div>
       <a href="{% url 'live_room_list' %}" class="TopMark-welcome-btn">{% if user.teacher_profile %}Go to live classes{% else %}Join a live class{% endif %}</a>
     </section>
+
+    <!-- ANNOUNCEMENTS (only those meant for this student's class / department, or general) -->
+    {% if home_announcements %}
+    <section class="TopMark-ann-card">
+      <div class="TopMark-ann-head">
+        <h2><i class="fa-solid fa-bullhorn"></i> Announcements</h2>
+        <a href="{% url 'announcements' %}">View all</a>
+      </div>
+      {% for a in home_announcements %}
+      <div class="TopMark-ann-item">
+        <b>{{ a.title }}<span class="TopMark-ann-tag">{{ a.audience_label }}</span></b>
+        <p>{{ a.message|truncatechars:160 }}</p>
+        <small>{{ a.publish_at|date:"d M Y, h:i A" }}{% if a.author %} &middot; {{ a.author.get_full_name|default:a.author.username }}{% endif %}</small>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
 
     <!-- EXAM SCHEDULE: stays until the student has finished the examination -->
     {% if home_exam %}

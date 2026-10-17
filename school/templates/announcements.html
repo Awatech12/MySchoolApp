@@ -1,0 +1,107 @@
+{% include 'header.html' %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TopMark | Announcements</title>
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    body { background:#fff; font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; }
+    .an-wrap { max-width:720px; margin:0 auto; padding:24px 16px 56px; box-sizing:border-box; width:100%; }
+    @media (min-width:768px){ .an-wrap { padding-left:66px; } }
+    .an-title { font-size:22px; font-weight:800; letter-spacing:-.4px; margin:0 0 16px; display:flex; align-items:center; gap:10px; }
+    .an-title i { color:#d97706; }
+    .an-form { background:#f7f9fb; border-radius:16px; padding:16px; margin-bottom:24px; }
+    .an-form h2 { font-size:15px; font-weight:800; margin:0 0 10px; }
+    .an-form label { display:block; font-size:12px; font-weight:700; color:#555; margin:10px 0 4px; }
+    .an-form input, .an-form textarea, .an-form select { width:100%; box-sizing:border-box; border:1px solid #dbdbdb; border-radius:10px; padding:10px 12px; font:inherit; font-size:14px; background:#fff; }
+    .an-form textarea { min-height:110px; resize:vertical; }
+    .an-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .an-hint { font-size:12px; color:#737373; margin:8px 0 0; }
+    .an-btn { margin-top:14px; background:#0074cc; color:#fff; border:0; border-radius:12px; padding:11px 20px; font-weight:700; font-size:14px; cursor:pointer; }
+    .an-btn:hover { background:#0063b0; }
+    .an-item { border:1px solid #efefef; border-radius:14px; padding:14px 16px; margin-bottom:12px; }
+    .an-item h3 { font-size:16px; font-weight:800; margin:0 0 4px; }
+    .an-item p { font-size:14px; color:#333; margin:0 0 8px; white-space:pre-line; word-wrap:break-word; }
+    .an-meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; color:#8e8e8e; }
+    .an-tag { font-size:11px; font-weight:800; color:#0074cc; background:#e8f4fd; border-radius:6px; padding:1px 8px; }
+    .an-del { background:none; border:0; color:#b91c1c; font-weight:700; font-size:12px; cursor:pointer; }
+    .an-empty { text-align:center; color:#737373; padding:40px 10px; }
+    .an-empty i { font-size:32px; color:#c4c4c4; display:block; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+{% include 'sidebar.html' %}
+
+<div class="an-wrap">
+  <h1 class="an-title"><i class="fa-solid fa-bullhorn"></i> Announcements</h1>
+
+  {% if can_post %}
+  <form method="post" class="an-form">
+    {% csrf_token %}
+    <h2>Make an announcement</h2>
+    <label for="an-t">Title</label>
+    <input id="an-t" name="title" maxlength="200" required placeholder="e.g. Extra class on Saturday">
+    <label for="an-m">Message</label>
+    <textarea id="an-m" name="message" required placeholder="Write the announcement here..."></textarea>
+    <div class="an-row">
+      <div>
+        <label for="an-c">Class</label>
+        <select id="an-c" name="audience_class">
+          <option value="">All classes</option>
+          {% for c in classes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="an-d">Department</label>
+        <select id="an-d" name="audience_dept">
+          <option value="">All departments</option>
+          {% for d in departments %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="an-row">
+      <div>
+        <label for="an-p">Post at (auto post)</label>
+        <input id="an-p" type="datetime-local" name="publish_at">
+      </div>
+      <div>
+        <label for="an-x">Delete at (auto delete)</label>
+        <input id="an-x" type="datetime-local" name="expires_at">
+      </div>
+    </div>
+    <p class="an-hint">Leave "Post at" empty to post now, or pick a future date and time to post it automatically then. Leave "Delete at" empty to keep it until you delete it yourself.</p>
+    <p class="an-hint">Leave both on "All" for a general announcement. Choose a class and/or department to send it only to those students (e.g. Science + SS2).</p>
+    <button type="submit" class="an-btn"><i class="fa-solid fa-paper-plane"></i> Post announcement</button>
+  </form>
+  {% endif %}
+
+  {% for a in items %}
+  <article class="an-item">
+    <h3>{{ a.title }}</h3>
+    <p>{{ a.message }}</p>
+    <div class="an-meta">
+      <span class="an-tag">{{ a.audience_label }}</span>
+      {% if a.scheduled %}<span class="an-tag" style="background:#fff4e0;color:#b45309">Scheduled for {{ a.publish_at|date:"D, d M Y, h:i A" }}</span>
+      {% else %}<span>{{ a.publish_at|date:"D, d M Y, h:i A" }}</span>{% endif %}
+      {% if can_post and a.expires_at %}<span class="an-tag" style="background:#fee2e2;color:#b91c1c">Auto-deletes {{ a.expires_at|date:"D, d M Y, h:i A" }}</span>{% endif %}
+      {% if a.author %}<span>&middot; {{ a.author.get_full_name|default:a.author.username }}</span>{% endif %}
+      {% if a.can_delete %}
+      <form method="post" action="{% url 'announcement_delete' a.pk %}" style="margin-left:auto" onsubmit="return confirm('Delete this announcement?');">
+        {% csrf_token %}
+        <button type="submit" class="an-del"><i class="fa-regular fa-trash-can"></i> Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </article>
+  {% empty %}
+  <div class="an-empty"><i class="fa-regular fa-bell"></i>No announcements yet.</div>
+  {% endfor %}
+</div>
+
+{% include 'footer.html' %}
+</body>
+</html>

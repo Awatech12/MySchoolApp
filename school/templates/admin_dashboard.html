@@ -244,7 +244,7 @@
       <div class="sec">Academic</div>
       <div class="two">
         <div class="field"><label>Class</label><select class="select" name="class_level" id="sClass"><option value="">Select</option>{% for c in class_levels %}<option>{{ c }}</option>{% endfor %}</select></div>
-        <div class="field"><label>Specialization</label><select class="select" name="specialization" id="sSpec"><option value="">Select</option>{% for s in specializations %}<option>{{ s }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Specialization</label><select class="select" name="specialization" id="sSpec"><option value="">Select</option>{% for s in specializations %}<option>{{ s }}</option>{% endfor %}</select><p class="hint">The Admission No is issued once a department is chosen, numbered in order per department (e.g. TMTC/2026/S/001, TMTC/2026/A/001, TMTC/2026/C/001).</p></div>
         <div class="field"><label>School</label><input class="input" name="school" id="sSchool"></div>
         <div class="field"><label>Future career</label><input class="input" name="career_goal" id="sCareer"></div>
       </div>
@@ -321,7 +321,7 @@
   <div class="sheet-h"><h2>Import students from CSV</h2><button class="x" data-close aria-label="Close">✕</button></div>
   <div class="sheet-b">
     <div class="alert" id="iMsg"></div>
-    <p class="hint" style="margin-bottom:10px">Required columns: <b>email, first_name, last_name</b>.<br>Optional: username (blank = Admission No), class_level, school, gender, phone, specialization, career_goal, subjects (separate with ;), password (blank = auto-generated). Max 500 rows.</p>
+    <p class="hint" style="margin-bottom:10px">Required columns: <b>email, first_name, last_name</b>.<br>Optional: username (blank = Admission No), class_level, school, gender, phone, specialization (Science / Arts / Commercial; needed for the Admission No, numbered in order per department), career_goal, subjects (separate with ;), password (blank = auto-generated). Max 500 rows.</p>
     <input type="file" id="iFile" accept=".csv,text/csv">
     <div id="iResult" style="margin-top:12px"></div>
   </div>

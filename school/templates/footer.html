@@ -177,13 +177,136 @@
     <a href="{% url 'logout' %}"
        class="nav-item"
        title="Logout"
-       onclick="return confirm('Log out of TopMark?');">
+       data-confirm="Do you want to log out of TopMark?" data-confirm-title="Log out" data-confirm-ok="Log out" data-confirm-variant="danger">
         <i class="fas fa-right-from-bracket"></i>
         <span class="nav-label">Logout</span>
     </a>
 
 </nav>  
 
+
+<style>
+  .tm-dlg-back{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5000;opacity:0;transition:opacity .16s;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+  .tm-dlg-back.show{opacity:1}
+  .tm-dlg{background:#fff;border-radius:20px;width:100%;max-width:380px;padding:24px 22px 18px;box-shadow:0 20px 50px rgba(0,0,0,.25);text-align:center;transform:translateY(12px) scale(.97);transition:transform .16s;font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',sans-serif}
+  .tm-dlg-back.show .tm-dlg{transform:none}
+  .tm-dlg-ico{width:52px;height:52px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#e8f4fd;color:#0074cc}
+  .tm-dlg.danger .tm-dlg-ico{background:#fee2e2;color:#dc2626}
+  .tm-dlg.warn .tm-dlg-ico{background:#fff4e0;color:#d97706}
+  .tm-dlg h3{margin:0 0 6px;font-size:18px;font-weight:800;letter-spacing:-.3px;color:#262626}
+  .tm-dlg p{margin:0 0 20px;font-size:14px;line-height:1.5;color:#555;white-space:pre-line;word-wrap:break-word}
+  .tm-dlg-btns{display:flex;gap:10px}
+  .tm-dlg-btns button{flex:1;border:0;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tm-dlg-cancel{background:#f0f0f0;color:#404040}
+  .tm-dlg-cancel:hover{background:#e6e6e6}
+  .tm-dlg-ok{background:#0074cc;color:#fff}
+  .tm-dlg-ok:hover{background:#0063b0}
+  .tm-dlg.danger .tm-dlg-ok{background:#dc2626}
+  .tm-dlg.danger .tm-dlg-ok:hover{background:#b91c1c}
+  .tm-dlg-btns button:focus-visible{outline:3px solid rgba(0,116,204,.35);outline-offset:2px}
+  @media (max-width:520px){ .tm-dlg-back{align-items:flex-end;padding:0} .tm-dlg{max-width:none;border-radius:22px 22px 0 0;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))} }
+
+  .tm-toasts{position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:4900;pointer-events:none;padding:0 14px}
+  @media (min-width:768px){ .tm-toasts{bottom:28px} }
+  .tm-toast{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;max-width:440px;width:100%;box-sizing:border-box;background:#262626;color:#fff;border-radius:14px;padding:12px 14px;font:600 13px/1.4 'Plus Jakarta Sans',-apple-system,'Segoe UI',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s}
+  .tm-toast.show{opacity:1;transform:none}
+  .tm-toast i{margin-top:2px;font-size:15px}
+  .tm-toast.success i{color:#4ade80} .tm-toast.error i{color:#f87171} .tm-toast.warning i{color:#fbbf24} .tm-toast.info i{color:#60a5fa}
+  .tm-toast span{flex:1;word-wrap:break-word}
+  .tm-toast button{background:none;border:0;color:#a3a3a3;font-size:16px;cursor:pointer;padding:0 2px;line-height:1}
+</style>
+<script>
+(function () {
+  if (window.tmConfirm) return;
+  var ICONS = {success:'fa-circle-check', error:'fa-circle-exclamation', warning:'fa-triangle-exclamation', info:'fa-circle-info'};
+
+  function dialog(message, o, withCancel) {
+    o = o || {};
+    return new Promise(function (resolve) {
+      var variant = o.danger ? 'danger' : (o.variant || '');
+      var back = document.createElement('div');
+      back.className = 'tm-dlg-back';
+      back.innerHTML =
+        '<div class="tm-dlg ' + variant + '" role="alertdialog" aria-modal="true" aria-labelledby="tmDlgT" aria-describedby="tmDlgM">' +
+          '<div class="tm-dlg-ico"><i class="fa-solid ' + (variant === 'danger' ? 'fa-trash-can' : variant === 'warn' ? 'fa-triangle-exclamation' : withCancel ? 'fa-circle-question' : 'fa-circle-info') + '"></i></div>' +
+          '<h3 id="tmDlgT"></h3><p id="tmDlgM"></p>' +
+          '<div class="tm-dlg-btns">' + (withCancel ? '<button type="button" class="tm-dlg-cancel"></button>' : '') + '<button type="button" class="tm-dlg-ok"></button></div>' +
+        '</div>';
+      back.querySelector('h3').textContent = o.title || (withCancel ? 'Are you sure?' : 'Notice');
+      back.querySelector('p').textContent = message == null ? '' : String(message);
+      var okBtn = back.querySelector('.tm-dlg-ok'), noBtn = back.querySelector('.tm-dlg-cancel');
+      okBtn.textContent = o.ok || (withCancel ? 'Yes' : 'OK');
+      if (noBtn) noBtn.textContent = o.cancel || 'Cancel';
+      var prev = document.activeElement, done = false;
+      function close(val) {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey, true);
+        back.classList.remove('show');
+        setTimeout(function () { back.remove(); if (prev && prev.focus) { try { prev.focus(); } catch (e) {} } resolve(val); }, 150);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(false); }
+        else if (e.key === 'Tab') {            // keep focus inside the dialog
+          var els = [noBtn, okBtn].filter(Boolean), i = els.indexOf(document.activeElement);
+          e.preventDefault(); els[(i + (e.shiftKey ? els.length - 1 : 1)) % els.length].focus();
+        }
+      }
+      okBtn.addEventListener('click', function () { close(true); });
+      if (noBtn) noBtn.addEventListener('click', function () { close(false); });
+      back.addEventListener('mousedown', function (e) { if (e.target === back) close(false); });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(back);
+      requestAnimationFrame(function () { back.classList.add('show'); (o.danger && noBtn ? noBtn : okBtn).focus(); });
+    });
+  }
+
+  window.tmConfirm = function (message, opts) { return dialog(message, opts, true); };
+  window.tmAlert   = function (message, opts) { return dialog(message, opts, false); };
+  window.alert     = function (message) { tmAlert(message); };      // every plain alert() now uses the custom box
+
+  /* ── toasts (also used for Django messages) ── */
+  var box;
+  window.tmToast = function (message, type) {
+    type = ICONS[type] ? type : (type === 'danger' ? 'error' : 'info');
+    if (!box) { box = document.createElement('div'); box.className = 'tm-toasts'; box.setAttribute('aria-live', 'polite'); document.body.appendChild(box); }
+    var t = document.createElement('div');
+    t.className = 'tm-toast ' + type; t.setAttribute('role', 'status');
+    t.innerHTML = '<i class="fa-solid ' + ICONS[type] + '"></i><span></span><button type="button" aria-label="Dismiss">&times;</button>';
+    t.querySelector('span').textContent = message;
+    function gone() { t.classList.remove('show'); setTimeout(function () { t.remove(); }, 220); }
+    t.querySelector('button').addEventListener('click', gone);
+    box.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('show'); });
+    setTimeout(gone, type === 'error' ? 6000 : 4000);
+  };
+
+  /* ── data-confirm: links, buttons and forms ── */
+  function ask(el) {
+    return tmConfirm(el.getAttribute('data-confirm'), {
+      title:  el.getAttribute('data-confirm-title') || undefined,
+      ok:     el.getAttribute('data-confirm-ok') || undefined,
+      cancel: el.getAttribute('data-confirm-cancel') || undefined,
+      danger: el.getAttribute('data-confirm-variant') === 'danger'
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-confirm]');
+    if (!el || el.tagName === 'FORM' || el._tmOk) return;
+    e.preventDefault(); e.stopPropagation();
+    ask(el).then(function (yes) { if (yes) { el._tmOk = true; el.click(); setTimeout(function () { el._tmOk = false; }, 0); } });
+  }, true);
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!f.matches || !f.matches('form[data-confirm]') || f._tmOk) return;
+    e.preventDefault();
+    ask(f).then(function (yes) { if (yes) { f._tmOk = true; f.submit(); } });
+  }, true);
+
+  /* ── Django messages (success / error / warning / info) shown as toasts ── */
+  {% if messages %}{% for m in messages %}tmToast('{{ m.message|escapejs }}', '{{ m.tags|escapejs }}');
+  {% endfor %}{% endif %}
+})();
+</script>
 
 </body>  
 </html>

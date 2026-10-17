@@ -241,6 +241,18 @@
     Live Classes
   </a>
 
+  <!-- Announcements -->
+  <a href="{% url 'announcements' %}"
+     class="ac-sidebar-item{% if '/announcements' in request.path %} active{% endif %}"
+     title="Announcements">
+    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/>
+      <path d="M16 8.5a5 5 0 0 1 0 7"/>
+      <path d="M19 6a9 9 0 0 1 0 12"/>
+    </svg>
+    Announcements
+  </a>
+
   {% if not user.teacher_profile %}
   <!-- CBT Practice Exams -->
   <a href="{% url 'cbt_exams' %}"

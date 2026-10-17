@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, EXAM_CLASSES, check_image, clean_class, clean_question,
                                 image_blobs_from_uploads, import_questions, parse_rows, rows_from_text, rows_from_upload)
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule, TeacherProfile
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule, TeacherProfile, Announcement
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
 import uuid, json, re, logging, random
@@ -241,16 +241,15 @@ def _apply_profile_updates(user, profile, data, files):
 
 
 
-# Matches TMTC/2026/0007 (also tolerates tmtc-2026-0007, "TMTC 2026 0007", TMTC20260007)
-_ADMISSION_RE = re.compile(r'^TMTC[\s/\-_]*(\d{4})[\s/\-_]*(\d+)$', re.IGNORECASE)
+# Matches TMTC/2026/S/001 (also tolerates tmtc-2026-s-001, "TMTC 2026 S 001", TMTC2026S001).
+# The department letter is optional so old numbers like TMTC/2026/0007 still work.
+_ADMISSION_RE = re.compile(r'^TMTC[\s/\-_]*(\d{4})[\s/\-_]*([A-Za-z])?[\s/\-_]*(\d+)$', re.IGNORECASE)
 
 
 def _login_candidates(identifier):
     """
     Turn whatever the person typed into the list of usernames to try:
-    username, email, or Admission No (TMTC/<year>/<4-digit id>).
-    The Admission No is computed from Profile.created_at + user id (not stored),
-    so it is parsed back into a user id and verified against the profile.
+    username, email, or Admission No (TMTC/<year>/<department initial>/<serial>, e.g. TMTC/2026/S/001).
     """
     identifier = (identifier or '').strip()
     candidates = []
@@ -264,12 +263,20 @@ def _login_candidates(identifier):
         User.objects.filter(username__iexact=identifier).values_list('username', flat=True)
     )
 
-    # 2) Admission No
+    # 2) Admission No (stored on the student profile; admins/teachers never have one)
     m = _ADMISSION_RE.match(identifier)
     if m:
-        year, user_id = int(m.group(1)), int(m.group(2))
-        profile = Profile.objects.select_related('user').filter(user_id=user_id).first()
-        if profile and profile.created_at and profile.created_at.year == year:
+        year, letter, num = int(m.group(1)), (m.group(2) or '').upper(), int(m.group(3))
+        profile = None
+        if letter:
+            profile = (Profile.objects.select_related('user')
+                       .filter(admission_no=f'TMTC/{year}/{letter}/{num:03d}').first())
+        else:
+            # legacy numbers (TMTC/<year>/<user id>) issued before departments were added
+            old = Profile.objects.select_related('user').filter(user_id=num).first()
+            if old and old.created_at and old.created_at.year == year:
+                profile = old
+        if profile and profile.is_student_account:
             candidates.append(profile.user.username)
 
     # 3) Email (case-insensitive; email is not unique in Django's User, so try each match)
@@ -547,6 +554,9 @@ def home(request):
     """
     ctx = {}
     user = request.user
+    if user.is_authenticated:
+        _announcement_tick()
+        ctx['home_announcements'] = list(_announcements_for(user, live_only=True)[:3])
     if user.is_authenticated and not _is_teacher(user):
         _close_expired_examinations(user)            # a paper whose time is up is submitted first
         active = ExaminationAttempt.objects.filter(student=user, is_submitted=False).first()
@@ -1079,12 +1089,163 @@ def notifications_mark_all_read(request):
     return redirect('notifications')
 
 
+# ── Announcements ──────────────────────────────────────────────────────
+# Admins/teachers post them. Each one is for everyone, a class (SS1/SS2/SS3), a department
+# (Science/Arts/Commercial) or both. A student only sees announcements meant for them.
+
+def _student_audience(user):
+    """(class like 'SS2', department like 'Science') of a student; '' when not set."""
+    p = Profile.objects.filter(user=user).first()
+    if not p:
+        return '', ''
+    return (_normalize_class_level(p.class_level) or '')[:3], (p.specialization or '')
+
+
+def _live_announcements(qs):
+    """Only announcements whose posting time has come and that have not expired."""
+    now = timezone.now()
+    return qs.filter(publish_at__lte=now).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+
+
+def _announcements_for(user, live_only=False):
+    """
+    Teachers/admins see every announcement (including scheduled ones); a student only the live
+    ones meant for their class/department.  live_only=True gives teachers the live ones only.
+    """
+    qs = Announcement.objects.select_related('author')
+    if _is_teacher(user):
+        return _live_announcements(qs) if live_only else qs
+    cls, dept = _student_audience(user)
+    return _live_announcements(qs).filter(Q(audience_class='') | Q(audience_class=cls),
+                                          Q(audience_dept='') | Q(audience_dept=dept))
+
+
+def _announcement_tick(force=False):
+    """
+    Auto post + auto delete, with no background worker: runs when pages load (at most once a
+    minute unless forced).  Deletes expired announcements, and notifies the targeted students of
+    scheduled announcements whose posting time has arrived.
+    """
+    from django.core.cache import cache
+    if not force and not cache.add('announcement_tick', 1, 60):
+        return
+    now = timezone.now()
+    Announcement.objects.filter(expires_at__isnull=False, expires_at__lte=now).delete()
+    for ann in Announcement.objects.filter(notified=False, publish_at__lte=now):
+        # claim it first so two requests never notify the same students twice
+        if Announcement.objects.filter(pk=ann.pk, notified=False).update(notified=True):
+            Notification.objects.bulk_create(
+                [Notification(user_id=uid, message=f'New announcement: {ann.title}')
+                 for uid in _announcement_recipient_ids(ann)], batch_size=500)
+
+
+def _parse_local_dt(value):
+    """'2026-10-20T14:30' (datetime-local input) -> aware datetime in the site timezone, or None."""
+    value = (value or '').strip()
+    if not value:
+        return None
+    try:
+        return timezone.make_aware(datetime_type.strptime(value, '%Y-%m-%dT%H:%M'))
+    except ValueError:
+        return False
+
+
+def _announcement_recipient_ids(ann):
+    qs = Profile.objects.filter(user__is_active=True, user__is_staff=False,
+                                user__is_superuser=False, user__teacher_profile__isnull=True)
+    if ann.audience_dept:
+        qs = qs.filter(specialization=ann.audience_dept)
+    ids = []
+    for uid, lvl in qs.values_list('user_id', 'class_level'):
+        if ann.audience_class and (_normalize_class_level(lvl) or '')[:3] != ann.audience_class:
+            continue
+        ids.append(uid)
+    return ids
+
+
+@login_required
+@never_cache
+def announcements(request):
+    can_post = _is_teacher(request.user)
+    _announcement_tick(force=True)
+    if request.method == 'POST':
+        if not can_post:
+            raise PermissionDenied
+        title   = (request.POST.get('title') or '').strip()
+        message = (request.POST.get('message') or '').strip()
+        cls     = (request.POST.get('audience_class') or '').strip()
+        dept    = (request.POST.get('audience_dept') or '').strip()
+        publish_at = _parse_local_dt(request.POST.get('publish_at'))
+        expires_at = _parse_local_dt(request.POST.get('expires_at'))
+        now = timezone.now()
+        if publish_at is not None and publish_at is not False and publish_at <= now:
+            publish_at = None                       # a time already passed means "post now"
+        if publish_at is False or expires_at is False:
+            messages.error(request, 'Please enter a valid date and time.')
+        elif expires_at is not None and expires_at <= (publish_at or now):
+            messages.error(request, 'The delete time must be after the time it is posted.')
+        elif not title or not message:
+            messages.error(request, 'Please write a title and a message.')
+        elif len(title) > 200:
+            messages.error(request, 'The title is too long (200 characters max).')
+        elif cls and cls not in CLASS_LEVEL_CHOICES:
+            messages.error(request, 'Please choose a valid class.')
+        elif dept and dept not in [c[0] for c in Profile.SPECIALIZATION_CHOICES]:
+            messages.error(request, 'Please choose a valid department.')
+        else:
+            scheduled = publish_at is not None
+            with transaction.atomic():
+                ann = Announcement.objects.create(
+                    title=title, message=message, audience_class=cls, audience_dept=dept,
+                    author=request.user, publish_at=publish_at or now, expires_at=expires_at,
+                    notified=not scheduled)
+                if not scheduled:
+                    Notification.objects.bulk_create(
+                        [Notification(user_id=uid, message=f'New announcement: {title}')
+                         for uid in _announcement_recipient_ids(ann)], batch_size=500)
+            if scheduled:
+                messages.success(request, f'Announcement scheduled for {_fmt_exam_dt(publish_at)} ({ann.audience_label}).')
+            else:
+                messages.success(request, f'Announcement posted to {ann.audience_label}.')
+        return redirect('announcements')
+
+    if not can_post:   # students reading them: clear their announcement alerts
+        Notification.objects.filter(user=request.user, is_read=False,
+                                    message__startswith='New announcement').update(is_read=True)
+    items = list(_announcements_for(request.user)[:100])
+    me = request.user
+    now = timezone.now()
+    for a in items:
+        a.scheduled = a.publish_at > now
+        a.can_delete = can_post and (a.author_id == me.pk or me.is_staff or me.is_superuser)
+    return render(request, 'announcements.html', {
+        'items': items,
+        'can_post': can_post,
+        'classes': CLASS_LEVEL_CHOICES,
+        'departments': [c[0] for c in Profile.SPECIALIZATION_CHOICES],
+    })
+
+
+@login_required
+@require_POST
+def announcement_delete(request, pk):
+    ann = get_object_or_404(Announcement, pk=pk)
+    if not (_is_teacher(request.user) and
+            (ann.author_id == request.user.pk or request.user.is_staff or request.user.is_superuser)):
+        raise PermissionDenied
+    ann.delete()
+    messages.success(request, 'Announcement deleted.')
+    return redirect('announcements')
+
+
 @login_required
 def open_notify(request, pk):
     notification          = get_object_or_404(Notification, pk=pk, user=request.user)
     if not notification.is_read:
         notification.is_read = True
         notification.save(update_fields=['is_read'])
+    if notification.kind == 'announcement':
+        return redirect('announcements')
     if notification.class_post:
         return redirect('chat_post_detail', post_id=notification.class_post.post_id)
     if notification.is_exam:
@@ -3261,18 +3422,20 @@ def _create_student(data, files, subjects):
             last_name=lname, password=password, is_active=active,
         )
         profile = Profile.objects.create(user=user, student_category='senior')
+        CBTScore.objects.get_or_create(user=user)
+        # Apply the profile fields first: the Admission No includes the department initial,
+        # so the department (specialization) must be saved before the number is built.
+        err = _apply_profile_updates(user, profile, data, files)
+        if err:
+            raise ValueError(err)           # rolls the whole creation back
         if username_generated:
-            # Admission No is TMTC/<year>/<id>; "/" can't be used in a username because
-            # the profile URL (<str:username>) wouldn't match, so we store TMTC-<year>-<id>.
-            auto = profile.admission_number.replace('/', '-')
+            # Admission No is TMTC/<year>/<dept initial>/<serial>; "/" can't be used in a username because
+            # the profile URL (<str:username>) wouldn't match, so we store TMTC-<year>-<initial>-<serial>.
+            auto = (profile.admission_number or f'TMTC/{timezone.now().year}/{user.pk:04d}').replace('/', '-')
             if User.objects.filter(username__iexact=auto).exclude(pk=user.pk).exists():
                 auto = f'{auto}-{uuid.uuid4().hex[:4]}'
             user.username = auto
             user.save(update_fields=['username'])
-        CBTScore.objects.get_or_create(user=user)
-        err = _apply_profile_updates(user, profile, data, files)
-        if err:
-            raise ValueError(err)           # rolls the whole creation back
         RegisteredSubject.objects.bulk_create([
             RegisteredSubject(student=user, category='senior', subject_name=n)
             for n in _clean_subjects(subjects)
@@ -3290,6 +3453,7 @@ def _csv_safe(v):
 
 @staff_required
 def dashboard_home(request):
+    Profile.backfill_admission_numbers()   # one-time catch-up for students registered before numbering
     students = User.objects.filter(is_staff=False, is_superuser=False, teacher_profile__isnull=True)
     now = timezone.now()
 

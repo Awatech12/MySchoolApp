@@ -245,7 +245,7 @@ button,input,select,textarea{font:inherit;color:inherit}
         <div class="tm-id">
             <h2>{% firstof user.get_full_name user.username %}</h2>
             <dl class="tm-meta">
-                {% if can_view_private %}<dt>Admission No.</dt><dd>{{ admission_number }}</dd>{% endif %}
+                {% if can_view_private and admission_number %}<dt>Admission No.</dt><dd>{{ admission_number }}</dd>{% endif %}
                 <dt>Class</dt><dd{% if not profile.class_level %} class="is-empty"{% endif %}>{{ profile.class_level|default:"Not set" }}</dd>
                 <dt>School</dt><dd{% if not profile.school %} class="is-empty"{% endif %}>{{ profile.school|default:"Not set" }}</dd>
             </dl>
@@ -273,7 +273,7 @@ button,input,select,textarea{font:inherit;color:inherit}
             </div>
             <dl class="tm-dl">
                 <div><dt>Full name</dt><dd>{% firstof user.get_full_name user.username %}</dd></div>
-                {% if can_view_private %}<div><dt>Admission number</dt><dd>{{ admission_number }}</dd></div>{% endif %}
+                {% if can_view_private and admission_number %}<div><dt>Admission number</dt><dd>{{ admission_number }}</dd></div>{% endif %}
                 <div><dt>Class / Level</dt><dd{% if not profile.class_level %} class="is-empty"{% endif %}>{{ profile.class_level|default:"Not set" }}</dd></div>
                 <div><dt>School</dt><dd{% if not profile.school %} class="is-empty"{% endif %}>{{ profile.school|default:"Not set" }}</dd></div>
                 {% if can_view_private %}
@@ -345,7 +345,7 @@ button,input,select,textarea{font:inherit;color:inherit}
         <div class="f-head">
             <div class="f-mark" aria-hidden="true">TM</div>
             <div><h2>TopMark Tutorial Center</h2><p>Student Registration Form</p></div>
-            <div class="f-meta">Admission No: {{ admission_number }}<br>Date: {% now "j F Y" %}</div>
+            <div class="f-meta">{% if admission_number %}Admission No: {{ admission_number }}<br>{% endif %}Date: {% now "j F Y" %}</div>
         </div>
 
         <div class="f-body">
@@ -353,7 +353,7 @@ button,input,select,textarea{font:inherit;color:inherit}
                 <div class="f-photo"><img src="{{ profile.get_picture_url }}" alt="Passport photograph"><span>Passport photo</span></div>
                 <div class="f-name">
                     <h3>{% firstof user.get_full_name user.username %}</h3>
-                    <div class="f-row"><b>Admission No.</b><span>{{ admission_number }}</span></div>
+                    {% if admission_number %}<div class="f-row"><b>Admission No.</b><span>{{ admission_number }}</span></div>{% endif %}
                     <div class="f-row"><b>Class</b><span>{{ profile.class_level|default:"—" }}</span></div>
                 </div>
             </div>
