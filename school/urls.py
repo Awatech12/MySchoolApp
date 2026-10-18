@@ -103,6 +103,7 @@ urlpatterns = [
     # profile must stay LAST – catches any remaining <str:username>
     path('change-password/', views.change_password, name='change_password'),
     path('update-passport/', views.update_passport, name='update_passport'),
+    path('teacher/update/', views.update_teacher_profile, name='update_teacher_profile'),
     path('subjects/update/', views.update_subjects, name='update_subjects'),
     path('my-subjects/', views.my_subjects, name='my_subjects'),
     path('results/', views.my_results, name='my_results'),

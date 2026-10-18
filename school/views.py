@@ -538,10 +538,72 @@ def _teacher_profile_page(request, target, teacher):
     can_private = _can_view_private(request, target)
     if not teacher.is_approved and not can_private:
         raise Http404
-    return render(request, 'teacher_profile.html', {
+    is_owner = request.user.pk == target.pk
+    ctx = {
         'teacher': teacher, 'tuser': target,
-        'can_private': can_private, 'is_owner': request.user.pk == target.pk,
-    })
+        'can_private': can_private, 'is_owner': is_owner,
+    }
+    if is_owner:
+        quals = list(TEACHER_QUALIFICATIONS)
+        if teacher.qualification and teacher.qualification not in quals:
+            quals.insert(0, teacher.qualification)     # keep an older, admin-entered value selectable
+        ctx.update({
+            'titles': TEACHER_TITLES, 'genders': GENDER_CHOICES,
+            'qualifications': quals, 'this_year': timezone.localdate().year,
+        })
+    return render(request, 'teacher_profile.html', ctx)
+
+
+@login_required
+@require_POST
+def update_teacher_profile(request):
+    """
+    AJAX endpoint for the teacher profile page's Edit Profile modal.
+    A teacher edits their own personal and qualification details. Subjects, classes,
+    approval and username stay under the administrator's control (the question bank
+    scope is built from the subjects/classes, so a teacher must not widen it).
+    Returns JSON { success, error? }.
+    """
+    user = request.user
+    teacher = getattr(user, 'teacher_profile', None)
+    if teacher is None:
+        raise PermissionDenied
+
+    fname = ' '.join((request.POST.get('fname') or '').split())
+    lname = ' '.join((request.POST.get('lname') or '').split())
+    email = (request.POST.get('email') or '').strip().lower()
+    if not fname or not lname:
+        return JsonResponse({'success': False, 'error': 'First name and last name are required.'}, status=400)
+    if len(fname) > 50 or len(lname) > 50:
+        return JsonResponse({'success': False, 'error': 'Names must be 50 characters or fewer.'}, status=400)
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({'success': False, 'error': 'Please enter a valid email address.'}, status=400)
+    if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+        return JsonResponse({'success': False, 'error': 'That email address is already registered.'}, status=400)
+
+    # Reuse the registration validator; subjects/classes are fed from the existing profile
+    # (only so validation passes) and then dropped so they are never changed here.
+    data = request.POST.copy()
+    data.setlist('subjects', teacher.subjects_list or SENIOR_SECONDARY_SUBJECTS[:1])
+    data.setlist('classes', teacher.classes_list or CLASS_LEVEL_CHOICES[:1])
+    fields, err = _clean_teacher_fields(data, request.FILES)
+    if err:
+        return JsonResponse({'success': False, 'error': err}, status=400)
+    fields.pop('subjects_taught', None)
+    fields.pop('classes_taught', None)
+
+    try:
+        with transaction.atomic():
+            user.first_name, user.last_name, user.email = fname, lname, email
+            for attr, val in fields.items():
+                setattr(teacher, attr, val)
+            teacher.save()          # also saves the related user
+    except Exception:
+        logger.exception('update_teacher_profile failed for user %s', user.pk)
+        return JsonResponse({'success': False, 'error': 'Could not save your profile. Please try again.'}, status=500)
+    return JsonResponse({'success': True})
 
 
 def _get_student_level(points):

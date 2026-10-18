@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#ffffff">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -13,11 +14,26 @@
       --tp-bg:#fafafa; --tp-surface:#efefef; --tp-text:#262626; --tp-muted:#737373;
       --tp-primary:#0095f6; --tp-primary-dk:#0074cc; --tp-primary-lt:#e8f4fd;
       --tp-ok:#16a34a; --tp-ok-bg:#f0fdf4; --tp-warn:#d97706; --tp-warn-bg:#fffbeb;
+
+      /* Compatibility for the shared partials (header / sidebar / footer) that read these names. */
+      --tm-navy:#0095f6; --tm-navy-dk:#0074cc; --tm-navy-50:#e8f4fd; --tm-navy-100:#dbdbdb;
+      --tm-ink:#262626; --tm-muted:#737373; --tm-line:#dbdbdb; --tm-bg:#ffffff; --tm-white:#fff;
+      --tm-orange:#0095f6; --tm-orange-dk:#0074cc;
+      --awaClass-bg:#fafafa; --awaClass-white:#fff; --awaClass-border:#dbdbdb; --awaClass-border-light:#efefef;
+      --awaClass-text:#262626; --awaClass-text-muted:#8e8e8e; --awaClass-text-light:#8e8e8e;
+      --awaClass-gray:#8e8e8e; --awaClass-gray-light:#c7c7c7; --awaClass-primary:#0095f6;
+      --awaClass-primary-dk:#0074cc; --awaClass-primary-hover:#0074cc; --awaClass-primary-lt:#e8f4fd;
+      --awaClass-accent:#0095f6; --awaClass-danger:#111827; --awaClass-modal-overlay:rgba(0,0,0,.5);
+      --awaClass-btn-bg:#0095f6; --awaClass-btn-color:#fff;
+      --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:var(--tp-text);line-height:1.5;overflow-x:hidden}
+    body.tp-lock{overflow:hidden}
+    img{max-width:100%}
+    button,input,select,textarea{font:inherit;color:inherit}
     .tp-wrap{max-width:820px;margin:0 auto;padding:24px 16px 90px}
-    @media(min-width:768px){.tp-wrap{padding-left:66px}}
+    @media(min-width:768px){.tp-wrap{padding-left:84px}}
     .tp-head{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:20px}
     .tp-head img{width:104px;height:104px;border-radius:50%;object-fit:cover;background:var(--tp-surface)}
     .tp-head h1{font-size:24px;font-weight:800;letter-spacing:-.3px}
@@ -33,13 +49,42 @@
     .tp-tags{display:flex;flex-wrap:wrap;gap:6px}
     .tp-tags span{background:#fff;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
     .tp-bio{font-size:14px}
+    .tp-note{font-size:12px;color:var(--tp-muted);margin-top:10px}
     .tp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .tp-btn{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;background:var(--tp-surface);color:var(--tp-text);border:0}
     .tp-btn:hover{background:#e4e4e4}
+    .tp-btn.primary{background:var(--tp-primary);color:#fff}
+    .tp-btn.primary:hover{background:var(--tp-primary-dk)}
+    .tp-btn[disabled]{opacity:.55;cursor:not-allowed}
     .tp-msg{font-size:12px;color:var(--tp-muted);margin-top:6px;min-height:16px}
+
+    /* ── Edit profile modal ── */
+    .tp-modal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+    .tp-modal[hidden]{display:none}
+    .tp-sheet{background:#fff;width:100%;max-width:620px;max-height:94vh;max-height:94dvh;display:flex;flex-direction:column;border-radius:12px 12px 0 0;overflow:hidden}
+    @media(min-width:640px){.tp-modal{align-items:center;padding:20px}.tp-sheet{border-radius:12px;max-height:90vh}}
+    .tp-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--tp-primary-dk);color:#fff}
+    .tp-sheet-h h2{font-size:17px;font-weight:700;margin:0;text-transform:none;letter-spacing:0;color:#fff}
+    .tp-x{width:44px;height:44px;margin:-8px -8px -8px 0;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}
+    .tp-sheet-b{padding:16px;overflow-y:auto;flex:1}
+    .tp-sheet-f{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #dbdbdb;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+    .tp-alert{border-radius:6px;padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:12px;border:1px solid transparent}
+    .tp-alert:empty{display:none}
+    .tp-alert.ok{background:#f0f9f4;color:#166534;border-color:#bbe5cb}
+    .tp-alert.err{background:#fdf2f2;color:#991b1b;border-color:#f3c4c4}
+    .tp-form{display:grid;gap:14px}
+    .tp-two{display:grid;gap:14px;grid-template-columns:1fr}
+    @media(min-width:520px){.tp-two{grid-template-columns:1fr 1fr}}
+    .tp-fh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--tp-muted);margin-top:4px}
+    .tp-field label{display:block;font-size:13px;font-weight:600;color:var(--tp-primary-dk);margin-bottom:5px}
+    .tp-input{width:100%;min-height:44px;border-radius:6px;padding:9px 12px;background:#fff;border:1px solid #dbdbdb;font-size:15px}
+    textarea.tp-input{min-height:90px;resize:vertical}
+    .tp-input:focus{outline:2px solid var(--tp-primary);outline-offset:0;border-color:var(--tp-primary)}
+    .tp-hint{font-size:12px;color:var(--tp-muted);margin-top:4px}
   </style>
 </head>
 <body>
+{% include 'header.html' %}
 {% include 'sidebar.html' %}
 
 <div class="tp-wrap">
@@ -52,9 +97,10 @@
       {% if not teacher.is_approved %}<span class="tp-pill warn">Awaiting approval</span>{% endif %}
       {% if is_owner %}
       <div class="tp-actions">
+        <button type="button" class="tp-btn primary" data-tp-open="tpEditModal"><i class="fa-solid fa-pen"></i> Edit profile</button>
         <label class="tp-btn" for="tpFile"><i class="fa-solid fa-camera"></i> Change photo</label>
         <input type="file" id="tpFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
-        {% if teacher.is_approved %}<a class="tp-btn" href="{% url 'cbt_question_bank' %}" style="background:var(--tp-primary);color:#fff"><i class="fa-solid fa-file-arrow-up"></i> Upload my questions</a>{% endif %}
+        {% if teacher.is_approved %}<a class="tp-btn" href="{% url 'cbt_question_bank' %}"><i class="fa-solid fa-file-arrow-up"></i> Upload my questions</a>{% endif %}
       </div>
       <div class="tp-msg" id="tpMsg"></div>
       {% endif %}
@@ -79,6 +125,7 @@
     <h2>Teaches</h2>
     <div class="tp-tags">{% for s in teacher.subjects_list %}<span>{{ s }}</span>{% empty %}<span>—</span>{% endfor %}</div>
     <div class="tp-tags" style="margin-top:10px">{% for c in teacher.classes_list %}<span style="background:var(--tp-primary-lt);color:var(--tp-primary-dk)">{{ c }}</span>{% endfor %}</div>
+    {% if is_owner %}<p class="tp-note">Your subjects and classes are set by the administrator. Ask them if these need to change.</p>{% endif %}
   </div>
 
   {% if can_private %}
@@ -97,18 +144,101 @@
 </div>
 
 {% if is_owner %}
+<!-- ══ EDIT PROFILE ══ -->
+<div class="tp-modal" id="tpEditModal" hidden>
+  <div class="tp-sheet" role="dialog" aria-modal="true" aria-labelledby="tpEditTitle">
+    <div class="tp-sheet-h"><h2 id="tpEditTitle">Edit profile</h2><button type="button" class="tp-x" data-tp-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+    <div class="tp-sheet-b">
+      <div class="tp-alert" id="tpEditMsg" role="alert"></div>
+      <form id="tpEditForm" class="tp-form" novalidate>
+        {% csrf_token %}
+
+        <div class="tp-fh">Personal</div>
+        <div class="tp-two">
+          <div class="tp-field"><label for="tpf-fname">First name</label><input class="tp-input" id="tpf-fname" name="fname" maxlength="50" value="{{ tuser.first_name }}" required></div>
+          <div class="tp-field"><label for="tpf-lname">Last name</label><input class="tp-input" id="tpf-lname" name="lname" maxlength="50" value="{{ tuser.last_name }}" required></div>
+        </div>
+        <div class="tp-two">
+          <div class="tp-field"><label for="tpf-title">Title</label>
+            <select class="tp-input" id="tpf-title" name="title"><option value="">—</option>{% for t in titles %}<option value="{{ t }}"{% if teacher.title == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+          <div class="tp-field"><label for="tpf-gender">Gender</label>
+            <select class="tp-input" id="tpf-gender" name="gender"><option value="">—</option>{% for g in genders %}<option value="{{ g }}"{% if teacher.gender == g %} selected{% endif %}>{{ g }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="tp-two">
+          <div class="tp-field"><label for="tpf-email">Email</label><input class="tp-input" type="email" id="tpf-email" name="email" value="{{ tuser.email }}" required></div>
+          <div class="tp-field"><label for="tpf-phone">Phone</label><input class="tp-input" type="tel" id="tpf-phone" name="phone" maxlength="20" value="{{ teacher.phone }}" required></div>
+        </div>
+        <div class="tp-two">
+          <div class="tp-field"><label for="tpf-dob">Date of birth</label><input class="tp-input" type="date" id="tpf-dob" name="date_of_birth" value="{% if teacher.date_of_birth %}{{ teacher.date_of_birth|date:'Y-m-d' }}{% endif %}"></div>
+          <div class="tp-field"><label for="tpf-location">Location</label><input class="tp-input" id="tpf-location" name="location" maxlength="300" value="{{ teacher.location }}"></div>
+        </div>
+        <div class="tp-field"><label for="tpf-address">Address</label><input class="tp-input" id="tpf-address" name="address" maxlength="200" value="{{ teacher.address }}"></div>
+
+        <div class="tp-fh">Qualifications</div>
+        <div class="tp-field"><label for="tpf-qual">Highest qualification</label>
+          <select class="tp-input" id="tpf-qual" name="qualification" required>{% for q in qualifications %}<option value="{{ q }}"{% if teacher.qualification == q %} selected{% endif %}>{{ q }}</option>{% endfor %}</select></div>
+        <div class="tp-two">
+          <div class="tp-field"><label for="tpf-course">Course of study</label><input class="tp-input" id="tpf-course" name="course_of_study" maxlength="150" value="{{ teacher.course_of_study }}" required></div>
+          <div class="tp-field"><label for="tpf-inst">Institution attended</label><input class="tp-input" id="tpf-inst" name="institution" maxlength="200" value="{{ teacher.institution }}" required></div>
+        </div>
+        <div class="tp-two">
+          <div class="tp-field"><label for="tpf-year">Year graduated</label><input class="tp-input" type="number" id="tpf-year" name="graduation_year" min="1950" max="{{ this_year }}" value="{{ teacher.graduation_year|default_if_none:'' }}" required></div>
+          <div class="tp-field"><label for="tpf-exp">Years of experience</label><input class="tp-input" type="number" id="tpf-exp" name="years_experience" min="0" max="60" value="{{ teacher.years_experience }}"></div>
+        </div>
+        <div class="tp-field"><label for="tpf-cert">Teaching registration no. (optional)</label><input class="tp-input" id="tpf-cert" name="teaching_certificate" maxlength="60" value="{{ teacher.teaching_certificate }}"></div>
+
+        <div class="tp-fh">About you</div>
+        <div class="tp-field"><label for="tpf-bio">Short bio</label><textarea class="tp-input" id="tpf-bio" name="bio" maxlength="500">{{ teacher.bio }}</textarea><p class="tp-hint">Up to 500 characters.</p></div>
+      </form>
+    </div>
+    <div class="tp-sheet-f"><button type="button" class="tp-btn" data-tp-close>Cancel</button><button type="submit" form="tpEditForm" class="tp-btn primary" id="tpEditSave">Save changes</button></div>
+  </div>
+</div>
+
 <script>
 (function(){
+  var token=function(){return document.querySelector('meta[name=csrf-token]').content};
+
+  /* ── Change photo ── */
   var f=document.getElementById('tpFile'),msg=document.getElementById('tpMsg');
   f.addEventListener('change',function(){
     var file=f.files[0];if(!file)return;
     if(['image/jpeg','image/png','image/webp','image/gif'].indexOf(file.type)<0||file.size>5*1024*1024){msg.textContent='Choose a JPG, PNG, WEBP or GIF up to 5 MB.';f.value='';return}
     var fd=new FormData();fd.append('image',file);msg.textContent='Uploading…';
-    fetch("{% url 'update_passport' %}",{method:'POST',credentials:'same-origin',body:fd,headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':document.querySelector('meta[name=csrf-token]').content}})
+    fetch("{% url 'update_passport' %}",{method:'POST',credentials:'same-origin',body:fd,headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':token()}})
       .then(function(r){return r.json()}).then(function(d){
         if(d&&d.url){document.getElementById('tpPhoto').src=d.url;msg.textContent='Photo updated.'}
         else msg.textContent=(d&&(d.error||d.message))||'Upload failed.';
       }).catch(function(){msg.textContent='Network problem. Try again.'});
+  });
+
+  /* ── Edit profile modal ── */
+  var modal=document.getElementById('tpEditModal'),form=document.getElementById('tpEditForm'),
+      alertEl=document.getElementById('tpEditMsg'),save=document.getElementById('tpEditSave'),last=null;
+  function show(text,kind){alertEl.textContent=text;alertEl.className='tp-alert '+kind}
+  function open(){last=document.activeElement;modal.hidden=false;document.body.classList.add('tp-lock');
+    var first=form.querySelector('input,select,textarea');if(first)first.focus()}
+  function close(){modal.hidden=true;document.body.classList.remove('tp-lock');if(last&&last.focus)last.focus()}
+  document.addEventListener('click',function(e){
+    if(e.target.closest('[data-tp-open="tpEditModal"]')){open();return}
+    if(e.target.closest('[data-tp-close]')||e.target===modal)close();
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)close()});
+
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    var get=function(n){return (form.elements[n].value||'').trim()};
+    if(!get('fname')||!get('lname')){show('First name and last name are required.','err');return}
+    if(!get('email')){show('Email address is required.','err');return}
+    if(!get('phone')){show('Phone number is required.','err');return}
+    save.disabled=true;
+    fetch("{% url 'update_teacher_profile' %}",{method:'POST',body:new FormData(form),credentials:'same-origin',
+      headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':form.querySelector('[name=csrfmiddlewaretoken]').value}})
+      .then(function(r){return r.json().catch(function(){return{success:false,error:'Unexpected server response.'}})})
+      .then(function(d){
+        if(d.success){show('Profile updated.','ok');setTimeout(function(){location.reload()},600)}
+        else{save.disabled=false;show(d.error||'Could not save. Please try again.','err')}
+      }).catch(function(){save.disabled=false;show('Network problem. Please try again.','err')});
   });
 })();
 </script>
