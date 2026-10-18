@@ -1,0 +1,193 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <title>{{ m.title }} | Learning Materials</title>
+  <style>
+    :root{
+      --lm-bg:#fafafa; --lm-line:#e6e6e6; --lm-text:#262626; --lm-muted:#737373;
+      --lm-primary:#0095f6; --lm-primary-dk:#0074cc; --lm-primary-lt:#e8f4fd;
+
+      --tm-navy:#0095f6; --tm-navy-dk:#0074cc; --tm-navy-50:#e8f4fd; --tm-navy-100:#dbdbdb;
+      --tm-ink:#262626; --tm-muted:#737373; --tm-line:#dbdbdb; --tm-bg:#ffffff; --tm-white:#fff;
+      --tm-orange:#0095f6; --tm-orange-dk:#0074cc;
+      --awaClass-bg:#fafafa; --awaClass-white:#fff; --awaClass-border:#dbdbdb; --awaClass-border-light:#efefef;
+      --awaClass-text:#262626; --awaClass-text-muted:#8e8e8e; --awaClass-text-light:#8e8e8e;
+      --awaClass-gray:#8e8e8e; --awaClass-gray-light:#c7c7c7; --awaClass-primary:#0095f6;
+      --awaClass-primary-dk:#0074cc; --awaClass-primary-hover:#0074cc; --awaClass-primary-lt:#e8f4fd;
+      --awaClass-accent:#0095f6; --awaClass-danger:#111827; --awaClass-modal-overlay:rgba(0,0,0,.5);
+      --awaClass-btn-bg:#0095f6; --awaClass-btn-color:#fff;
+      --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:100%}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:var(--lm-text);line-height:1.5;overflow-x:hidden}
+    a{color:inherit}
+    button,input,select,textarea{font:inherit;color:inherit}
+    :focus-visible{outline:3px solid var(--lm-primary);outline-offset:2px}
+
+    .lm-wrap{max-width:1080px;margin:0 auto;padding:22px 16px 96px}
+    @media(min-width:768px){.lm-wrap{padding-left:84px;padding-right:24px}}
+
+    .lm-back{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--lm-primary-dk);text-decoration:none;margin-bottom:14px}
+    .lm-back:hover{text-decoration:underline}
+
+    .lm-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;border:1px solid transparent;background:#efefef;color:var(--lm-text)}
+    .lm-btn:hover{background:#e4e4e4}
+    .lm-btn.primary{background:var(--lm-primary);color:#fff}
+    .lm-btn.primary:hover{background:var(--lm-primary-dk)}
+    .lm-btn.outline{background:#fff;color:var(--lm-primary-dk);border-color:#cfe6f7}
+    .lm-btn.outline:hover{background:var(--lm-primary-lt)}
+    .lm-btn.danger{background:#fff;color:#b91c1c;border-color:#f1c9c9}
+    .lm-btn.danger:hover{background:#fdf2f2}
+    .lm-btn.sm{min-height:36px;padding:0 12px;font-size:13px}
+
+    .lm-msg{border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;margin-bottom:10px;border:1px solid transparent}
+    .lm-msg.success{background:#f0f9f4;color:#166534;border-color:#bbe5cb}
+    .lm-msg.error{background:#fdf2f2;color:#991b1b;border-color:#f3c4c4}
+    .lm-msg.warning,.lm-msg.info{background:#fffbeb;color:#92400e;border-color:#f5d49b}
+
+    .lm-layout{display:grid;gap:20px;grid-template-columns:1fr}
+    @media(min-width:960px){.lm-layout{grid-template-columns:minmax(0,1fr) 320px;align-items:start}}
+
+    /* title block */
+    .lm-title{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+    .lm-ico{width:60px;height:60px;border-radius:14px;background:var(--lm-bg);display:grid;place-items:center;font-size:30px;flex:none}
+    .lm-title h1{font-size:23px;font-weight:800;letter-spacing:-.3px;line-height:1.25;overflow-wrap:anywhere}
+    .lm-sub{font-size:13px;color:var(--lm-muted);margin-top:2px}
+
+    /* preview */
+    .lm-preview{border:1px solid var(--lm-line);border-radius:16px;background:var(--lm-bg);overflow:hidden}
+    .lm-preview-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid var(--lm-line);font-size:13px;font-weight:700}
+    .lm-preview-bar span{color:var(--lm-muted)}
+    .lm-frame{display:block;width:100%;height:70vh;min-height:420px;border:0;background:#fff}
+    .lm-media{display:grid;place-items:center;padding:16px;background:#111}
+    .lm-media img{max-width:100%;max-height:70vh;object-fit:contain;border-radius:6px}
+    .lm-media video{width:100%;max-height:70vh;border-radius:6px;background:#000}
+    .lm-audio{padding:36px 16px;text-align:center}
+    .lm-audio i{font-size:44px;color:var(--lm-primary-dk);margin-bottom:12px}
+    .lm-audio audio{width:100%;max-width:520px;display:block;margin:0 auto}
+    .lm-nopreview{text-align:center;padding:48px 18px}
+    .lm-nopreview .big{font-size:56px;margin-bottom:10px}
+    .lm-nopreview h2{font-size:18px;margin-bottom:4px}
+    .lm-nopreview p{font-size:14px;color:var(--lm-muted);max-width:420px;margin:0 auto 16px}
+    .lm-fallback{font-size:12px;color:var(--lm-muted);margin-top:8px;text-align:center}
+
+    .lm-desc{margin-top:18px}
+    .lm-desc h2{font-size:16px;font-weight:800;margin-bottom:6px}
+    .lm-desc p{font-size:15px;color:#404040;white-space:pre-line;overflow-wrap:anywhere}
+
+    /* side panel */
+    .lm-side{border:1px solid var(--lm-line);border-radius:16px;padding:16px;background:#fff}
+    @media(min-width:960px){.lm-side{position:sticky;top:84px}}
+    .lm-side .lm-btn{width:100%}
+    .lm-side form{margin-top:10px}
+    .lm-info{margin:16px 0 0;display:grid;gap:0}
+    .lm-info div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid #efefef;font-size:14px}
+    .lm-info dt{color:var(--lm-muted);flex:none}
+    .lm-info dd{font-weight:700;text-align:right;overflow-wrap:anywhere}
+
+    /* related */
+    .lm-related{margin-top:32px}
+    .lm-related h2{font-size:18px;font-weight:800;margin-bottom:12px}
+    .lm-rgrid{display:grid;gap:12px;grid-template-columns:1fr}
+    @media(min-width:640px){.lm-rgrid{grid-template-columns:1fr 1fr}}
+    .lm-rcard{display:flex;gap:12px;align-items:center;border:1px solid var(--lm-line);border-radius:14px;padding:12px;text-decoration:none;background:#fff}
+    .lm-rcard:hover{box-shadow:0 4px 14px rgba(0,0,0,.07)}
+    .lm-rcard .ri{width:44px;height:44px;border-radius:10px;background:var(--lm-bg);display:grid;place-items:center;font-size:21px;flex:none}
+    .lm-rcard b{display:block;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+    .lm-rcard small{color:var(--lm-muted);font-size:12px}
+  </style>
+</head>
+<body>
+{% include 'header.html' %}
+{% include 'sidebar.html' %}
+
+<main class="lm-wrap" id="lm-main">
+  <a class="lm-back" href="{% url 'learning_materials' %}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> All materials</a>
+
+  {% if messages %}{% for message in messages %}<div class="lm-msg {{ message.tags }}" role="alert">{{ message }}</div>{% endfor %}{% endif %}
+
+  <div class="lm-layout">
+    <section>
+      <div class="lm-title">
+        <div class="lm-ico" style="color:{{ m.icon_color }}"><i class="fa-solid {{ m.icon }}" aria-hidden="true"></i></div>
+        <div>
+          <h1>{{ m.title }}</h1>
+          <div class="lm-sub">{{ m.subject_name }} · {{ m.class_label }} · {{ m.file_ext|upper }} · {{ m.size_display }}</div>
+        </div>
+      </div>
+
+      <div class="lm-preview">
+        {% if m.can_preview %}
+        <div class="lm-preview-bar">
+          <span><i class="fa-regular fa-eye"></i> Preview</span>
+          <a class="lm-btn outline sm" href="{{ m.file_url }}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i> Open in new tab</a>
+        </div>
+        {% if m.preview_kind == 'pdf' or m.preview_kind == 'text' %}
+          <iframe class="lm-frame" src="{{ m.file_url }}" title="Preview of {{ m.title }}" loading="lazy"></iframe>
+        {% elif m.preview_kind == 'image' %}
+          <div class="lm-media"><img src="{{ m.file_url }}" alt="{{ m.title }}"></div>
+        {% elif m.preview_kind == 'video' %}
+          <div class="lm-media"><video controls preload="metadata" src="{{ m.file_url }}">Your browser cannot play this video. Please download it instead.</video></div>
+        {% elif m.preview_kind == 'audio' %}
+          <div class="lm-audio"><i class="fa-solid fa-headphones" aria-hidden="true"></i><audio controls preload="metadata" src="{{ m.file_url }}">Your browser cannot play this audio. Please download it instead.</audio></div>
+        {% endif %}
+        {% else %}
+        <div class="lm-nopreview">
+          <div class="big" style="color:{{ m.icon_color }}"><i class="fa-solid {{ m.icon }}" aria-hidden="true"></i></div>
+          <h2>Preview not available</h2>
+          <p>{{ m.type_label }} files cannot be shown in the browser. Download it to open in the right app on your device.</p>
+          <a class="lm-btn primary" href="{% url 'learning_material_download' m.pk %}"><i class="fa-solid fa-download"></i> Download {{ m.size_display }}</a>
+        </div>
+        {% endif %}
+      </div>
+      {% if m.can_preview %}<p class="lm-fallback">Preview not loading? Use <b>Open in new tab</b> or download the file.</p>{% endif %}
+
+      {% if m.description %}
+      <div class="lm-desc"><h2>About this material</h2><p>{{ m.description }}</p></div>
+      {% endif %}
+    </section>
+
+    <aside class="lm-side" aria-label="File details">
+      <a class="lm-btn primary" href="{% url 'learning_material_download' m.pk %}"><i class="fa-solid fa-download"></i> Download</a>
+      {% if can_delete %}
+      <form method="post" action="{% url 'learning_material_delete' m.pk %}" onsubmit="return confirm('Delete this material? Students will no longer be able to open it.')">
+        {% csrf_token %}
+        <button type="submit" class="lm-btn danger"><i class="fa-regular fa-trash-can"></i> Delete</button>
+      </form>
+      {% endif %}
+      <dl class="lm-info">
+        <div><dt>Subject</dt><dd>{{ m.subject_name }}</dd></div>
+        <div><dt>Class</dt><dd>{{ m.class_label }}</dd></div>
+        <div><dt>File type</dt><dd>{{ m.type_label }} (.{{ m.file_ext }})</dd></div>
+        <div><dt>Size</dt><dd>{{ m.size_display }}</dd></div>
+        <div><dt>Uploaded by</dt><dd>{% if m.uploaded_by %}{{ m.uploaded_by.get_full_name|default:m.uploaded_by.username }}{% else %}Unknown{% endif %}</dd></div>
+        <div><dt>Date</dt><dd>{{ m.created_at|date:"j M Y" }}</dd></div>
+        <div><dt>Downloads</dt><dd>{{ m.download_count }}</dd></div>
+      </dl>
+    </aside>
+  </div>
+
+  {% if related %}
+  <section class="lm-related" aria-labelledby="lmRel">
+    <h2 id="lmRel">More in {{ m.subject_name }}</h2>
+    <div class="lm-rgrid">
+      {% for r in related %}
+      <a class="lm-rcard" href="{% url 'learning_material_detail' r.pk %}">
+        <span class="ri" style="color:{{ r.icon_color }}"><i class="fa-solid {{ r.icon }}" aria-hidden="true"></i></span>
+        <span><b>{{ r.title }}</b><small>{{ r.file_ext|upper }} · {{ r.size_display }} · {{ r.created_at|date:"j M Y" }}</small></span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</main>
+{% include 'footer.html' %}
+</body>
+</html>

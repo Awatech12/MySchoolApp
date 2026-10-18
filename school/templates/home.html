@@ -381,6 +381,14 @@
           <p class="TopMark-feature-name">Live Classes</p>
         </a>
 
+        <!-- Learning Materials (students download, teachers upload) -->
+        <a href="{% url 'learning_materials' %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
+            <i class="fa-solid fa-book-open" style="font-size:44px;color:#0074cc;"></i>
+          </div>
+          <p class="TopMark-feature-name">Learning Materials</p>
+        </a>
+
         {% if not user.teacher_profile or user.is_superuser %}
         <!-- CBT Exams Card -->
         <a href="{% url 'cbt_exams' %}" class="TopMark-feature-tile">

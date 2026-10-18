@@ -100,6 +100,13 @@ urlpatterns = [
     path('dashboard/api/content/', views.api_content, name='dash_content'),
     path('dashboard/api/content/delete/', views.api_content_delete, name='dash_content_delete'),
 
+    # ── Learning materials (students download; teachers upload) ──
+    path('materials/', views.learning_materials, name='learning_materials'),
+    path('materials/upload/', views.learning_material_upload, name='learning_material_upload'),
+    path('materials/<int:pk>/', views.learning_material_detail, name='learning_material_detail'),
+    path('materials/<int:pk>/download/', views.learning_material_download, name='learning_material_download'),
+    path('materials/<int:pk>/delete/', views.learning_material_delete, name='learning_material_delete'),
+
     # profile must stay LAST – catches any remaining <str:username>
     path('change-password/', views.change_password, name='change_password'),
     path('update-passport/', views.update_passport, name='update_passport'),

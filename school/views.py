@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from school.exam_import import (MAX_ROWS as EXAM_IMPORT_MAX_ROWS, EXAM_CLASSES, check_image, clean_class, clean_question,
                                 image_blobs_from_uploads, import_questions, parse_rows, rows_from_text, rows_from_upload)
-from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule, TeacherProfile, Announcement
+from school.models import Profile, Post, PostComment, Notification, LiveSession, LiveParticipant, CBTExam, CBTScore, ClassPost, ClassPostComment, RegisteredSubject, ClassPostReport, ExamQuestion, ExamPassage, ExaminationAttempt, ExamSchedule, TeacherProfile, Announcement, LearningMaterial
 from django.db.models import Q, F, Max, DateTimeField
 from django.db.models.functions import Coalesce
 import uuid, json, re, logging, random
@@ -4149,3 +4149,266 @@ def api_teacher_reset_password(request, pk):
     user.set_password(password)
     user.save(update_fields=['password'])
     return JsonResponse({'ok': True, 'username': user.username, 'password': password, 'generated': generated})
+
+
+# ════════════════════════════════════════════════════════════════════
+#  LEARNING MATERIALS
+#  Teachers / staff upload notes, slides, worksheets and past questions; students browse,
+#  preview and download the ones set for their class (a blank class means every class).
+# ════════════════════════════════════════════════════════════════════
+
+MATERIAL_MAX_BYTES  = 10 * 1024 * 1024      # Cloudinary's free plan refuses larger raw files
+MATERIALS_PAGE_SIZE = 12
+MATERIAL_EXTS       = tuple(LearningMaterial.TYPE_META)
+MATERIAL_SORTS      = [('newest', 'Newest'), ('oldest', 'Oldest'),
+                       ('popular', 'Most downloaded'), ('title', 'Title A–Z')]
+
+
+def _material_signature_ok(ext, head):
+    """Check the first bytes of an upload against its extension (the file name alone proves nothing)."""
+    if ext == 'pdf':
+        return head.startswith(b'%PDF')
+    if ext in ('docx', 'pptx', 'xlsx', 'zip'):
+        return head[:2] == b'PK'
+    if ext in ('doc', 'ppt', 'xls'):
+        return head[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+    if ext in ('jpg', 'jpeg'):
+        return head[:3] == b'\xff\xd8\xff'
+    if ext == 'png':
+        return head[:8] == b'\x89PNG\r\n\x1a\n'
+    if ext == 'mp3':
+        return head[:3] == b'ID3' or (len(head) > 1 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0)
+    if ext == 'mp4':
+        return head[4:8] == b'ftyp'
+    if ext in ('txt', 'csv'):
+        return b'\x00' not in head
+    return True
+
+
+def _check_material_upload(upload):
+    """(extension, None) for an acceptable file, else (None, error message)."""
+    name = upload.name or ''
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    if ext not in MATERIAL_EXTS:
+        return None, 'That file type is not allowed. Upload a ' + ', '.join(sorted({e.upper() for e in MATERIAL_EXTS})) + ' file.'
+    if upload.size < 1:
+        return None, 'That file is empty.'
+    if upload.size > MATERIAL_MAX_BYTES:
+        return None, f'That file is too large (limit {MATERIAL_MAX_BYTES // (1024 * 1024)} MB).'
+    head = upload.read(16)
+    upload.seek(0)
+    if not _material_signature_ok(ext, head):
+        return None, f'That file does not look like a real .{ext} file.'
+    return ext, None
+
+
+def _materials_for(user):
+    """
+    Materials this user may open. Teachers / staff see everything; a student sees the materials set for
+    their own class plus the ones for every class (a student with no class on their profile gets only those).
+    """
+    qs = LearningMaterial.objects.select_related('uploaded_by')
+    if _is_teacher(user):
+        return qs
+    cls = _exam_class(user)
+    return qs.filter(Q(class_level='') | Q(class_level=cls)) if cls else qs.filter(class_level='')
+
+
+def _can_delete_material(user, material):
+    return _is_teacher(user) and (material.uploaded_by_id == user.pk or user.is_staff or user.is_superuser)
+
+
+@login_required
+@never_cache
+@ensure_csrf_cookie
+def learning_materials(request):
+    """The library: searchable, filterable, paginated list of materials, with an upload form for teachers."""
+    user    = request.user
+    teacher = _is_teacher(user)
+
+    q       = (request.GET.get('q') or '').strip()[:100]
+    subject = (request.GET.get('subject') or '').strip()
+    level   = (request.GET.get('level') or '').strip().upper()
+    kind    = (request.GET.get('kind') or '').strip()
+    sort    = (request.GET.get('sort') or 'newest').strip()
+    mine    = teacher and request.GET.get('scope') == 'mine'
+    if sort not in dict(MATERIAL_SORTS):
+        sort = 'newest'
+    if kind not in LearningMaterial.KIND_GROUPS:
+        kind = ''
+    if level not in EXAM_CLASSES:
+        level = ''
+
+    base = _materials_for(user)
+    subject_options = sorted(set(base.values_list('subject_name', flat=True)))
+
+    qs = base
+    if subject:
+        qs = qs.filter(subject_name=subject)
+    if teacher and level:
+        qs = qs.filter(class_level=level)
+    if kind:
+        qs = qs.filter(file_ext__in=LearningMaterial.KIND_GROUPS[kind][1])
+    if mine:
+        qs = qs.filter(uploaded_by=user)
+    for term in q.split()[:5]:
+        qs = qs.filter(Q(title__icontains=term) | Q(description__icontains=term) | Q(subject_name__icontains=term))
+
+    order = {
+        'newest':  ('-created_at',),
+        'oldest':  ('created_at',),
+        'popular': ('-download_count', '-created_at'),
+        'title':   ('title',),
+    }[sort]
+    page_obj = Paginator(qs.order_by(*order), MATERIALS_PAGE_SIZE).get_page(request.GET.get('page'))
+    for m in page_obj.object_list:
+        m.can_delete = _can_delete_material(user, m)
+
+    # What this user may upload for (a teacher only for their own subjects and classes).
+    scope = _teacher_scope(user) if teacher else None
+    if teacher and scope is None:
+        upload_subjects = sorted(SENIOR_SECONDARY_SUBJECTS) + ['General']
+        upload_classes = list(EXAM_CLASSES)
+    elif teacher:
+        upload_subjects, upload_classes = sorted(scope[0]), [c for c in EXAM_CLASSES if c in scope[1]]
+    else:
+        upload_subjects, upload_classes = [], []
+
+    params = {k: v for k, v in (('q', q), ('subject', subject), ('level', level), ('kind', kind),
+                                ('sort', sort if sort != 'newest' else ''), ('scope', 'mine' if mine else '')) if v}
+    return render(request, 'learning_materials.html', {
+        'page_obj':        page_obj,
+        'total_found':     page_obj.paginator.count,
+        'total_all':       base.count(),
+        'q': q, 'current_subject': subject, 'current_level': level, 'current_kind': kind,
+        'current_sort': sort, 'mine': mine,
+        'subject_options': subject_options,
+        'level_options':   list(EXAM_CLASSES),
+        'kind_options':    [(k, v[0]) for k, v in LearningMaterial.KIND_GROUPS.items()],
+        'sort_options':    MATERIAL_SORTS,
+        'has_filters':     bool(q or subject or level or kind or mine),
+        'querystring':     urlencode(params),
+        'is_teacher':      teacher,
+        'student_class':   '' if teacher else _exam_class(user),
+        'upload_subjects': upload_subjects,
+        'upload_classes':  upload_classes,
+        'can_leave_class_blank': teacher and scope is None,      # only staff may share with every class
+        'max_mb':          MATERIAL_MAX_BYTES // (1024 * 1024),
+        'allowed_exts':    sorted({e.upper() for e in MATERIAL_EXTS}),
+        'accept_attr':     ','.join('.' + e for e in MATERIAL_EXTS),
+    })
+
+
+@login_required
+@never_cache
+def learning_material_detail(request, pk):
+    """One material: preview (when the browser can show it), full details and the download button."""
+    user = request.user
+    material = get_object_or_404(_materials_for(user), pk=pk)
+    related = list(_materials_for(user).filter(subject_name=material.subject_name).exclude(pk=material.pk)[:4])
+    return render(request, 'learning_material_detail.html', {
+        'm': material,
+        'related': related,
+        'can_delete': _can_delete_material(user, material),
+        'is_teacher': _is_teacher(user),
+    })
+
+
+@login_required
+def learning_material_download(request, pk):
+    """Count the download, then hand over the file (a redirect on Cloudinary, a streamed file locally)."""
+    from django.conf import settings
+    from django.http import FileResponse
+    material = get_object_or_404(_materials_for(request.user), pk=pk)
+    LearningMaterial.objects.filter(pk=material.pk).update(download_count=F('download_count') + 1)
+
+    if getattr(settings, 'USE_CLOUDINARY', False):
+        url = material.download_url_direct
+        if not url:
+            raise Http404('File not found.')
+        return redirect(url)
+    try:
+        handle = material.file.open('rb')
+    except (FileNotFoundError, ValueError, OSError):
+        raise Http404('File not found.')
+    return FileResponse(handle, as_attachment=True, filename=material.file_name or None)
+
+
+@_exam_teacher_only
+@require_POST
+def learning_material_upload(request):
+    """Add a material. A teacher can only upload for the subjects and classes on their teacher profile."""
+    import os
+    from django.utils.text import get_valid_filename
+
+    user = request.user
+    title       = ' '.join((request.POST.get('title') or '').split())
+    description = ' '.join((request.POST.get('description') or '').split())
+    subject     = (request.POST.get('subject') or '').strip()
+    raw_class   = (request.POST.get('class_level') or '').strip()
+    level       = clean_class(raw_class) or ''
+    upload      = request.FILES.get('file')
+    back        = redirect('learning_materials')
+
+    def fail(msg):
+        messages.error(request, 'Not uploaded: ' + msg)
+        return back
+
+    scope = _teacher_scope(user)                  # None = staff / admin
+    allowed_subjects = list(SENIOR_SECONDARY_SUBJECTS) + (['General'] if scope is None else [])
+    if not title:
+        return fail('please give the material a title.')
+    if len(title) > 200 or len(description) > 500:
+        return fail('the title (200 characters) or description (500 characters) is too long.')
+    if subject not in allowed_subjects:
+        return fail('please choose a subject.')
+    if raw_class and not level:
+        return fail('please choose SS1, SS2 or SS3 as the class.')
+    if scope is not None:
+        if not level:
+            return fail('please choose the class (SS1, SS2 or SS3) this is for.')
+        if not _in_scope(user, subject, level):
+            return fail(f'you are not assigned to teach {subject} for {level}.')
+    if not upload:
+        return fail('please choose a file.')
+    ext, err = _check_material_upload(upload)
+    if err:
+        return fail(err)
+
+    clean_name = get_valid_filename(os.path.basename(upload.name)) or f'material.{ext}'
+    material = LearningMaterial(
+        title=title, description=description, subject_name=subject, class_level=level,
+        file_name=clean_name[:255], file_ext=ext, file_size=upload.size, uploaded_by=user,
+    )
+    material.file = upload
+    try:
+        material.save()
+    except Exception:
+        logger.exception('learning material upload failed for user %s', user.pk)
+        return fail('the file could not be saved. Please try again.')
+    messages.success(request, f'"{title}" is now available to {level + " students" if level else "all students"}.')
+    return back
+
+
+@login_required
+@require_POST
+def learning_material_delete(request, pk):
+    """Delete a material: the teacher who uploaded it, or staff."""
+    material = get_object_or_404(LearningMaterial, pk=pk)
+    if not _can_delete_material(request.user, material):
+        raise PermissionDenied
+    from django.conf import settings
+    try:
+        if getattr(settings, 'USE_CLOUDINARY', False):
+            import cloudinary.uploader
+            public_id = str(getattr(material.file, 'public_id', None) or material.file or '')
+            if public_id:
+                cloudinary.uploader.destroy(public_id, resource_type='raw')
+        else:
+            material.file.delete(save=False)
+    except Exception:
+        logger.warning('could not remove stored file of learning material %s', pk)
+    title = material.title
+    material.delete()
+    messages.success(request, f'"{title}" was deleted.')
+    return redirect('learning_materials')

@@ -1,0 +1,342 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <title>Learning Materials | TopMark</title>
+  <style>
+    :root{
+      --lm-bg:#fafafa; --lm-line:#e6e6e6; --lm-text:#262626; --lm-muted:#737373;
+      --lm-primary:#0095f6; --lm-primary-dk:#0074cc; --lm-primary-lt:#e8f4fd;
+
+      /* Compatibility for the shared partials (header / sidebar / footer) that read these names. */
+      --tm-navy:#0095f6; --tm-navy-dk:#0074cc; --tm-navy-50:#e8f4fd; --tm-navy-100:#dbdbdb;
+      --tm-ink:#262626; --tm-muted:#737373; --tm-line:#dbdbdb; --tm-bg:#ffffff; --tm-white:#fff;
+      --tm-orange:#0095f6; --tm-orange-dk:#0074cc;
+      --awaClass-bg:#fafafa; --awaClass-white:#fff; --awaClass-border:#dbdbdb; --awaClass-border-light:#efefef;
+      --awaClass-text:#262626; --awaClass-text-muted:#8e8e8e; --awaClass-text-light:#8e8e8e;
+      --awaClass-gray:#8e8e8e; --awaClass-gray-light:#c7c7c7; --awaClass-primary:#0095f6;
+      --awaClass-primary-dk:#0074cc; --awaClass-primary-hover:#0074cc; --awaClass-primary-lt:#e8f4fd;
+      --awaClass-accent:#0095f6; --awaClass-danger:#111827; --awaClass-modal-overlay:rgba(0,0,0,.5);
+      --awaClass-btn-bg:#0095f6; --awaClass-btn-color:#fff;
+      --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:100%}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:var(--lm-text);line-height:1.5;overflow-x:hidden}
+    body.lm-lock{overflow:hidden}
+    a{color:inherit}
+    button,input,select,textarea{font:inherit;color:inherit}
+    :focus-visible{outline:3px solid var(--lm-primary);outline-offset:2px}
+
+    .lm-wrap{max-width:1080px;margin:0 auto;padding:22px 16px 96px}
+    @media(min-width:768px){.lm-wrap{padding-left:84px;padding-right:24px}}
+
+    /* heading */
+    .lm-head{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+    .lm-head h1{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.15}
+    .lm-head p{font-size:14px;color:var(--lm-muted);margin-top:4px}
+    .lm-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:var(--lm-primary-lt);color:var(--lm-primary-dk);border-radius:999px;padding:2px 10px;margin-left:6px;vertical-align:middle}
+
+    /* buttons */
+    .lm-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 16px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;border:1px solid transparent;background:#efefef;color:var(--lm-text)}
+    .lm-btn:hover{background:#e4e4e4}
+    .lm-btn.primary{background:var(--lm-primary);color:#fff}
+    .lm-btn.primary:hover{background:var(--lm-primary-dk)}
+    .lm-btn.outline{background:#fff;color:var(--lm-primary-dk);border-color:#cfe6f7}
+    .lm-btn.outline:hover{background:var(--lm-primary-lt)}
+    .lm-btn.danger{background:#fff;color:#b91c1c;border-color:#f1c9c9}
+    .lm-btn.danger:hover{background:#fdf2f2}
+    .lm-btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+    .lm-btn[disabled]{opacity:.55;cursor:not-allowed}
+
+    /* messages / notes */
+    .lm-msg{border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;margin-bottom:10px;border:1px solid transparent}
+    .lm-msg.success{background:#f0f9f4;color:#166534;border-color:#bbe5cb}
+    .lm-msg.error{background:#fdf2f2;color:#991b1b;border-color:#f3c4c4}
+    .lm-msg.warning,.lm-msg.info{background:#fffbeb;color:#92400e;border-color:#f5d49b}
+    .lm-note{display:flex;gap:10px;align-items:flex-start;background:var(--lm-primary-lt);border:1px solid #cfe6f7;color:var(--lm-primary-dk);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+
+    /* filter bar */
+    .lm-filters{background:var(--lm-bg);border-radius:14px;padding:14px;margin-bottom:14px;display:grid;gap:10px}
+    .lm-search{position:relative}
+    .lm-search i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#8e8e8e;font-size:14px;pointer-events:none}
+    .lm-input{width:100%;min-height:42px;border-radius:10px;padding:8px 12px;background:#fff;border:1px solid #dbdbdb;font-size:15px}
+    .lm-search .lm-input{padding-left:38px}
+    .lm-input:focus{outline:2px solid var(--lm-primary);outline-offset:0;border-color:var(--lm-primary)}
+    textarea.lm-input{min-height:80px;resize:vertical}
+    .lm-selects{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    @media(min-width:760px){.lm-selects{grid-template-columns:repeat(4,1fr)}}
+    .lm-bar-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+    .lm-check{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--lm-muted);cursor:pointer}
+    .lm-check input{width:17px;height:17px;accent-color:var(--lm-primary-dk)}
+    .lm-count{font-size:13px;color:var(--lm-muted);margin:2px 2px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .lm-count a{color:var(--lm-primary-dk);font-weight:700}
+
+    /* cards */
+    .lm-grid{display:grid;gap:14px;grid-template-columns:1fr}
+    @media(min-width:640px){.lm-grid{grid-template-columns:1fr 1fr}}
+    @media(min-width:1000px){.lm-grid{grid-template-columns:1fr 1fr 1fr}}
+    .lm-card{background:#fff;border:1px solid var(--lm-line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .15s,transform .15s}
+    .lm-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.07);transform:translateY(-2px)}
+    .lm-card-top{display:flex;gap:12px;align-items:center;padding:14px 14px 0}
+    .lm-ico{width:52px;height:52px;border-radius:12px;background:var(--lm-bg);display:grid;place-items:center;font-size:26px;flex:none}
+    .lm-ext{font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--lm-muted);text-transform:uppercase}
+    .lm-type{font-size:12px;color:var(--lm-muted);font-weight:600}
+    .lm-card-body{padding:10px 14px 12px;flex:1;display:flex;flex-direction:column;gap:6px}
+    .lm-card h2{font-size:16px;font-weight:800;line-height:1.3;letter-spacing:-.1px}
+    .lm-card h2 a{text-decoration:none}
+    .lm-card h2 a:hover{color:var(--lm-primary-dk)}
+    .lm-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .lm-chip{font-size:11px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--lm-bg);color:#404040}
+    .lm-chip.blue{background:var(--lm-primary-lt);color:var(--lm-primary-dk)}
+    .lm-desc{font-size:13px;color:#555;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .lm-meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--lm-muted);margin-top:auto;padding-top:4px}
+    .lm-meta i{margin-right:4px}
+    .lm-card-actions{display:flex;gap:8px;padding:0 14px 14px}
+    .lm-card-actions .lm-btn{flex:1}
+    .lm-card-actions form{display:contents}
+    .lm-empty{text-align:center;border:1px dashed #d4d4d4;border-radius:16px;padding:44px 16px;color:var(--lm-muted)}
+    .lm-empty i{font-size:38px;color:#c7c7c7;margin-bottom:10px}
+    .lm-empty h3{color:var(--lm-text);font-size:17px;margin-bottom:4px}
+
+    /* pagination */
+    .lm-pager{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:22px;font-size:14px;font-weight:600}
+    .lm-pager span{color:var(--lm-muted)}
+
+    /* upload modal */
+    .lm-modal{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
+    .lm-modal[hidden]{display:none}
+    .lm-sheet{background:#fff;width:100%;max-width:600px;max-height:94vh;max-height:94dvh;display:flex;flex-direction:column;border-radius:14px 14px 0 0;overflow:hidden}
+    @media(min-width:640px){.lm-modal{align-items:center;padding:20px}.lm-sheet{border-radius:14px;max-height:90vh}}
+    .lm-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--lm-primary-dk);color:#fff}
+    .lm-sheet-h h2{font-size:17px;font-weight:700}
+    .lm-x{width:44px;height:44px;margin:-8px -8px -8px 0;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer}
+    .lm-sheet-b{padding:16px;overflow-y:auto;flex:1}
+    .lm-sheet-f{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #dbdbdb;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+    .lm-alert{border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:12px;background:#fdf2f2;color:#991b1b;border:1px solid #f3c4c4}
+    .lm-alert:empty{display:none}
+    .lm-form{display:grid;gap:14px}
+    .lm-two{display:grid;gap:14px;grid-template-columns:1fr}
+    @media(min-width:520px){.lm-two{grid-template-columns:1fr 1fr}}
+    .lm-field label{display:block;font-size:13px;font-weight:700;color:var(--lm-primary-dk);margin-bottom:5px}
+    .lm-hint{font-size:12px;color:var(--lm-muted);margin-top:4px}
+    .lm-drop{border:2px dashed #b9dcf5;background:var(--lm-primary-lt);border-radius:12px;padding:16px;text-align:center;cursor:pointer;display:block}
+    .lm-drop i{font-size:26px;color:var(--lm-primary-dk)}
+    .lm-drop b{display:block;font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+    .lm-drop input{position:absolute;width:1px;height:1px;opacity:0}
+    .lm-drop:focus-within{outline:3px solid var(--lm-primary);outline-offset:2px}
+  </style>
+</head>
+<body>
+{% include 'header.html' %}
+{% include 'sidebar.html' %}
+
+<main class="lm-wrap" id="lm-main">
+
+  <div class="lm-head">
+    <div>
+      <h1>Learning Materials{% if student_class %}<span class="lm-tag">{{ student_class }}</span>{% endif %}</h1>
+      <p>{% if is_teacher %}Notes, slides, worksheets and past questions you share with your students.{% else %}Notes, slides, worksheets and past questions from your teachers. Preview them here or download to study offline.{% endif %}</p>
+    </div>
+    {% if is_teacher %}
+    <button type="button" class="lm-btn primary" data-lm-open="lmUploadModal"><i class="fa-solid fa-cloud-arrow-up"></i> Upload material</button>
+    {% endif %}
+  </div>
+
+  {% if messages %}{% for message in messages %}<div class="lm-msg {{ message.tags }}" role="alert">{{ message }}</div>{% endfor %}{% endif %}
+
+  {% if not is_teacher and not student_class %}
+  <div class="lm-note" role="note"><i class="fa-solid fa-circle-info"></i><div>Your class (SS1, SS2 or SS3) is not set on your profile yet, so you can only see materials shared with every class. Ask your teacher or the administrator to set it.</div></div>
+  {% endif %}
+
+  <!-- ══ SEARCH & FILTERS ══ -->
+  <form class="lm-filters" method="get" id="lmFilters" role="search">
+    <div class="lm-search">
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <input class="lm-input" type="search" name="q" value="{{ q }}" maxlength="100" placeholder="Search by title, subject or description" aria-label="Search materials">
+    </div>
+    <div class="lm-selects">
+      <select class="lm-input" name="subject" aria-label="Subject" data-autosubmit>
+        <option value="">All subjects</option>
+        {% for s in subject_options %}<option value="{{ s }}"{% if current_subject == s %} selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+      <select class="lm-input" name="kind" aria-label="File type" data-autosubmit>
+        <option value="">All file types</option>
+        {% for key, label in kind_options %}<option value="{{ key }}"{% if current_kind == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {% if is_teacher %}
+      <select class="lm-input" name="level" aria-label="Class" data-autosubmit>
+        <option value="">All classes</option>
+        {% for l in level_options %}<option value="{{ l }}"{% if current_level == l %} selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <select class="lm-input" name="sort" aria-label="Sort by" data-autosubmit>
+        {% for key, label in sort_options %}<option value="{{ key }}"{% if current_sort == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="lm-bar-actions">
+      {% if is_teacher %}<label class="lm-check"><input type="checkbox" name="scope" value="mine"{% if mine %} checked{% endif %} data-autosubmit> Only my uploads</label>{% else %}<span></span>{% endif %}
+      <button type="submit" class="lm-btn primary sm"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    </div>
+  </form>
+
+  <div class="lm-count" aria-live="polite">
+    <span>{{ total_found }} material{{ total_found|pluralize }}{% if has_filters %} found{% endif %}</span>
+    {% if has_filters %}<a href="{% url 'learning_materials' %}">Clear filters</a>{% endif %}
+  </div>
+
+  <!-- ══ MATERIALS ══ -->
+  {% if page_obj.object_list %}
+  <div class="lm-grid">
+    {% for m in page_obj.object_list %}
+    <article class="lm-card">
+      <div class="lm-card-top">
+        <div class="lm-ico" style="color:{{ m.icon_color }}"><i class="fa-solid {{ m.icon }}" aria-hidden="true"></i></div>
+        <div>
+          <div class="lm-ext">{{ m.file_ext }} · {{ m.size_display }}</div>
+          <div class="lm-type">{{ m.type_label }}</div>
+        </div>
+      </div>
+      <div class="lm-card-body">
+        <h2><a href="{% url 'learning_material_detail' m.pk %}">{{ m.title }}</a></h2>
+        <div class="lm-chips">
+          <span class="lm-chip blue">{{ m.subject_name }}</span>
+          <span class="lm-chip">{{ m.class_label }}</span>
+        </div>
+        {% if m.description %}<p class="lm-desc">{{ m.description }}</p>{% endif %}
+        <div class="lm-meta">
+          <span><i class="fa-regular fa-calendar"></i>{{ m.created_at|date:"j M Y" }}</span>
+          <span><i class="fa-solid fa-download"></i>{{ m.download_count }}</span>
+          {% if m.uploaded_by %}<span><i class="fa-regular fa-user"></i>{{ m.uploaded_by.get_full_name|default:m.uploaded_by.username }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="lm-card-actions">
+        <a class="lm-btn outline sm" href="{% url 'learning_material_detail' m.pk %}"><i class="fa-regular fa-eye"></i> {% if m.can_preview %}Preview{% else %}Details{% endif %}</a>
+        <a class="lm-btn primary sm" href="{% url 'learning_material_download' m.pk %}"><i class="fa-solid fa-download"></i> Download</a>
+        {% if m.can_delete %}
+        <form method="post" action="{% url 'learning_material_delete' m.pk %}" onsubmit="return confirm('Delete &quot;{{ m.title|escapejs }}&quot;? Students will no longer be able to open it.')">
+          {% csrf_token %}
+          <button type="submit" class="lm-btn danger sm" style="flex:none" aria-label="Delete {{ m.title }}"><i class="fa-regular fa-trash-can"></i></button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <nav class="lm-pager" aria-label="Pages">
+    {% if page_obj.has_previous %}<a class="lm-btn outline sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page_obj.previous_page_number }}"><i class="fa-solid fa-chevron-left"></i> Previous</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="lm-btn outline sm" href="?{{ querystring }}{% if querystring %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next <i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="lm-empty">
+    <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
+    {% if has_filters %}
+      <h3>No materials match your search</h3>
+      <p>Try a different word, or <a href="{% url 'learning_materials' %}" style="color:var(--lm-primary-dk);font-weight:700">clear the filters</a>.</p>
+    {% elif is_teacher %}
+      <h3>No materials yet</h3>
+      <p>Upload notes, slides or worksheets for your students.</p>
+    {% else %}
+      <h3>No materials yet</h3>
+      <p>Your teachers have not shared any materials for your class. Check back soon.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</main>
+
+{% if is_teacher %}
+<!-- ══ UPLOAD MATERIAL ══ -->
+<div class="lm-modal" id="lmUploadModal" hidden>
+  <div class="lm-sheet" role="dialog" aria-modal="true" aria-labelledby="lmUploadTitle">
+    <div class="lm-sheet-h"><h2 id="lmUploadTitle">Upload material</h2><button type="button" class="lm-x" data-lm-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+    <div class="lm-sheet-b">
+      <div class="lm-alert" id="lmUploadMsg" role="alert"></div>
+      {% if not upload_subjects or not upload_classes %}
+      <p class="lm-hint">No subjects or classes are assigned to your teacher account yet, so you cannot upload. Please ask the administrator.</p>
+      {% else %}
+      <form id="lmUploadForm" class="lm-form" method="post" action="{% url 'learning_material_upload' %}" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="lm-field"><label for="lmf-title">Title</label><input class="lm-input" id="lmf-title" name="title" maxlength="200" placeholder="e.g. Quadratic equations: worked examples" required></div>
+        <div class="lm-two">
+          <div class="lm-field"><label for="lmf-subject">Subject</label>
+            <select class="lm-input" id="lmf-subject" name="subject" required><option value="">Choose a subject</option>{% for s in upload_subjects %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></div>
+          <div class="lm-field"><label for="lmf-class">Class</label>
+            <select class="lm-input" id="lmf-class" name="class_level"{% if not can_leave_class_blank %} required{% endif %}>
+              {% if can_leave_class_blank %}<option value="">All classes</option>{% else %}<option value="">Choose a class</option>{% endif %}
+              {% for l in upload_classes %}<option value="{{ l }}">{{ l }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="lm-field"><label for="lmf-desc">Description (optional)</label><textarea class="lm-input" id="lmf-desc" name="description" maxlength="500" placeholder="What is in this file and how should students use it?"></textarea></div>
+        <div class="lm-field">
+          <label for="lmf-file">File</label>
+          <label class="lm-drop" for="lmf-file">
+            <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+            <b id="lmFileName">Choose a file</b>
+            <span class="lm-hint" style="display:block">{{ allowed_exts|join:", " }} · up to {{ max_mb }} MB</span>
+            <input type="file" id="lmf-file" name="file" accept="{{ accept_attr }}" required>
+          </label>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+    <div class="lm-sheet-f"><button type="button" class="lm-btn" data-lm-close>Cancel</button>{% if upload_subjects and upload_classes %}<button type="submit" form="lmUploadForm" class="lm-btn primary" id="lmUploadBtn"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</button>{% endif %}</div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function(){
+  /* filters: selects and the checkbox search straight away */
+  var form=document.getElementById('lmFilters');
+  Array.prototype.forEach.call(form.querySelectorAll('[data-autosubmit]'),function(el){el.addEventListener('change',function(){form.submit()})});
+
+  var modal=document.getElementById('lmUploadModal');
+  if(!modal)return;
+  var last=null,MAX={{ max_mb }}*1024*1024,EXTS="{{ accept_attr|escapejs }}".split(',');
+  function open(){last=document.activeElement;modal.hidden=false;document.body.classList.add('lm-lock');var f=modal.querySelector('input,select');if(f)f.focus()}
+  function close(){modal.hidden=true;document.body.classList.remove('lm-lock');if(last&&last.focus)last.focus()}
+  document.addEventListener('click',function(e){
+    if(e.target.closest('[data-lm-open="lmUploadModal"]')){open();return}
+    if(e.target.closest('[data-lm-close]')||e.target===modal)close();
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)close()});
+
+  var up=document.getElementById('lmUploadForm');
+  if(!up)return;
+  var msg=document.getElementById('lmUploadMsg'),file=document.getElementById('lmf-file'),nameEl=document.getElementById('lmFileName');
+  function problem(f){
+    if(!f)return 'Please choose a file.';
+    var ext='.'+(f.name.split('.').pop()||'').toLowerCase();
+    if(EXTS.indexOf(ext)<0)return 'That file type is not allowed.';
+    if(f.size>MAX)return 'That file is too large (limit {{ max_mb }} MB).';
+    return '';
+  }
+  file.addEventListener('change',function(){
+    var f=file.files[0],p=f?problem(f):'';
+    if(p){msg.textContent=p;file.value='';nameEl.textContent='Choose a file';return}
+    msg.textContent='';nameEl.textContent=f?f.name:'Choose a file';
+  });
+  up.addEventListener('submit',function(e){
+    var get=function(n){return (up.elements[n].value||'').trim()},p='';
+    if(!get('title'))p='Please give the material a title.';
+    else if(!get('subject'))p='Please choose a subject.';
+    else if(up.elements['class_level'].required&&!get('class_level'))p='Please choose a class.';
+    else p=problem(file.files[0]);
+    if(p){e.preventDefault();msg.textContent=p;return}
+    var b=document.getElementById('lmUploadBtn');b.disabled=true;b.textContent='Uploading…';
+  });
+})();
+</script>
+{% include 'footer.html' %}
+</body>
+</html>

@@ -1097,3 +1097,125 @@ class TeacherProfile(models.Model):
         except Exception:
             pass
         return 'https://placehold.co/40x40/dbdbdb/8e8e8e?text=T'
+
+
+# ── Learning materials (notes, past questions, slides, worksheets ...) ──────────
+# Teachers / staff upload; students browse, preview and download the ones set for their class.
+
+class LearningMaterial(models.Model):
+    """
+    A downloadable learning resource. `class_level` blank = for every class.
+    The file is stored like the project's other uploads (Cloudinary as a raw file, or local media).
+    """
+    # extension -> (label, Font Awesome icon, icon colour, preview kind)
+    # preview kind is what the detail page can show in the browser; '' = download only.
+    TYPE_META = {
+        'pdf':  ('PDF document',        'fa-file-pdf',        '#dc2626', 'pdf'),
+        'doc':  ('Word document',       'fa-file-word',       '#2563eb', ''),
+        'docx': ('Word document',       'fa-file-word',       '#2563eb', ''),
+        'ppt':  ('PowerPoint slides',   'fa-file-powerpoint', '#ea580c', ''),
+        'pptx': ('PowerPoint slides',   'fa-file-powerpoint', '#ea580c', ''),
+        'xls':  ('Excel spreadsheet',   'fa-file-excel',      '#16a34a', ''),
+        'xlsx': ('Excel spreadsheet',   'fa-file-excel',      '#16a34a', ''),
+        'csv':  ('CSV data',            'fa-file-csv',        '#16a34a', ''),
+        'txt':  ('Text file',           'fa-file-lines',      '#525252', 'text'),
+        'jpg':  ('Image',               'fa-file-image',      '#9333ea', 'image'),
+        'jpeg': ('Image',               'fa-file-image',      '#9333ea', 'image'),
+        'png':  ('Image',               'fa-file-image',      '#9333ea', 'image'),
+        'mp3':  ('Audio',               'fa-file-audio',      '#0891b2', 'audio'),
+        'mp4':  ('Video',               'fa-file-video',      '#0891b2', 'video'),
+        'zip':  ('ZIP archive',         'fa-file-zipper',     '#a16207', ''),
+    }
+    # filter groups shown on the library page: key -> (label, extensions)
+    KIND_GROUPS = {
+        'pdf':    ('PDF',            ('pdf',)),
+        'doc':    ('Word',           ('doc', 'docx')),
+        'slides': ('Slides',         ('ppt', 'pptx')),
+        'sheet':  ('Spreadsheets',   ('xls', 'xlsx', 'csv')),
+        'media':  ('Images & media', ('jpg', 'jpeg', 'png', 'mp3', 'mp4')),
+    }
+
+    title        = models.CharField(max_length=200)
+    description  = models.CharField(max_length=500, blank=True)
+    subject_name = models.CharField(max_length=100, db_index=True)
+    # SS1 / SS2 / SS3. Blank = every class.
+    class_level  = models.CharField(max_length=3, choices=EXAM_CLASS_CHOICES, blank=True, default='', db_index=True)
+
+    if settings.USE_CLOUDINARY:
+        file = CloudinaryField('file', resource_type='raw', folder='learning_materials')
+    else:
+        file = models.FileField(upload_to='learning_materials/')
+
+    file_name      = models.CharField(max_length=255)                  # original name, used for the download
+    file_ext       = models.CharField(max_length=10, db_index=True)    # lower case, no dot
+    file_size      = models.PositiveIntegerField(default=0)            # bytes
+    uploaded_by    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='learning_materials')
+    download_count = models.PositiveIntegerField(default=0)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.subject_name} {self.class_level or 'all'}] {self.title}"
+
+    # ── type information ──
+    @property
+    def type_label(self):
+        return self.TYPE_META.get(self.file_ext, ('File', '', '', ''))[0]
+
+    @property
+    def icon(self):
+        return self.TYPE_META.get(self.file_ext, ('', 'fa-file', '', ''))[1] or 'fa-file'
+
+    @property
+    def icon_color(self):
+        return self.TYPE_META.get(self.file_ext, ('', '', '#525252', ''))[2] or '#525252'
+
+    @property
+    def preview_kind(self):
+        """'pdf' | 'image' | 'video' | 'audio' | 'text' | '' (the browser cannot show this type)."""
+        return self.TYPE_META.get(self.file_ext, ('', '', '', ''))[3]
+
+    @property
+    def can_preview(self):
+        return bool(self.preview_kind)
+
+    @property
+    def class_label(self):
+        return self.class_level or 'All classes'
+
+    @property
+    def size_display(self):
+        n = float(self.file_size or 0)
+        for unit in ('B', 'KB', 'MB'):
+            if n < 1024 or unit == 'MB':
+                return f"{int(n)} B" if unit == 'B' else f"{n:.1f} {unit}"
+            n /= 1024
+
+    # ── file URLs ──
+    def _file_url(self, attachment=False):
+        try:
+            if getattr(settings, 'USE_CLOUDINARY', False):
+                import cloudinary
+                f = self.file
+                public_id = str(getattr(f, 'public_id', None) or f or '').strip()
+                if not public_id or public_id == 'None':
+                    return ''
+                opts = {'secure': True}
+                if attachment:
+                    opts['flags'] = 'attachment'
+                return cloudinary.CloudinaryResource(public_id, resource_type='raw').build_url(**opts)
+            return self.file.url if self.file else ''
+        except Exception:
+            return ''
+
+    @property
+    def file_url(self):
+        """URL used for the in-browser preview."""
+        return self._file_url()
+
+    @property
+    def download_url_direct(self):
+        """URL that makes the browser save the file (used by the download view's redirect)."""
+        return self._file_url(attachment=True)
