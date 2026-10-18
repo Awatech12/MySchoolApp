@@ -97,7 +97,8 @@
       <p class="sub">Upload and manage the questions students get in the CBT Examination. {{ total_active }} active questions in total.</p>
     </div>
     <div class="tools">
-      <a class="btn btn-ghost" href="{% url 'cbt_examination' %}"><i class="fa-solid fa-arrow-left"></i> CBT Examination</a>
+      <a class="btn btn-ghost" href="{% url 'home' %}"><i class="fa-solid fa-arrow-left"></i> Home</a>
+      <a class="btn btn-ghost" href="{% url 'cbt_exam_schedule' %}"><i class="fa-regular fa-calendar-check"></i> Exam schedule</a>
       <button class="btn btn-primary" type="button" id="addBtn"><i class="fa-solid fa-plus"></i> Add a question</button>
     </div>
   </div>
@@ -109,7 +110,7 @@
     {% if subject_names and class_options %}
     <i class="fa-solid fa-user-lock"></i> You are managing your own questions only:
     <b>{{ subject_names|join:", " }}</b> for <b>{{ class_options|join:", " }}</b>.
-    Questions set by other teachers for other subjects or classes are not shown.
+    Only the questions and passages you added yourself are shown. Other teachers' questions are private to them.
     {% else %}
     <i class="fa-solid fa-triangle-exclamation"></i> No subjects or classes are assigned to your teacher account yet. Please ask the administrator to update your profile.
     {% endif %}
@@ -191,10 +192,12 @@
         <pre>question | option A | option B | option C | option D | answer letter</pre>
         <p>Pasted text and .txt files cannot carry pictures or passages, and always need the class chosen above; use a spreadsheet for those. Passage labels are kept separate for each subject and class, so the same label (P1) can be used again in another class. Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
       </details>
+      {% if not is_restricted %}
       <label class="chk" style="margin-bottom:14px">
         <input type="checkbox" name="replace">
         <span>Replace existing questions of the subjects and classes in this upload<small>Old questions of those subjects in the same class are removed so only the uploaded ones remain. Other classes are never touched. Students’ past results and reviews are not affected. Nothing is changed if the file has errors.</small></span>
       </label>
+      {% endif %}
       <button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload"></i> Upload</button>
     </form>
   </div>

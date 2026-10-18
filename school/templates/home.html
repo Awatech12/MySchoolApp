@@ -381,7 +381,7 @@
           <p class="TopMark-feature-name">Live Classes</p>
         </a>
 
-        {% if not user.teacher_profile %}
+        {% if not user.teacher_profile or user.is_superuser %}
         <!-- CBT Exams Card -->
         <a href="{% url 'cbt_exams' %}" class="TopMark-feature-tile">
           <div class="TopMark-feature-icon">
@@ -425,15 +425,41 @@
         </a>
         {% endif %}
 
-        {% if not user.teacher_profile %}
-        <!-- My Subjects (opens modal) -->
+        {% if user.teacher_profile or user.is_staff or user.is_superuser %}
+        <!-- Upload exam questions -->
+        <a href="{% url 'cbt_question_bank' %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
+            <i class="fa-solid fa-file-arrow-up" style="font-size:44px;color:#0074cc;"></i>
+          </div>
+          <p class="TopMark-feature-name">Upload Questions</p>
+        </a>
+        <!-- Exam schedule -->
+        <a href="{% url 'cbt_exam_schedule' %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
+            <i class="fa-regular fa-calendar-plus" style="font-size:44px;color:#0074cc;"></i>
+          </div>
+          <p class="TopMark-feature-name">Exam Schedule</p>
+        </a>
+        {% endif %}
+
+        {% if user.is_staff or user.is_superuser %}
+        <!-- Admin dashboard -->
+        <a href="{% url 'admin_dashboard' %}" class="TopMark-feature-tile">
+          <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
+            <i class="fa-solid fa-gauge-high" style="font-size:44px;color:#0074cc;"></i>
+          </div>
+          <p class="TopMark-feature-name">Admin Dashboard</p>
+        </a>
+        {% endif %}
+
+        <!-- My Subjects (opens modal; teachers see the subjects they teach) -->
         <a href="#" class="TopMark-feature-tile" data-my-subjects role="button" aria-haspopup="dialog">
           <div class="TopMark-feature-icon" style="display:flex;align-items:center;justify-content:center;background:#e8f4fd;">
             <i class="fa-solid fa-book-open" style="font-size:44px;color:#0074cc;"></i>
           </div>
           <p class="TopMark-feature-name">My Subjects</p>
         </a>
-        {% endif %}
+        
       </div>
     </div>
 

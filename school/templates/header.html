@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+<link rel="shortcut icon" href="{% static 'images/logo.jpg' %}" type="image/x-icon">
 <style>
   /* ===== TopMark Design Tokens ===== */
   :root {
@@ -176,7 +176,7 @@
       <i class="fa-solid fa-bars" aria-hidden="true"></i>
     </button>
     <a href="{% url 'home' %}" class="ac-header-logo">
-      <img src="{% static 'images/logo.png' %}" alt="TopMark logo" class="ac-header-logo-img">
+      <img src="{% static 'images/logo.jpg' %}" alt="TopMark logo" class="ac-header-logo-img">
       <span class="ac-header-logo-text"><span class="brand-top">Top<span>Mark</span></span><small>Tutorial Center</small></span>
     </a>
   </div>
@@ -188,13 +188,19 @@
       <span class="ac-notif-badge">{{ unread_count }}</span>
       {% endif %}
     </a>
+    {% if user.is_authenticated and user.username %}
     <a href="{% url 'profile' user.username %}" class="ac-header-icon-btn" title="{% if user.teacher_profile %}My profile (teacher){% else %}Profile{% endif %}">
       {% if user.teacher_profile %}
       <img src="{{ user.teacher_profile.get_picture_url }}" alt="Profile" class="ac-header-avatar">
-      {% else %}
+      {% elif user.profile and user.profile.picture %}
       <img src="{{ user.profile.picture.url }}" alt="Profile" class="ac-header-avatar">
+      {% else %}
+      <i class="fa-regular fa-circle-user"></i>
       {% endif %}
     </a>
+    {% else %}
+    <a href="{% url 'index' %}" class="ac-header-icon-btn" title="Log in"><i class="fa-solid fa-right-to-bracket"></i></a>
+    {% endif %}
   </div>
 </header>
 

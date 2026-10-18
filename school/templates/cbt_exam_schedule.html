@@ -49,7 +49,7 @@
 <div class="shell">
   <h1>Exam Schedule</h1>
   <p class="sub">Students can only start the CBT Examination between the opening and closing time you set for their class. Each class (SS1, SS2, SS3) can have a different date and time.</p>
-  <p><a class="btn btn-ghost btn-sm" href="{% url 'cbt_examination' %}"><i class="fa-solid fa-arrow-left"></i> CBT Examination</a></p>
+  <p><a class="btn btn-ghost btn-sm" href="{% url 'home' %}"><i class="fa-solid fa-arrow-left"></i> Home</a></p>
 
   {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
 
