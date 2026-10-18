@@ -845,6 +845,7 @@ class ExamPassage(models.Model):
     title        = models.CharField(max_length=150, blank=True)
     text         = models.TextField(blank=True)
     image        = _exam_image_field('exam_passages')
+    created_by   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')  # teacher who added it
     created_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -881,6 +882,7 @@ class ExamQuestion(models.Model):
     explanation  = models.TextField(blank=True)
     # Optional diagram / picture for this question.
     image        = _exam_image_field('exam_questions')
+    created_by   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')  # teacher who added it
     # Optional shared passage / diagram; `order` keeps the questions of one passage in sequence.
     passage      = models.ForeignKey('ExamPassage', null=True, blank=True, on_delete=models.SET_NULL, related_name='questions')
     order        = models.PositiveIntegerField(default=0)

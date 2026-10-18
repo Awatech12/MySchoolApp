@@ -34,6 +34,19 @@ from django.views.decorators.http import require_GET
 logger = logging.getLogger(__name__)
 
 
+def student_area(view):
+    """Pages for students only: teacher accounts (not staff / superusers) are refused."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        u = request.user
+        if (u.is_authenticated and not (u.is_staff or u.is_superuser)
+                and getattr(u, 'teacher_profile', None) is not None):
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+    return wrapper
+
+
+
 # ── Senior secondary subject list (Nigerian curriculum) ─────────────────
 # Keep this in sync with the SENIOR_SUBJECTS array in
 # register.html's <script> block — they are duplicated there so the tick
@@ -310,13 +323,13 @@ def index(request):
             return redirect(back)
 
         teacher = getattr(user, 'teacher_profile', None)
-        if role == 'student' and teacher is not None:
+        if role == 'student' and teacher is not None and not user.is_superuser:
             messages.error(request, 'This is a teacher account. Use "Are you a teacher? Login here".')
             return redirect('/?login=teacher')
         if role == 'teacher' and teacher is None and not (user.is_staff or user.is_superuser):
             messages.error(request, 'This is a student account. Sign in with your Admission Number on the student login.')
             return redirect('/?login=student')
-        if teacher is not None and not teacher.is_approved:
+        if teacher is not None and not teacher.is_approved and not user.is_superuser:
             messages.warning(request, 'Your teacher account is waiting for approval by the administrator. '
                                       'You can sign in once it has been approved.')
             return redirect(back)
@@ -1012,6 +1025,25 @@ def my_subjects(request):
     key details, plus the subjects they registered. Always the student's own data.
     """
     user    = request.user
+
+    # Teachers see the subjects (and classes) they teach, taken from their teacher profile.
+    teacher = TeacherProfile.objects.filter(user=user).first()
+    if teacher:
+        subjects = teacher.subjects_list
+        return JsonResponse({
+            'success':     True,
+            'is_teacher':  True,
+            'full_name':   teacher.display_name,
+            'username':    user.username,
+            'photo':       teacher.get_picture_url,
+            'classes':     ', '.join(teacher.classes_list),
+            'qualification': teacher.qualification or '',
+            'experience':  f'{teacher.years_experience} year{"s" if teacher.years_experience != 1 else ""}',
+            'subjects':    subjects,
+            'count':       len(subjects),
+            'profile_url': reverse('profile', args=[user.username]),
+        })
+
     profile = Profile.objects.filter(user=user).first()
     subjects = list(
         RegisteredSubject.objects.filter(student=user)
@@ -1372,6 +1404,7 @@ def _cbt_key(picker_id):
 
 
 @login_required
+@student_area
 @ensure_csrf_cookie
 def cbt_subjects(request):
     """Render the Test Practice subject picker. Students can choose any subjects they like."""
@@ -1394,6 +1427,7 @@ def cbt_subjects(request):
 
 
 @login_required
+@student_area
 def cbt_mathematics(request):
     """Render the practice test page (Mathematics default)."""
     return render(request, 'cbt_mathematics.html')
@@ -1404,27 +1438,32 @@ cbt_exam = cbt_mathematics
 
 
 @login_required
+@student_area
 def cbt_physics(request):
     """Render the original Physics practice test page (unchanged)."""
     return render(request, 'cbt_physics.html')
 
 
 @login_required
+@student_area
 def cbt_english(request):
     return render(request, 'cbt_english.html')
 
 
 @login_required
+@student_area
 def cbt_chemistry(request):
     return render(request, 'cbt_chemistry.html')
 
 
 @login_required
+@student_area
 def cbt_physics_topics(request):
     return render(request, 'cbt_physics_topics.html')
 
 
 @login_required
+@student_area
 def cbt_mathematics_topics(request):
     return render(request, 'cbt_mathematics_topics.html')
 
@@ -1438,6 +1477,7 @@ def _grade_for(percentage):
 
 
 @login_required
+@student_area
 @require_POST
 def cbt_submit(request):
     """
@@ -1730,6 +1770,7 @@ def _clean_exam_answers(attempt, incoming):
 
 
 @login_required
+@student_area
 @never_cache
 @ensure_csrf_cookie
 def cbt_examination(request):
@@ -1763,6 +1804,7 @@ def cbt_examination(request):
 
 
 @login_required
+@student_area
 @require_POST
 def cbt_examination_start(request):
     """Create the paper for the ticked subjects and open the examination hall."""
@@ -1821,6 +1863,7 @@ def cbt_examination_start(request):
 
 
 @login_required
+@student_area
 @never_cache
 @ensure_csrf_cookie
 def cbt_examination_take(request, attempt_id):
@@ -1852,6 +1895,7 @@ def cbt_examination_take(request, attempt_id):
 
 
 @login_required
+@student_area
 @require_POST
 def cbt_examination_save(request, attempt_id):
     """Autosave the student's answers (full map, last write wins)."""
@@ -1880,6 +1924,7 @@ def cbt_examination_save(request, attempt_id):
 
 
 @login_required
+@student_area
 @require_POST
 def cbt_examination_submit(request, attempt_id):
     """Final submit (button or timer). Grades on the server and saves the results."""
@@ -1904,6 +1949,7 @@ def cbt_examination_submit(request, attempt_id):
 
 
 @login_required
+@student_area
 @never_cache
 def cbt_examination_result(request, attempt_id):
     """Result slip + answer review (correct answers are only revealed from here)."""
@@ -1955,6 +2001,7 @@ def cbt_examination_result(request, attempt_id):
 # (Printing itself is print_test_results, which re-queries the database for that date.)
 
 @login_required
+@student_area
 @never_cache
 @require_GET
 def my_results(request, username=None):
@@ -2026,7 +2073,8 @@ def _teacher_scope(user):
     What a user may manage in the question bank.
       None                  -> unrestricted (staff / superusers see every subject and class)
       (subjects, classes)   -> an approved teacher: only the subjects AND classes on their teacher
-                               profile (e.g. Mathematics + SS1 means Mathematics questions of SS1 only).
+                               profile (e.g. Mathematics + SS1 means Mathematics questions of SS1 only),
+                               and only the questions / passages that teacher added themself.
     """
     if user.is_staff or user.is_superuser:
         return None
@@ -2042,14 +2090,14 @@ def _scoped_questions(user):
     """Questions this user may see or change. Questions with no class are staff-only."""
     scope = _teacher_scope(user)
     qs = ExamQuestion.objects.all()
-    return qs if scope is None else qs.filter(subject_name__in=scope[0], class_level__in=scope[1])
+    return qs if scope is None else qs.filter(subject_name__in=scope[0], class_level__in=scope[1], created_by=user)
 
 
 def _scoped_passages(user):
     """Passages this user may see or change. Passages with no class are staff-only."""
     scope = _teacher_scope(user)
     qs = ExamPassage.objects.all()
-    return qs if scope is None else qs.filter(subject_name__in=scope[0], class_level__in=scope[1])
+    return qs if scope is None else qs.filter(subject_name__in=scope[0], class_level__in=scope[1], created_by=user)
 
 
 def _in_scope(user, subject, class_level):
@@ -2156,6 +2204,9 @@ def cbt_question_upload(request):
     raw_class = request.POST.get('class_level', '').strip()
     default_class = clean_class(raw_class) or ''
     replace = request.POST.get('replace') == 'on'
+    if replace and _teacher_scope(request.user) is not None:
+        replace = False      # "replace" would wipe other teachers' questions: staff only
+        messages.info(request, 'Only the administrator can replace existing questions, so your file was added to the bank instead.')
     upload = request.FILES.get('file')
     pasted = request.POST.get('pasted', '').strip()
 
@@ -2204,7 +2255,11 @@ def cbt_question_upload(request):
         # Never wipe a subject's existing questions on the strength of a file that has mistakes.
         messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the problems below and upload again.')
     elif questions:
+        q_before = ExamQuestion.objects.aggregate(m=Max('id'))['m'] or 0
+        p_before = ExamPassage.objects.aggregate(m=Max('id'))['m'] or 0
         created, present, removed, import_errors = import_questions(questions, replace=replace)
+        ExamQuestion.objects.filter(id__gt=q_before, created_by__isnull=True).update(created_by=request.user)
+        ExamPassage.objects.filter(id__gt=p_before, created_by__isnull=True).update(created_by=request.user)
         if replace and import_errors:
             messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the problems below and upload again.')
             problems += import_errors
@@ -2277,6 +2332,8 @@ def _save_question_from_post(request, obj):
     if err:
         return err
 
+    if obj.pk is None:
+        obj.created_by = request.user
     obj.subject_name, obj.text = data['subject_name'], data['text']
     obj.class_level = class_level
     obj.option_a, obj.option_b, obj.option_c, obj.option_d = data['a'], data['b'], data['c'], data['d']
@@ -2368,6 +2425,8 @@ def cbt_passage_save(request, pk=None):
                                           ref__iexact=ref).exclude(pk=obj.pk).exists():
         return fail(f'another {class_level} passage in {subject} already uses the reference "{ref}"')
 
+    if obj.pk is None:
+        obj.created_by = request.user
     obj.subject_name, obj.class_level, obj.title, obj.text, obj.ref = subject, class_level, title, text, ref
     if picture:
         obj.image = picture
