@@ -1,0 +1,296 @@
+{% load static %}
+{% include 'header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopMark – Test Mode</title>
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --blue:#0095f6; --blue-dk:#0074cc; --blue-lt:#e8f4fd; --blue-mid:#cce9fd; --dark:#262626; --gray1:#fafafa; --gray2:#efefef; --gray3:#8e8e8e; --line:#dbdbdb; --green:#16a34a; --green-lt:#e8f8ee; --red:#dc2626; --red-lt:#fdecec; --amber:#d97706; --amber-lt:#fef3e2; --radius:12px; }
+  * { box-sizing:border-box; }
+  body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--gray1); color:var(--dark); margin:0; min-height:100vh; }
+  .shell { max-width:1000px; margin:0 auto; padding:24px 16px 80px; }
+  @media (min-width:768px) { .shell { padding-left:66px; } }
+  .card { background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:16px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1.5px solid transparent; border-radius:22px; padding:9px 20px; font:800 13px 'Plus Jakarta Sans',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn-primary { background:var(--blue); color:#fff; } .btn-primary:hover { background:var(--blue-dk); }
+  .btn-green { background:var(--green); color:#fff; }
+  .btn-ghost { background:#fff; color:var(--dark); border-color:var(--line); } .btn-ghost:hover { background:var(--gray2); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .banner { display:flex; gap:10px; align-items:flex-start; background:var(--amber-lt); border:1px solid #f5d49b; color:#8a5a12; border-radius:var(--radius); padding:12px 16px; font-size:13px; font-weight:700; margin-bottom:14px; }
+  .alert { padding:11px 16px; border-radius:10px; font-size:13px; font-weight:600; margin-bottom:8px; background:var(--blue-lt); color:var(--blue-dk); }
+  .alert.error { background:var(--red-lt); color:var(--red); } .alert.success { background:var(--green-lt); color:var(--green); }
+
+  .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:10px 14px; margin-bottom:12px; }
+  .bar h1 { font-size:16px; font-weight:800; margin:0; flex:1; min-width:160px; }
+  .bar small { display:block; font-size:12px; color:var(--gray3); font-weight:600; }
+  .timer { display:flex; align-items:center; gap:6px; background:var(--blue-lt); color:var(--blue-dk); font-weight:800; border-radius:999px; padding:6px 14px; font-variant-numeric:tabular-nums; }
+  .timer.warn { background:var(--red-lt); color:var(--red); }
+  .prog { height:5px; background:var(--gray2); border-radius:4px; overflow:hidden; margin-bottom:12px; }
+  #fill { height:100%; width:0; background:var(--blue); transition:width .2s; }
+
+  .grid { display:grid; gap:14px; grid-template-columns:1fr; align-items:start; }
+  @media (min-width:900px) { .grid { grid-template-columns:1fr 260px; } .navc { position:sticky; top:76px; } }
+  .qc { background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:20px; }
+  .qtop { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:12px; font-weight:800; }
+  .badge { background:var(--blue-lt); color:var(--blue-dk); border-radius:999px; padding:4px 12px; }
+  .badge.off { background:var(--amber-lt); color:var(--amber); }
+  .qtext { font-size:17px; font-weight:700; line-height:1.55; margin-bottom:16px; white-space:pre-wrap; word-wrap:break-word; }
+  .passage { background:#f4f9fe; border:1px solid var(--blue-mid); border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+  .passage .ph { font-size:12px; font-weight:800; color:var(--blue-dk); margin-bottom:8px; }
+  .passage .pt { font-weight:800; margin-bottom:6px; }
+  .passage .px { white-space:pre-wrap; font-size:14px; line-height:1.75; max-height:320px; overflow-y:auto; }
+  .pic { display:block; max-width:100%; max-height:340px; margin:10px auto; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .opts { display:grid; gap:10px; }
+  .opt { display:flex; gap:12px; align-items:flex-start; text-align:left; width:100%; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:12px 14px; font:600 15px 'Plus Jakarta Sans',sans-serif; color:var(--dark); cursor:pointer; }
+  .opt:hover { border-color:var(--blue); background:var(--gray1); }
+  .opt .l { flex:none; width:28px; height:28px; border-radius:50%; background:var(--gray2); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
+  .opt .t { padding-top:3px; word-break:break-word; }
+  .opt.sel { border-color:var(--blue); background:var(--blue-lt); } .opt.sel .l { background:var(--blue); color:#fff; }
+  .opt.ok { border-color:#86d4a3; background:var(--green-lt); } .opt.ok .l { background:var(--green); color:#fff; }
+  .opt.bad { border-color:#f3b4b4; background:var(--red-lt); } .opt.bad .l { background:var(--red); color:#fff; }
+  .opt.locked { cursor:default; }
+  .expl { margin-top:12px; font-size:13px; background:var(--gray1); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .expl.none { color:var(--gray3); }
+  .acts { display:flex; justify-content:space-between; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  .navc { background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:14px; }
+  .navc h3 { margin:0 0 10px; font-size:13px; font-weight:800; }
+  .ng { display:grid; grid-template-columns:repeat(auto-fill,minmax(38px,1fr)); gap:6px; }
+  .nn { height:38px; border-radius:8px; border:1.5px solid var(--line); background:#fff; font:700 13px 'Plus Jakarta Sans',sans-serif; cursor:pointer; }
+  .nn.done { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .nn.off { border-style:dashed; border-color:var(--amber); }
+  .nn.cur { outline:2.5px solid var(--dark); outline-offset:1px; }
+
+  .score { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  .score b { font-size:34px; }
+  .rq { padding:14px 0; border-bottom:1px dashed var(--line); }
+  .rq:last-child { border-bottom:0; }
+  .rq p { margin:0 0 8px; font-weight:700; font-size:14px; line-height:1.5; white-space:pre-wrap; }
+  .st { font-size:11px; font-weight:800; display:inline-block; margin-bottom:6px; }
+  .st.correct { color:var(--green); } .st.wrong { color:var(--red); } .st.skipped { color:var(--gray3); }
+  .ro { display:flex; gap:10px; font-size:13px; font-weight:600; padding:7px 10px; border-radius:8px; margin-bottom:4px; border:1px solid transparent; }
+  .ro.ok { background:var(--green-lt); border-color:#b9e6c9; color:#14532d; }
+  .ro.bad { background:var(--red-lt); border-color:#f6c2c2; color:#7f1d1d; }
+  .ro b { flex:none; width:18px; } .ro i { margin-left:auto; font-style:normal; font-size:11px; font-weight:800; white-space:nowrap; padding-left:8px; }
+  .hidden { display:none !important; }
+  body.tm-run .ac-sidebar { display:none !important; }
+  body.tm-run { padding-left:0 !important; }
+  body.tm-run .shell { padding-left:16px; }
+</style>
+</head>
+<body class="tm-run">
+{% include 'sidebar.html' %}
+<div class="shell">
+
+  {% if messages %}{% for m in messages %}<div class="alert {{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+
+  <div class="banner">
+    <i class="fa-solid fa-vial-circle-check" style="margin-top:2px"></i>
+    <div>TEST MODE &ndash; only you can see this. Nothing is saved, no results or points are recorded, and students are not affected.
+      {% if mode == 'single' %}You are testing one question{% else %}{{ subject }} &middot; {{ class_level }}{% endif %}.</div>
+  </div>
+
+  <div id="runView">
+    <div class="bar">
+      <h1>{{ subject }}{% if class_level %} &middot; {{ class_level }}{% endif %}<small id="count"></small></h1>
+      <div class="timer hidden" id="timer"><i class="fa-regular fa-clock"></i> <span id="timerText">--:--</span></div>
+      <button class="btn btn-primary" id="finishBtn" type="button">Finish test</button>
+    </div>
+    <div class="prog"><div id="fill"></div></div>
+
+    <div class="grid">
+      <div class="qc">
+        <div class="qtop"><span class="badge" id="badge"></span><span id="qnum" style="color:var(--gray3)"></span></div>
+        <div id="passageBox"></div>
+        <div class="qtext" id="qtext"></div>
+        <div id="qpic"></div>
+        <div class="opts" id="opts"></div>
+        <div class="expl hidden" id="expl"></div>
+        <div class="acts">
+          <button class="btn btn-ghost" id="prev" type="button"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+          <button class="btn btn-primary" id="next" type="button">Next <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+      <aside class="navc">
+        <h3 id="navTitle">Questions</h3>
+        <div class="ng" id="ng"></div>
+        <p style="font-size:11px;color:var(--gray3);font-weight:600;margin:12px 0 0">A dashed number is a switched-off draft: students will not get it yet.</p>
+      </aside>
+    </div>
+  </div>
+
+  <div id="resultView" class="hidden">
+    <div class="card">
+      <div class="score">
+        <b id="rScore"></b>
+        <div><div id="rPct" style="font-weight:800;font-size:18px"></div><div id="rNote" style="font-size:13px;color:var(--gray3);font-weight:600"></div></div>
+      </div>
+    </div>
+    <div class="card" id="reviewBox"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+      <div style="font-size:13px;font-weight:700">
+        {% if n_off %}Happy with your questions? <span style="color:var(--gray3);font-weight:600">{{ n_off }} {{ subject }} question{{ n_off|pluralize }} for {{ class_level }} {{ n_off|pluralize:"is,are" }} switched off.</span>
+        {% else %}Found something to fix? Go back to the question bank and use <b>Edit</b> on the question.{% endif %}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn btn-ghost" href="{% url 'cbt_question_bank' %}{% if subject and class_level %}?subject={{ subject|urlencode }}&class={{ class_level }}{% endif %}"><i class="fa-solid fa-arrow-left"></i> Question bank</a>
+        <button class="btn btn-ghost" type="button" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> Test again</button>
+        {% if n_off and subject and class_level %}
+        <form method="post" action="{% url 'cbt_questions_publish' %}" style="margin:0"
+              onsubmit="return confirm('Switch on {{ n_off }} question{{ n_off|pluralize }} so {{ class_level }} students can get {{ n_off|pluralize:"it,them" }} in {{ subject|escapejs }}?')">
+          {% csrf_token %}
+          <input type="hidden" name="subject" value="{{ subject }}">
+          <input type="hidden" name="class_level" value="{{ class_level }}">
+          <button class="btn btn-green" type="submit"><i class="fa-solid fa-upload"></i> Publish {{ n_off }} draft{{ n_off|pluralize }} to students</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ payload|json_script:"testData" }}
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById('testData').textContent);
+  var Q = D.questions, L = 'ABCD', answers = {}, cur = 0, finished = false;
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+  function pic(url, alt) { var i = el('img', 'pic'); i.src = url; i.alt = alt; return i; }
+  function num(i) { return i + 1; }
+  function runBounds(i) {
+    var p = Q[i].passage; if (!p) return null;
+    var same = function (k) { return Q[k].passage && Q[k].passage.id === p.id; }, a = i, b = i;
+    while (a > 0 && same(a - 1)) a--;
+    while (b < Q.length - 1 && same(b + 1)) b++;
+    return [num(a), num(b)];
+  }
+  function correctKey(q) { return q.answer; }
+  function locked(q) { return D.feedback && answers[q.id]; }
+
+  function renderNav() {
+    var g = $('ng'); g.innerHTML = '';
+    Q.forEach(function (q, i) {
+      var b = el('button', 'nn' + (answers[q.id] ? ' done' : '') + (q.active ? '' : ' off') + (i === cur ? ' cur' : ''), String(num(i)));
+      b.type = 'button'; b.onclick = function () { go(i); }; g.appendChild(b);
+    });
+    var n = Object.keys(answers).length;
+    $('navTitle').textContent = n + ' of ' + Q.length + ' answered';
+    $('fill').style.width = (n / Q.length * 100) + '%';
+    $('count').textContent = Q.length + ' question' + (Q.length === 1 ? '' : 's');
+  }
+  function renderQ() {
+    var q = Q[cur];
+    $('badge').textContent = q.active ? 'Switched on' : 'Draft (switched off)';
+    $('badge').className = 'badge' + (q.active ? '' : ' off');
+    $('qnum').textContent = 'Question ' + num(cur) + ' of ' + Q.length;
+    var pb = $('passageBox'); pb.innerHTML = '';
+    if (q.passage) {
+      var r = runBounds(cur), d = el('div', 'passage');
+      d.appendChild(el('div', 'ph', r[0] === r[1] ? 'Use the information below to answer question ' + r[0] : 'Use the information below to answer questions ' + r[0] + ' to ' + r[1]));
+      if (q.passage.title) d.appendChild(el('div', 'pt', q.passage.title));
+      if (q.passage.text) d.appendChild(el('div', 'px', q.passage.text));
+      if (q.passage.image) d.appendChild(pic(q.passage.image, 'Diagram for the passage'));
+      pb.appendChild(d);
+    }
+    $('qtext').textContent = q.text;
+    var qp = $('qpic'); qp.innerHTML = '';
+    if (q.image) qp.appendChild(pic(q.image, 'Diagram for this question'));
+    var box = $('opts'); box.innerHTML = '';
+    var lock = locked(q);
+    q.options.forEach(function (o, i) {
+      var cls = 'opt', picked = answers[q.id] === o[0];
+      if (picked) cls += ' sel';
+      if (lock) { cls += ' locked'; if (o[0] === correctKey(q)) cls = 'opt ok locked'; else if (picked) cls = 'opt bad locked'; }
+      var b = el('button', cls); b.type = 'button';
+      b.appendChild(el('span', 'l', L[i])); b.appendChild(el('span', 't', o[1]));
+      b.onclick = function () { if (locked(q)) return; answers[q.id] = o[0]; renderAll(); };
+      box.appendChild(b);
+    });
+    var ex = $('expl');
+    if (lock) {
+      ex.className = 'expl' + (q.explanation ? '' : ' none');
+      ex.textContent = (answers[q.id] === correctKey(q) ? 'Correct. ' : 'Wrong. The correct answer is ' + correctKey(q) + '. ') + (q.explanation || 'No explanation was added for this question.');
+    } else ex.className = 'expl hidden';
+    $('prev').disabled = cur === 0; $('next').disabled = cur === Q.length - 1;
+  }
+  function renderAll() { renderNav(); renderQ(); }
+  function go(i) { cur = Math.max(0, Math.min(Q.length - 1, i)); renderAll(); window.scrollTo(0, 0); }
+
+  function finish() {
+    if (finished) return; finished = true;
+    $('runView').classList.add('hidden'); $('resultView').classList.remove('hidden');
+    var right = 0, box = $('reviewBox'); box.innerHTML = '';
+    box.appendChild(el('h2', '', 'Review')); box.firstChild.style.cssText = 'font-size:15px;font-weight:800;margin:0 0 6px';
+    Q.forEach(function (q, i) {
+      var picked = answers[q.id], status = !picked ? 'skipped' : (picked === q.answer ? 'correct' : 'wrong');
+      if (status === 'correct') right++;
+      var d = el('div', 'rq');
+      d.appendChild(el('span', 'st ' + status, 'Question ' + num(i) + ' · ' + (status === 'correct' ? 'Correct' : status === 'wrong' ? 'Wrong' : 'Not answered') + (q.active ? '' : ' · draft (switched off)')));
+      if (q.passage && (i === 0 || !Q[i - 1].passage || Q[i - 1].passage.id !== q.passage.id)) {
+        var pd = el('div', 'passage');
+        if (q.passage.title) pd.appendChild(el('div', 'pt', q.passage.title));
+        if (q.passage.text) pd.appendChild(el('div', 'px', q.passage.text));
+        if (q.passage.image) pd.appendChild(pic(q.passage.image, 'Diagram for the passage'));
+        d.appendChild(pd);
+      }
+      d.appendChild(el('p', '', q.text));
+      if (q.image) d.appendChild(pic(q.image, 'Diagram for this question'));
+      q.options.forEach(function (o, k) {
+        var ok = o[0] === q.answer, bad = !ok && o[0] === picked;
+        var r = el('div', 'ro' + (ok ? ' ok' : bad ? ' bad' : ''));
+        r.appendChild(el('b', '', L[k] + '.')); r.appendChild(el('span', '', o[1]));
+        if (ok) r.appendChild(el('i', '', 'Correct answer')); else if (bad) r.appendChild(el('i', '', 'Your answer'));
+        d.appendChild(r);
+      });
+      d.appendChild(el('div', 'expl' + (q.explanation ? '' : ' none'), q.explanation || 'No explanation added: students will not see one for this question.'));
+      box.appendChild(d);
+    });
+    var pct = Q.length ? Math.round(right / Q.length * 100) : 0;
+    $('rScore').textContent = right + ' / ' + Q.length;
+    $('rPct').textContent = pct + '%';
+    $('rNote').textContent = 'This is only a trial run. It was not saved.';
+    window.scrollTo(0, 0);
+  }
+
+  $('finishBtn').onclick = function () {
+    var un = Q.length - Object.keys(answers).length;
+    if (!un || confirm('You have ' + un + ' unanswered question' + (un > 1 ? 's' : '') + '. Finish the test anyway?')) finish();
+  };
+  $('prev').onclick = function () { go(cur - 1); };
+  $('next').onclick = function () { go(cur + 1); };
+  document.addEventListener('keydown', function (e) {
+    if (finished || e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key.toLowerCase(), i = 'abcd'.indexOf(k), q = Q[cur];
+    if (i > -1 && i < q.options.length) { if (!locked(q)) { answers[q.id] = q.options[i][0]; renderAll(); } }
+    else if (k === 'n' || k === 'arrowright') go(cur + 1);
+    else if (k === 'p' || k === 'arrowleft') go(cur - 1);
+  });
+
+  if (D.timed) {
+    var end = Date.now() + D.minutes * 60000;
+    $('timer').classList.remove('hidden');
+    (function tick() {
+      if (finished) return;
+      var s = Math.max(0, Math.round((end - Date.now()) / 1000)), m = Math.floor(s / 60), x = s % 60;
+      $('timerText').textContent = (m < 10 ? '0' : '') + m + ':' + (x < 10 ? '0' : '') + x;
+      $('timer').className = 'timer' + (s <= 60 ? ' warn' : '');
+      if (s <= 0) { finish(); return; }
+      setTimeout(tick, 500);
+    })();
+  }
+
+  if (!Q.length) { $('qtext').textContent = 'No questions to test.'; return; }
+  renderAll();
+})();
+</script>
+{% include "footer.html" %}
+</body>
+</html>

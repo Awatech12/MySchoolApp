@@ -145,6 +145,36 @@
   </div>
 
   <div class="card">
+    <h2><i class="fa-solid fa-vial-circle-check"></i> Test mode &ndash; try your questions first</h2>
+    <p class="sub" style="margin-bottom:12px">Sit your own questions like a student would, with the correct answers and explanations shown. Nothing is saved and students are not affected. Switched-off (draft) questions are included, so you can check them before students get them.</p>
+    <form method="get" action="{% url 'cbt_question_test' %}">
+      <div class="row two">
+        <div><label class="f" for="tSubject">Subject</label>
+          <select name="subject" id="tSubject" required>
+            <option value="">Choose subject…</option>
+            {% for n in subject_names %}<option value="{{ n }}"{% if n == subject %} selected{% endif %}>{{ n }}</option>{% endfor %}
+          </select></div>
+        <div><label class="f" for="tClass">Class</label>
+          <select name="class" id="tClass" required>
+            <option value="">Choose class…</option>
+            {% for c in class_options %}<option value="{{ c }}"{% if c == class_filter %} selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <div class="row two">
+        <div><label class="f" for="tMode">Questions</label>
+          <select name="mode" id="tMode">
+            <option value="all">All of them, in the order I set</option>
+            <option value="sample">A random paper like the real exam ({{ per_subject }} questions)</option>
+          </select></div>
+      </div>
+      <label class="chk" style="margin-bottom:8px"><input type="checkbox" name="feedback" value="1" checked><span>Show the correct answer straight after each question</span></label>
+      <label class="chk" style="margin-bottom:8px"><input type="checkbox" name="timed" value="1"><span>Use the timer ({{ minutes_per_subject }} minutes)</span></label>
+      <label class="chk" style="margin-bottom:14px"><input type="checkbox" name="active_only" value="1"><span>Only questions that are switched on<small>Leave unticked to include your drafts.</small></span></label>
+      <button class="btn btn-primary" type="submit"><i class="fa-solid fa-play"></i> Start test</button>
+    </form>
+  </div>
+
+  <div class="card">
     <h2><i class="fa-solid fa-file-arrow-up"></i> Upload questions</h2>
     <form method="post" action="{% url 'cbt_question_upload' %}" enctype="multipart/form-data">
       {% csrf_token %}
@@ -192,6 +222,10 @@
         <pre>question | option A | option B | option C | option D | answer letter</pre>
         <p>Pasted text and .txt files cannot carry pictures or passages, and always need the class chosen above; use a spreadsheet for those. Passage labels are kept separate for each subject and class, so the same label (P1) can be used again in another class. Subjects must match the registration names exactly (e.g. “English Language”, “Further Mathematics”). Each question needs four different options.</p>
       </details>
+      <label class="chk" style="margin-bottom:14px">
+        <input type="checkbox" name="draft">
+        <span>Save as draft (switched off)<small>Students will not get these questions until you test them and publish. Use Test mode above to try them.</small></span>
+      </label>
       {% if not is_restricted %}
       <label class="chk" style="margin-bottom:14px">
         <input type="checkbox" name="replace">
@@ -268,6 +302,7 @@
                   data-a="{{ q.option_a }}" data-b="{{ q.option_b }}" data-c="{{ q.option_c }}" data-d="{{ q.option_d }}"
                   data-answer="{{ q.answer }}" data-expl="{{ q.explanation }}"
                   data-passage="{{ q.passage_id|default_if_none:'' }}" data-order="{{ q.order }}" data-image="{{ q.image_url }}">Edit</button>
+                <a class="btn btn-ghost btn-sm" href="{% url 'cbt_question_test' %}?question={{ q.pk }}&feedback=1" title="Try this question in test mode"><i class="fa-solid fa-vial"></i> Test</a>
                 <form method="post" action="{% url 'cbt_question_toggle' q.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm" type="submit">{% if q.is_active %}Switch off{% else %}Switch on{% endif %}</button></form>
                 <form method="post" action="{% url 'cbt_question_delete' q.pk %}" onsubmit="return confirm('Delete this question permanently?')">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm btn-red" type="submit">Delete</button></form>
               </div>
@@ -329,6 +364,7 @@
         <input type="file" name="image" id="fImage" accept=".png,.jpg,.jpeg,.gif,.webp">
         <div class="curimg" id="fCur"><img id="fCurImg" alt=""><label><input type="checkbox" name="remove_image"> Remove current picture</label></div></div></div>
       <div class="row"><div><label class="f">Explanation (optional, shown in the student’s review)</label><textarea name="explanation" id="fExpl" style="min-height:60px"></textarea></div></div>
+      <label class="chk" id="draftRow" style="margin-bottom:12px"><input type="checkbox" name="draft"><span>Save as draft (switched off)<small>Students will not get it until you switch it on.</small></span></label>
       <div class="acts-end">
         <button type="button" class="btn btn-ghost" id="qCancel">Cancel</button>
         <button type="submit" class="btn btn-primary">Save question</button>
@@ -391,6 +427,8 @@
   function open(d) {
     form.action = d ? editUrl.replace('/0/', '/' + d.id + '/') : addUrl;
     $('qTitle').textContent = d ? 'Edit question' : 'Add a question';
+    $('draftRow').style.display = d ? 'none' : '';
+    form.querySelector('[name=draft]').checked = false;
     if (d) { $('fSubject').value = d.subject; $('fClass').value = d.class || ''; }
     $('fText').value = d ? d.text : '';
     $('fA').value = d ? d.a : ''; $('fB').value = d ? d.b : ''; $('fC').value = d ? d.c : ''; $('fD').value = d ? d.d : '';

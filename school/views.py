@@ -1663,6 +1663,11 @@ def _draw_questions(name, class_level):
     and in their set order, or not at all. Blocks and single questions are mixed in random order.
     """
     pool = list(_class_questions(class_level).filter(subject_name=name).select_related('passage'))
+    return _pick_units(_question_units(pool), EXAM_QUESTIONS_PER_SUBJECT)
+
+
+def _question_units(pool):
+    """Group questions into blocks: questions sharing a passage stay together (in their set order)."""
     groups = {}
     units = []
     for q in pool:
@@ -1672,11 +1677,16 @@ def _draw_questions(name, class_level):
             units.append([q])
     for g in groups.values():
         units.append(sorted(g, key=lambda q: (q.order, q.id)))
-    random.shuffle(units)
+    return units
 
+
+def _pick_units(units, limit):
+    """Random draw of whole blocks until `limit` questions are reached, then shuffled again."""
+    units = list(units)
+    random.shuffle(units)
     chosen, count = [], 0
     for u in units:
-        if count + len(u) <= EXAM_QUESTIONS_PER_SUBJECT:
+        if count + len(u) <= limit:
             chosen.append(u)
             count += len(u)
     random.shuffle(chosen)
@@ -2251,6 +2261,7 @@ def cbt_question_bank(request):
         'search': search,
         'query': urlencode({k: v for k, v in (('subject', subject), ('class', class_filter), ('q', search)) if v}),
         'per_subject': EXAM_QUESTIONS_PER_SUBJECT,
+        'minutes_per_subject': EXAM_MINUTES_PER_SUBJECT,
         'total_active': sum(r['active'] for r in stats),
         'passages': shown_passages,
         'passage_options': all_passages,
@@ -2266,6 +2277,7 @@ def cbt_question_upload(request):
     raw_class = request.POST.get('class_level', '').strip()
     default_class = clean_class(raw_class) or ''
     replace = request.POST.get('replace') == 'on'
+    draft = request.POST.get('draft') == 'on'     # save as switched-off drafts, to be tested before students get them
     if replace and _teacher_scope(request.user) is not None:
         replace = False      # "replace" would wipe other teachers' questions: staff only
         messages.info(request, 'Only the administrator can replace existing questions, so your file was added to the bank instead.')
@@ -2322,12 +2334,16 @@ def cbt_question_upload(request):
         created, present, removed, import_errors = import_questions(questions, replace=replace)
         ExamQuestion.objects.filter(id__gt=q_before, created_by__isnull=True).update(created_by=request.user)
         ExamPassage.objects.filter(id__gt=p_before, created_by__isnull=True).update(created_by=request.user)
+        if draft:
+            ExamQuestion.objects.filter(id__gt=q_before, created_by=request.user).update(is_active=False)
         if replace and import_errors:
             messages.error(request, 'Nothing was changed: "replace" needs a file without errors. Fix the problems below and upload again.')
             problems += import_errors
         else:
             problems += import_errors
             bits = [f'{created} new question{"s" if created != 1 else ""} added']
+            if draft and created:
+                bits.append('saved as drafts (switched off): test them, then publish so students can get them')
             if present:
                 bits.append(f'{present} already in the bank')
             if removed:
@@ -2396,6 +2412,7 @@ def _save_question_from_post(request, obj):
 
     if obj.pk is None:
         obj.created_by = request.user
+        obj.is_active = p.get('draft') != 'on'      # "save as draft" = switched off until tested and published
     obj.subject_name, obj.text = data['subject_name'], data['text']
     obj.class_level = class_level
     obj.option_a, obj.option_b, obj.option_c, obj.option_d = data['a'], data['b'], data['c'], data['d']
@@ -2527,6 +2544,99 @@ def cbt_question_template(request):
     w.writerow(['SS1', 'English Language', 'The word "reluctantly" in the passage means', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', 'P1', '', '', ''])
     w.writerow(['SS3', 'English Language', 'Choose the word nearest in meaning to "reluctantly"', 'willingly', 'unwillingly', 'quickly', 'happily', 'B', '', '', '', '', '', ''])
     return resp
+
+
+# ── CBT Examination: TEST MODE for teachers ──
+#
+# A teacher can sit their own questions (including drafts that are switched off) before students get them.
+# Nothing is saved: no CBTExam / ExaminationAttempt rows, no points, no notifications, and students are
+# never affected. Teachers only see their own subjects / classes / questions (same scope as the bank).
+# The correct answers are sent to the page on purpose, because the person taking the test is the teacher.
+
+def _test_paper(questions, shuffle_options):
+    paper = []
+    for q in questions:
+        opts = [['A', q.option_a], ['B', q.option_b], ['C', q.option_c], ['D', q.option_d]]
+        if shuffle_options:
+            random.shuffle(opts)
+        p = q.passage
+        paper.append({
+            'id': q.id, 'subject': q.subject_name, 'text': q.text, 'options': opts,
+            'answer': q.answer, 'explanation': q.explanation, 'image': q.image_url,
+            'active': q.is_active,
+            'passage': ({'id': p.id, 'title': p.title, 'text': p.text, 'image': p.image_url} if p else None),
+        })
+    return paper
+
+
+@_exam_teacher_only
+@require_GET
+def cbt_question_test(request):
+    """
+    Test mode. Either ?question=<id> (that question, plus the others sharing its passage) or
+    ?subject=..&class=.. with mode=all (every question, in set order, default) or mode=sample
+    (a random paper like the real examination). Optional: active_only=1, timed=1, feedback=1.
+    """
+    user, g = request.user, request.GET
+    base = _scoped_questions(user).select_related('passage')
+    qid = g.get('question', '').strip()
+
+    if qid:
+        first = base.filter(pk=int(qid)).first() if qid.isdigit() else None
+        if first is None:
+            raise Http404
+        questions = ([first] if not first.passage_id else
+                     sorted(base.filter(passage_id=first.passage_id), key=lambda q: (q.order, q.id)))
+        subject, class_level, mode = first.subject_name, first.class_level, 'single'
+    else:
+        subject = g.get('subject', '').strip()
+        class_level = clean_class(g.get('class', '')) or ''
+        if subject not in SENIOR_SECONDARY_SUBJECTS or not class_level:
+            return _bank_fail(request, 'Choose a subject and a class (SS1, SS2 or SS3) to test.', subject)
+        if not _in_scope(user, subject, class_level):
+            return _bank_fail(request, f'You are not assigned to teach {subject} for {class_level}.')
+        mode = 'sample' if g.get('mode') == 'sample' else 'all'
+        qs = base.filter(subject_name=subject, class_level=class_level)
+        if g.get('active_only') == '1':
+            qs = qs.filter(is_active=True)
+        units = _question_units(list(qs))
+        if mode == 'sample':
+            questions = _pick_units(units, EXAM_QUESTIONS_PER_SUBJECT)
+        else:
+            units.sort(key=lambda u: u[0].id)
+            questions = [q for u in units for q in u]
+        if not questions:
+            return _bank_fail(request, f'There are no {class_level} {subject} questions to test yet.', subject, class_level)
+
+    n_off = (_scoped_questions(user).filter(subject_name=subject, class_level=class_level, is_active=False).count()
+             if class_level else 0)
+    return render(request, 'cbt_question_test.html', {
+        'subject': subject, 'class_level': class_level, 'mode': mode, 'n_off': n_off,
+        'payload': {
+            'questions': _test_paper(questions, shuffle_options=(mode == 'sample')),
+            'minutes': EXAM_MINUTES_PER_SUBJECT,
+            'timed': g.get('timed') == '1',
+            'feedback': g.get('feedback') == '1',
+        },
+    })
+
+
+@_exam_teacher_only
+@require_POST
+def cbt_questions_publish(request):
+    """Switch on every switched-off (draft) question of one subject + class the teacher is allowed to manage."""
+    subject = request.POST.get('subject', '').strip()
+    class_level = clean_class(request.POST.get('class_level', '')) or ''
+    if subject not in SENIOR_SECONDARY_SUBJECTS or not class_level:
+        return _bank_fail(request, 'Choose a subject and a class to publish.')
+    if not _in_scope(request.user, subject, class_level):
+        return _bank_fail(request, f'You are not assigned to teach {subject} for {class_level}.')
+    n = (_scoped_questions(request.user)
+         .filter(subject_name=subject, class_level=class_level, is_active=False).update(is_active=True))
+    messages.success(request, (f'{n} question{"s" if n != 1 else ""} published: {class_level} students can now get '
+                               f'{"them" if n != 1 else "it"} in {subject}.') if n else
+                     'There were no switched-off questions to publish.')
+    return _bank_redirect(request, subject, class_level)
 
 
 # ── CBT Examination: exam schedule (teachers / staff only) ──
