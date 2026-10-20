@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User, auth
 from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
@@ -32,6 +31,47 @@ from django.utils.timezone import localtime
 from django.views.decorators.http import require_GET
 
 logger = logging.getLogger(__name__)
+
+
+# ── Login protection ────────────────────────────────────────────────────
+# Anyone who is not signed in is sent to the index page (where the login modal
+# opens by itself) with a notice asking them to log in. After signing in they are
+# taken back to the page they asked for. This replaces django's login_required,
+# which would redirect to settings.LOGIN_URL instead; every @login_required in
+# this file, and the teacher/staff guards below, now use it.
+LOGIN_REQUIRED_MESSAGE = 'Please log in to continue.'
+
+
+def _index_login_url(role='student', nxt=''):
+    """'/?login=student&next=/results/' - the index page with the right login modal open."""
+    params = {'login': 'teacher' if role == 'teacher' else 'student'}
+    if nxt:
+        params['next'] = nxt
+    return '/?' + urlencode(params)
+
+
+def login_required(view=None, role='student'):
+    """
+    Use as @login_required, or @login_required(role='teacher') for pages that only
+    teachers can open (the teacher login modal is shown then).
+    AJAX / JSON requests get a 401 with the login address instead of a redirect.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(request, *args, **kwargs):
+            if request.user.is_authenticated:
+                return func(request, *args, **kwargs)
+            # Only GET pages can be returned to after login (a POST-only url would give a 405).
+            nxt = request.get_full_path() if request.method in ('GET', 'HEAD') else ''
+            login_url = _index_login_url(role, nxt)
+            if (_wants_json(request) or 'application/json' in request.headers.get('Accept', '')
+                    or request.path.startswith('/dashboard/api/')):
+                return JsonResponse({'ok': False, 'success': False, 'error': LOGIN_REQUIRED_MESSAGE,
+                                     'login_required': True, 'login_url': login_url}, status=401)
+            messages.warning(request, LOGIN_REQUIRED_MESSAGE)
+            return redirect(login_url)
+        return wrapper
+    return decorator(view) if view is not None else decorator
 
 
 def student_area(view):
@@ -310,7 +350,10 @@ def index(request):
         user_check = (request.POST.get('user_check') or '').strip()
         password   = request.POST.get('password') or ''
         nxt        = request.GET.get('next') or request.POST.get('next') or ''
-        back       = '/?login=' + role
+        if not (nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()},
+                                                        require_https=request.is_secure())):
+            nxt = ''
+        back       = _index_login_url(role, nxt)
 
         user = None
         for username in _login_candidates(user_check):
@@ -325,10 +368,10 @@ def index(request):
         teacher = getattr(user, 'teacher_profile', None)
         if role == 'student' and teacher is not None and not user.is_superuser:
             messages.error(request, 'This is a teacher account. Use "Are you a teacher? Login here".')
-            return redirect('/?login=teacher')
+            return redirect(_index_login_url('teacher', nxt))
         if role == 'teacher' and teacher is None and not (user.is_staff or user.is_superuser):
             messages.error(request, 'This is a student account. Sign in with your Admission Number on the student login.')
-            return redirect('/?login=student')
+            return redirect(_index_login_url('student', nxt))
         if teacher is not None and not teacher.is_approved and not user.is_superuser:
             messages.warning(request, 'Your teacher account is waiting for approval by the administrator. '
                                       'You can sign in once it has been approved.')
@@ -621,18 +664,18 @@ def _get_student_level(points):
         return ('Beginner', 1)
 
 
+@login_required
 @never_cache
 def home(request):
     """
-    Home page. Students also get an exam card showing the schedule for THEIR class
+    Home page (signed-in users only). Students also get an exam card showing the schedule for THEIR class
     (SS1 / SS2 / SS3). It stays on the page until the student has finished the scheduled examination.
     """
-    ctx = {}
     user = request.user
-    if user.is_authenticated:
-        _announcement_tick()
-        ctx['home_announcements'] = list(_announcements_for(user, live_only=True)[:3])
-    if user.is_authenticated and not _is_teacher(user):
+    ctx = {'is_teacher': _is_teacher(user)}
+    _announcement_tick()
+    ctx['home_announcements'] = list(_announcements_for(user, live_only=True)[:3])
+    if not ctx['is_teacher']:
         _close_expired_examinations(user)            # a paper whose time is up is submitted first
         active = ExaminationAttempt.objects.filter(student=user, is_submitted=False).first()
         status = _exam_status(user)
@@ -1134,6 +1177,7 @@ def my_subjects(request):
     })
 
 
+@login_required
 def follow(request, username):
     user    = get_object_or_404(User, username=username)
     profile = Profile.objects.get(user=user)
@@ -1145,7 +1189,7 @@ def follow(request, username):
         profile.follow.remove(request.user)
         profile.save()
         messages.info(request, 'Unfollow')
-    return redirect(request.META.get('HTTP_REFERER'))
+    return _back_or(request, 'home')
 
 
 NOTIFICATIONS_PER_PAGE = 30
@@ -1353,72 +1397,128 @@ def user_logout(request):
 
 
 # ── Live Video Views ──────────────────────────────────────────────
+# Only teachers (approved teachers, staff, superusers) can create / start / end live classes.
+# Students can only JOIN, and only sessions for THEIR class in a subject they REGISTERED.
+
+def _live_sessions_for(user):
+    """
+    Live sessions this user may see or join. Teachers / staff see every session; a student only the
+    ones set for their own class (SS1/SS2/SS3) in one of their registered subjects. A student with no
+    valid class or no registered subjects sees none.
+    """
+    qs = LiveSession.objects.select_related('created_by')
+    if _is_teacher(user):
+        return qs
+    cls = _exam_class(user)
+    subjects = _exam_registered_subjects(user)
+    if not cls or not subjects:
+        return qs.none()
+    return qs.filter(class_level=cls, subject_name__in=subjects)
+
+
+def _live_create_scope(user):
+    """(subjects, classes) a teacher may host a live class for. Staff: every subject and class."""
+    scope = _teacher_scope(user)
+    if scope is None:
+        return sorted(SENIOR_SECONDARY_SUBJECTS), list(EXAM_CLASSES)
+    return sorted(scope[0]), [c for c in EXAM_CLASSES if c in scope[1]]
+
 
 @login_required
 def live_room_list(request):
     from django.utils import timezone as tz
-    active_sessions   = LiveSession.objects.filter(is_active=True).order_by('-created_at')
-    upcoming_sessions = LiveSession.objects.filter(is_active=False, scheduled_at__gt=tz.now()).order_by('scheduled_at')
-    return render(request, 'live_room_list.html', {
-        'sessions':  active_sessions,
-        'upcoming':  upcoming_sessions,
-    })
+    user       = request.user
+    is_teacher = _is_teacher(user)
+    visible    = _live_sessions_for(user)
+    active_sessions   = visible.filter(is_active=True).order_by('-created_at')
+    upcoming_sessions = visible.filter(is_active=False, scheduled_at__gt=tz.now()).order_by('scheduled_at')
+    ctx = {
+        'sessions':   active_sessions,
+        'upcoming':   upcoming_sessions,
+        'is_teacher': is_teacher,
+    }
+    if is_teacher:
+        ctx['create_subjects'], ctx['create_classes'] = _live_create_scope(user)
+    else:
+        ctx['my_class']    = _exam_class(user)
+        ctx['my_subjects'] = _exam_registered_subjects(user)
+    return render(request, 'live_room_list.html', ctx)
 
 
 @login_required
+@require_POST
 def create_live_room(request):
-    if request.method == 'POST':
-        from django.utils import timezone as tz
-        from django.utils.dateparse import parse_datetime
+    from django.utils import timezone as tz
+    from django.utils.dateparse import parse_datetime
 
-        title       = request.POST.get('title', '').strip()
-        description = request.POST.get('description', '').strip()
-        scheduled   = request.POST.get('scheduled_at', '').strip()
-        room_name   = str(uuid.uuid4())[:8]
-        is_ajax     = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-        if not title:
-            if is_ajax:
-                return JsonResponse({'ok': False, 'error': 'Please provide a title.'}, status=400)
-            messages.error(request, 'Please provide a title for your live session')
-            return redirect('live_room_list')
-
-        scheduled_dt = None
-        if scheduled:
-            scheduled_dt = parse_datetime(scheduled)
-            if scheduled_dt and scheduled_dt.tzinfo is None:
-                scheduled_dt = tz.make_aware(scheduled_dt)
-
-        is_immediate = scheduled_dt is None or scheduled_dt <= tz.now()
-
-        session = LiveSession.objects.create(
-            room_name=room_name,
-            title=title,
-            description=description,
-            created_by=request.user,
-            is_active=is_immediate,
-            scheduled_at=scheduled_dt if not is_immediate else None,
-        )
-
+    def fail(msg, status=400):
         if is_ajax:
-            if is_immediate:
-                return JsonResponse({'ok': True, 'redirect': f'/live/{room_name}/'})
-            return JsonResponse({'ok': True, 'scheduled': True,
-                                 'title': session.title,
-                                 'scheduled_at': scheduled_dt.strftime('%d %b %Y, %I:%M %p')})
-
-        if is_immediate:
-            messages.success(request, f'Live room "{title}" created!')
-            return redirect('live_room', room_name=room_name)
-        messages.success(request, f'"{title}" scheduled for {scheduled_dt.strftime("%d %b %Y, %I:%M %p")}.')
+            return JsonResponse({'ok': False, 'error': msg}, status=status)
+        messages.error(request, msg)
         return redirect('live_room_list')
 
+    # Teachers only: students may join a live class, never create one.
+    if not _is_teacher(request.user):
+        return fail('Only teachers can create live classes.', 403)
+
+    title       = request.POST.get('title', '').strip()
+    description = request.POST.get('description', '').strip()
+    subject     = request.POST.get('subject_name', '').strip()
+    level       = request.POST.get('class_level', '').strip().upper()
+    scheduled   = request.POST.get('scheduled_at', '').strip()
+    room_name   = str(uuid.uuid4())[:8]
+
+    if not title:
+        return fail('Please provide a title for your live session.')
+
+    # A teacher may only host for their own subjects and classes (staff: any).
+    allowed_subjects, allowed_classes = _live_create_scope(request.user)
+    if not allowed_subjects or not allowed_classes:
+        return fail('Your profile has no subjects or classes yet. Update your teacher profile first.', 403)
+    if subject not in allowed_subjects:
+        return fail('Please choose one of your subjects.')
+    if level not in allowed_classes:
+        return fail('Please choose one of your classes.')
+
+    scheduled_dt = None
+    if scheduled:
+        scheduled_dt = parse_datetime(scheduled)
+        if scheduled_dt and scheduled_dt.tzinfo is None:
+            scheduled_dt = tz.make_aware(scheduled_dt)
+
+    is_immediate = scheduled_dt is None or scheduled_dt <= tz.now()
+
+    session = LiveSession.objects.create(
+        room_name=room_name,
+        title=title,
+        description=description,
+        created_by=request.user,
+        subject_name=subject,
+        class_level=level,
+        is_active=is_immediate,
+        scheduled_at=scheduled_dt if not is_immediate else None,
+    )
+
+    if is_ajax:
+        if is_immediate:
+            return JsonResponse({'ok': True, 'redirect': f'/live/{room_name}/'})
+        return JsonResponse({'ok': True, 'scheduled': True,
+                             'title': session.title,
+                             'scheduled_at': scheduled_dt.strftime('%d %b %Y, %I:%M %p')})
+
+    if is_immediate:
+        messages.success(request, f'Live room "{title}" created!')
+        return redirect('live_room', room_name=room_name)
+    messages.success(request, f'"{title}" scheduled for {scheduled_dt.strftime("%d %b %Y, %I:%M %p")}.')
     return redirect('live_room_list')
 
 
 @login_required
 def live_room(request, room_name):
-    session           = get_object_or_404(LiveSession, room_name=room_name, is_active=True)
+    # A student who is not in this session's class / registered for its subject gets a 404.
+    session           = get_object_or_404(_live_sessions_for(request.user), room_name=room_name, is_active=True)
     participant_count = LiveParticipant.objects.filter(session=session, is_connected=True).count()
     if participant_count >= session.max_participants:
         messages.error(request, 'This room is full. Please try again later.')
@@ -1435,6 +1535,8 @@ def live_room(request, room_name):
 
 @login_required
 def end_live_room(request, room_name):
+    if not _is_teacher(request.user):
+        raise PermissionDenied
     session           = get_object_or_404(LiveSession, room_name=room_name, created_by=request.user)
     session.is_active = False
     session.save()
@@ -1445,6 +1547,8 @@ def end_live_room(request, room_name):
 @login_required
 def start_live_room(request, room_name):
     """Host manually activates a scheduled session."""
+    if not _is_teacher(request.user):
+        raise PermissionDenied
     session = get_object_or_404(LiveSession, room_name=room_name, created_by=request.user)
     if not session.is_active:
         session.is_active    = True
@@ -2131,7 +2235,7 @@ EXAM_UPLOAD_MAX_BYTES = 2 * 1024 * 1024
 def _exam_teacher_only(view):
     """Staff / superusers only (the project's existing teacher role)."""
     @wraps(view)
-    @login_required
+    @login_required(role='teacher')
     @never_cache
     def wrapper(request, *args, **kwargs):
         if not _is_teacher(request.user):
@@ -3528,7 +3632,7 @@ _PW_ALPHABET = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 def staff_required(view):
     """Signed-in staff / superusers only. JSON 403 for API paths, 403 page otherwise."""
     @wraps(view)
-    @login_required
+    @login_required(role='teacher')
     @never_cache
     def wrapper(request, *args, **kwargs):
         u = request.user

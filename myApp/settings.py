@@ -21,6 +21,9 @@ ALLOWED_HOSTS = [
 ]
 
 
+LOGIN_URL = '/'
+
+
 
 
 CSRF_TRUSTED_ORIGINS = [

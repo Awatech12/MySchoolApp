@@ -363,6 +363,14 @@ class LiveSession(models.Model):
     scheduled_at = models.DateTimeField(null=True, blank=True)  # None = start immediately
     is_active = models.BooleanField(default=True)
     max_participants = models.IntegerField(default=50)
+    # The lesson's subject and class. Students only see / join sessions whose class is their own
+    # AND whose subject is one they registered. (Sessions made before this was added are blank
+    # and are visible to teachers only.)
+    subject_name = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    class_level = models.CharField(
+        max_length=3, blank=True, default='', db_index=True,
+        choices=[('SS1', 'SS1'), ('SS2', 'SS2'), ('SS3', 'SS3')],
+    )
 
     class Meta:
         ordering = ['-created_at']

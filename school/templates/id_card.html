@@ -69,6 +69,14 @@
       page-break-inside: avoid; break-inside: avoid;
     }
 
+    /* Watermark: TopMark Tutorial Center, tiled diagonally over both card faces */
+    .card::after {
+      content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='140'%3E%3Ctext x='130' y='70' text-anchor='middle' dominant-baseline='middle' transform='rotate(-25 130 70)' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='20' fill='%230074cc' fill-opacity='.13'%3ETopMark Tutorial Center%3C/text%3E%3C/svg%3E");
+      background-size: 32mm 17mm; background-repeat: repeat;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
     /* FRONT */
     .f-head {
       background: var(--blue); color: #fff;

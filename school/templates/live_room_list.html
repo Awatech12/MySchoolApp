@@ -264,6 +264,7 @@
       display: block; font-size: 13px; font-weight: 600; color: #262626; margin-bottom: 6px;
     }
     .form-field input,
+    .form-field select,
     .form-field textarea {
       width: 100%; box-sizing: border-box;
       padding: 13px 14px;
@@ -275,6 +276,7 @@
       font-family: inherit;
     }
     .form-field input:focus,
+    .form-field select:focus,
     .form-field textarea:focus { outline: 2px solid #0095f6; outline-offset: 0; }
     .form-field textarea { resize: vertical; min-height: 72px; }
 
@@ -282,6 +284,7 @@
     .schedule-fields.show { display: block; }
 
     .date-time-row { display: flex; gap: 10px; }
+    .date-time-row { margin-bottom: 16px; }
     .date-time-row .form-field { flex: 1; margin-bottom: 0; }
 
     .modal-foot {
@@ -337,10 +340,20 @@
       <span class="title-icon"><i class="fa-solid fa-video"></i></span>
       Live Classes
     </h1>
+    {% if is_teacher %}
     <button class="create-room-btn" onclick="openModal()">
       <i class="fa-solid fa-plus"></i> New Live Class
     </button>
+    {% endif %}
   </div>
+
+  {% if not is_teacher %}
+  <p style="color:#737373;font-size:13.5px;margin:-8px 0 18px;">
+    {% if my_class and my_subjects %}Showing live classes for <strong>{{ my_class }}</strong> in your registered subjects.
+    {% elif not my_class %}Your class is not set on your profile yet, so no live classes can be shown. Please contact your school admin.
+    {% else %}You have not registered any subjects yet. Register your subjects to see live classes.{% endif %}
+  </p>
+  {% endif %}
 
   <!-- ── ACTIVE SESSIONS ── -->
   {% if sessions %}
@@ -359,6 +372,9 @@
         </div>
       </div>
       <div class="room-body">
+        {% if session.subject_name or session.class_level %}
+        <p class="room-desc" style="font-weight:600;">{{ session.subject_name }}{% if session.subject_name and session.class_level %} · {% endif %}{{ session.class_level }}</p>
+        {% endif %}
         {% if session.description %}
         <p class="room-desc">{{ session.description }}</p>
         {% endif %}
@@ -381,10 +397,14 @@
     <div class="empty-state">
       <div class="empty-icon-wrap"><i class="fa-solid fa-chalkboard-user"></i></div>
       <h3>No Active Live Classes</h3>
+      {% if is_teacher %}
       <p>Be the first to start a live class and teach your students.</p>
       <button class="create-room-btn" onclick="openModal()" style="display:inline-flex;margin:0 auto;">
         <i class="fa-solid fa-plus"></i> Create Your First Class
       </button>
+      {% else %}
+      <p>There is no live class running for your class and subjects right now. Check back when your teacher goes live.</p>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
@@ -404,6 +424,9 @@
         </div>
       </div>
       <div class="room-body">
+        {% if session.subject_name or session.class_level %}
+        <p class="room-desc" style="font-weight:600;">{{ session.subject_name }}{% if session.subject_name and session.class_level %} · {% endif %}{{ session.class_level }}</p>
+        {% endif %}
         {% if session.description %}
         <p class="room-desc">{{ session.description }}</p>
         {% endif %}
@@ -422,9 +445,9 @@
           <i class="fa-solid fa-circle-play"></i> Start Class
         </a>
         {% endif %}
-        <button class="copy-btn" onclick="copyLink('{{ request.scheme }}://{{ request.get_host }}/live/{{ session.room_name }}/')">
+        {% if is_teacher %}<button class="copy-btn" onclick="copyLink('{{ request.scheme }}://{{ request.get_host }}/live/{{ session.room_name }}/')">
           <i class="fa-regular fa-copy"></i> Copy Invite Link
-        </button>
+        </button>{% endif %}
       </div>
     </div>
     {% endfor %}
@@ -433,7 +456,8 @@
 
 </main>
 
-<!-- ─────────────────── CREATE ROOM MODAL ─────────────────── -->
+<!-- ─────────────────── CREATE ROOM MODAL (teachers only) ─────────────────── -->
+{% if is_teacher %}
 <div class="modal-overlay" id="createModal" onclick="closeOnBackdrop(event)">
   <div class="modal-box">
     <div class="modal-head">
@@ -460,6 +484,23 @@
         <div class="form-field">
           <label for="roomTitle">Class Title <span style="color:#ef4444">*</span></label>
           <input type="text" id="roomTitle" name="title" placeholder="e.g. Mathematics – Quadratic Equations" maxlength="300" required>
+        </div>
+
+        <div class="date-time-row">
+          <div class="form-field">
+            <label for="roomSubject">Subject <span style="color:#ef4444">*</span></label>
+            <select id="roomSubject" name="subject_name" required>
+              <option value="">Select subject</option>
+              {% for s in create_subjects %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="roomClass">Class <span style="color:#ef4444">*</span></label>
+            <select id="roomClass" name="class_level" required>
+              <option value="">Select class</option>
+              {% for c in create_classes %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
         </div>
 
         <div class="form-field">
@@ -495,6 +536,8 @@
     </div>
   </div>
 </div>
+
+{% endif %}
 
 <!-- ─── Toast ─── -->
 <div id="toast" style="
@@ -576,6 +619,8 @@
     hideAlert();
     const title = document.getElementById('roomTitle').value.trim();
     if (!title) { showAlert('Please enter a class title.'); return; }
+    if (!document.getElementById('roomSubject').value) { showAlert('Please choose a subject.'); return; }
+    if (!document.getElementById('roomClass').value) { showAlert('Please choose a class.'); return; }
 
     if (currentTab === 'schedule') {
       const d = document.getElementById('schedDate').value;
@@ -623,7 +668,7 @@
   }
 
   // Close on Escape
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('createModal')) closeModal(); });
 </script>
 
 {% include 'footer.html' %}
