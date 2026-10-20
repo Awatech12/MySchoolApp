@@ -4530,22 +4530,56 @@ def learning_material_detail(request, pk):
 
 @login_required
 def learning_material_download(request, pk):
-    """Count the download, then hand over the file (a redirect on Cloudinary, a streamed file locally)."""
+    """Count the download, then serve the file straight from our own URL (no Cloudinary redirect)."""
+    import mimetypes
+    import urllib.request
+    from urllib.parse import quote
     from django.conf import settings
-    from django.http import FileResponse
+    from django.http import FileResponse, StreamingHttpResponse
+
     material = get_object_or_404(_materials_for(request.user), pk=pk)
     LearningMaterial.objects.filter(pk=material.pk).update(download_count=F('download_count') + 1)
 
+    filename = material.file_name or f'material.{material.file_ext}'
+    if '.' not in filename:
+        filename += '.' + material.file_ext
+    ctype = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    disposition = f'attachment; filename="{filename}"; filename*=UTF-8\'\'{quote(filename)}'
+
     if getattr(settings, 'USE_CLOUDINARY', False):
-        url = material.download_url_direct
+        url = material.file_url
         if not url:
             raise Http404('File not found.')
-        return redirect(url)
+        try:
+            remote = urllib.request.urlopen(url, timeout=30)
+        except Exception:
+            logger.exception('could not fetch learning material %s from storage', material.pk)
+            raise Http404('File not found.')
+
+        def stream():
+            try:
+                while True:
+                    chunk = remote.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                remote.close()
+
+        response = StreamingHttpResponse(stream(), content_type=ctype)
+        length = remote.headers.get('Content-Length')
+        if length:
+            response['Content-Length'] = length
+        response['Content-Disposition'] = disposition
+        return response
+
     try:
         handle = material.file.open('rb')
     except (FileNotFoundError, ValueError, OSError):
         raise Http404('File not found.')
-    return FileResponse(handle, as_attachment=True, filename=material.file_name or None)
+    response = FileResponse(handle, content_type=ctype)
+    response['Content-Disposition'] = disposition
+    return response
 
 
 @_exam_teacher_only
