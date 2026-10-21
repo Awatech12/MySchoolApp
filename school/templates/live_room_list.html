@@ -186,6 +186,25 @@
     .join-btn:hover { background: #0074cc; color: white; }
     .copy-btn { background: #efefef; color: #262626; }
     .copy-btn:hover { background: #dbdbdb; }
+    .end-btn { background: #fef2f2; color: #dc2626; }
+    .end-btn:hover { background: #fee2e2; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-row .copy-btn, .btn-row .end-btn { font-size: 13px; padding: 10px 8px; }
+    .host-tag { background: rgba(255,255,255,.22); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 4px; letter-spacing: .3px; }
+
+    /* ─── CUSTOM CONFIRM DIALOG ─────────────── */
+    .dlg-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .dlg-overlay.open { display: flex; }
+    .dlg-box { background: #fff; border-radius: 18px; padding: 26px 24px 20px; width: min(380px, 100%); text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+    .dlg-icon { width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: #fef2f2; color: #ef4444; }
+    .dlg-box h3 { font-size: 17px; font-weight: 800; margin: 0 0 6px; color: #262626; }
+    .dlg-box p { font-size: 13px; color: #737373; line-height: 1.55; margin: 0 0 20px; }
+    .dlg-actions { display: flex; gap: 10px; }
+    .dlg-actions button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; font-size: 13px; font-family: inherit; cursor: pointer; }
+    .dlg-cancel { background: #efefef; color: #262626; }
+    .dlg-cancel:hover { background: #dbdbdb; }
+    .dlg-ok { background: #ef4444; color: #fff; }
+    .dlg-ok:hover { background: #dc2626; }
 
     /* ─── EMPTY STATE ───────────────────────── */
     .empty-state {
@@ -369,6 +388,7 @@
         <div class="creator-info">
           <i class="fa-solid fa-chalkboard-user"></i>
           {{ session.created_by.get_full_name|default:session.created_by.username }}
+          {% if session.created_by == request.user %}<span class="host-tag">YOUR CLASS</span>{% endif %}
         </div>
       </div>
       <div class="room-body">
@@ -381,16 +401,30 @@
         <div class="room-stats">
           <div class="stat">
             <i class="fa-solid fa-users"></i>
-            <span>{{ session.participants.count }}/{{ session.max_participants }}</span>
+            <span>{{ session.connected_count|default:0 }}/{{ session.max_participants }}</span>
           </div>
           <div class="stat">
             <i class="fa-regular fa-clock"></i>
             <span>{{ session.created_at|timesince }} ago</span>
           </div>
         </div>
+        {% if session.created_by == request.user %}
+        <a href="{% url 'live_room' room_name=session.room_name %}" class="join-btn">
+          <i class="fa-solid fa-circle-play"></i> Continue Class
+        </a>
+        <div class="btn-row">
+          <button type="button" class="copy-btn" onclick="copyLink('{{ request.scheme }}://{{ request.get_host }}/live/{{ session.room_name }}/')">
+            <i class="fa-regular fa-copy"></i> Copy Invite
+          </button>
+          <button type="button" class="end-btn" data-title="{{ session.title|escape }}" data-url="{% url 'end_live_room' room_name=session.room_name %}" onclick="confirmEnd(this)">
+            <i class="fa-solid fa-power-off"></i> End Class
+          </button>
+        </div>
+        {% else %}
         <a href="{% url 'live_room' room_name=session.room_name %}" class="join-btn">
           <i class="fa-solid fa-right-to-bracket"></i> Join Class
         </a>
+        {% endif %}
       </div>
     </div>
     {% empty %}
@@ -539,6 +573,19 @@
 
 {% endif %}
 
+<!-- ─── Confirm dialog (End class) ─── -->
+<div class="dlg-overlay" id="endDialog" role="dialog" aria-modal="true" aria-labelledby="endDialogTitle">
+  <div class="dlg-box">
+    <div class="dlg-icon"><i class="fa-solid fa-power-off"></i></div>
+    <h3 id="endDialogTitle">End this class?</h3>
+    <p id="endDialogText">Everyone will be taken out of the room and the class will close. This cannot be undone.</p>
+    <div class="dlg-actions">
+      <button type="button" class="dlg-cancel" id="endDialogCancel">Keep teaching</button>
+      <button type="button" class="dlg-ok" id="endDialogOk">End class</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Toast ─── -->
 <div id="toast" style="
   display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
@@ -607,6 +654,24 @@
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => { t.style.display = 'none'; }, 3000);
+  }
+
+  // ── End class (custom confirm dialog) ───────────────────
+  function confirmEnd(btn) {
+    const dlg = document.getElementById('endDialog');
+    const ok = document.getElementById('endDialogOk');
+    const cancel = document.getElementById('endDialogCancel');
+    document.getElementById('endDialogText').textContent =
+      '"' + btn.dataset.title + '" will close for everyone in the room. This cannot be undone.';
+    const close = () => { dlg.classList.remove('open'); document.removeEventListener('keydown', onKey); ok.onclick = cancel.onclick = dlg.onclick = null; };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    ok.onclick = () => { ok.disabled = true; window.location.href = btn.dataset.url; };
+    cancel.onclick = close;
+    dlg.onclick = (e) => { if (e.target === dlg) close(); };
+    document.addEventListener('keydown', onKey);
+    ok.disabled = false;
+    dlg.classList.add('open');
+    cancel.focus();
   }
 
   // ── Copy link ───────────────────────────────────────────

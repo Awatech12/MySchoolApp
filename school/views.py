@@ -1429,7 +1429,9 @@ def live_room_list(request):
     from django.utils import timezone as tz
     user       = request.user
     is_teacher = _is_teacher(user)
-    visible    = _live_sessions_for(user)
+    # connected_count = people in the room right now (not everyone who ever joined)
+    visible    = _live_sessions_for(user).annotate(
+        connected_count=Count('participants', filter=Q(participants__is_connected=True)))
     active_sessions   = visible.filter(is_active=True).order_by('-created_at')
     upcoming_sessions = visible.filter(is_active=False, scheduled_at__gt=tz.now()).order_by('scheduled_at')
     ctx = {
@@ -1538,8 +1540,22 @@ def end_live_room(request, room_name):
     if not _is_teacher(request.user):
         raise PermissionDenied
     session           = get_object_or_404(LiveSession, room_name=room_name, created_by=request.user)
+    was_active        = session.is_active
     session.is_active = False
     session.save()
+    if was_active:
+        # Tell everyone still in the room, so students are not left in a closed class.
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            layer = get_channel_layer()
+            if layer is not None:
+                async_to_sync(layer.group_send)(f'live_{room_name}', {
+                    'type': 'relay',
+                    'payload': {'type': 'class_ended', 'user': request.user.username, 'user_id': request.user.id},
+                })
+        except Exception:
+            pass
     messages.success(request, 'Live session ended successfully')
     return redirect('live_room_list')
 
