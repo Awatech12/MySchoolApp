@@ -84,6 +84,7 @@
       background: #1e293b; border: 2px solid #fff; border-radius: 12px; overflow: hidden; display: none;
     }
     .self-preview video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .self-preview video.rear { transform: none; }
     .self-preview .self-avatar { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #94a3b8; }
     .self-label {
       position: absolute; left: 6px; bottom: 6px; background: rgba(15,23,42,.78); color: #fff;
@@ -694,22 +695,72 @@
     refreshControls();
     send({ type: 'audio_toggle', enabled: isAudioEnabled });
   }
-  async function flipCamera() {
-    if (!localStream) return;
-    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+  let videoDevices = [], flipping = false;
+  const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  // Show the Flip button only when there is more than one camera to flip between.
+  async function refreshCameras() {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
-      const track = s.getVideoTracks()[0];
+      const all = await navigator.mediaDevices.enumerateDevices();
+      videoDevices = all.filter(d => d.kind === 'videoinput');
+    } catch (e) { videoDevices = []; }
+    const hasCam = !!(localStream && localStream.getVideoTracks().length);
+    $('flip-camera').style.display = (hasCam && (videoDevices.length > 1 || isMobileDevice)) ? 'flex' : 'none';
+  }
+
+  async function flipCamera() {
+    if (flipping || !localStream) return;
+    const oldTrack = localStream.getVideoTracks()[0];
+    if (!oldTrack) return;
+    flipping = true;
+    const btn = $('flip-camera');
+    btn.style.opacity = '0.5';
+
+    const old = (oldTrack.getSettings && oldTrack.getSettings()) || {};
+    const facing = old.facingMode || currentFacingMode;
+    const wanted = facing === 'environment' ? 'user' : 'environment';
+    const attempts = [{ video: { facingMode: { exact: wanted } } }];       // phones: front <-> back
+    if (videoDevices.length > 1) {                                           // laptops / tablets: next camera in the list
+      const i = videoDevices.findIndex(d => d.deviceId === old.deviceId);
+      const next = videoDevices[(i + 1) % videoDevices.length];
+      if (next && next.deviceId && next.deviceId !== old.deviceId) attempts.push({ video: { deviceId: { exact: next.deviceId } } });
+    }
+
+    // Phones can only run one camera at a time, so the current camera must be released first.
+    oldTrack.stop();
+    let newStream = null;
+    for (const c of attempts) {
+      try { newStream = await navigator.mediaDevices.getUserMedia(c); break; } catch (e) { /* try the next option */ }
+    }
+    let switched = !!newStream;
+    if (!newStream) {                                                        // could not switch: bring the old camera back
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({ video: old.deviceId ? { deviceId: { exact: old.deviceId } } : true });
+      } catch (e) { newStream = null; }
+    }
+
+    if (newStream) {
+      const track = newStream.getVideoTracks()[0];
       track.enabled = isVideoEnabled;
-      const old = localStream.getVideoTracks()[0];
-      if (old) { localStream.removeTrack(old); old.stop(); }
+      localStream.removeTrack(oldTrack);
       localStream.addTrack(track);
       if (!isScreenSharing) replaceVideoTrack(track);
-      if (isHost) { if (!isScreenSharing) setHostVideo(localStream); } else { $('self-video').srcObject = localStream; }
-    } catch (e) {
-      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-      addChatMessage('System', 'Could not switch camera.', 'system');
+      const f = (track.getSettings && track.getSettings().facingMode) || (switched ? wanted : facing);
+      currentFacingMode = f === 'environment' ? 'environment' : 'user';
+      if (isHost) {
+        if (!isScreenSharing) { hostVideoEl.srcObject = null; setHostVideo(localStream); }
+      } else {
+        const sv = $('self-video');
+        sv.srcObject = new MediaStream([track]);
+        sv.classList.toggle('rear', currentFacingMode === 'environment');   // only the front camera is mirrored
+        sv.play().catch(() => {});
+      }
+    } else {
+      addChatMessage('System', 'Camera lost. Turn the camera off and on to try again.', 'system');
     }
+    if (!switched) addChatMessage('System', 'Could not switch camera.', 'system');
+    btn.style.opacity = '';
+    flipping = false;
   }
   async function toggleScreenShare() {
     if (!isHost) return;
@@ -972,8 +1023,6 @@
     addChatMessage('System', 'Welcome to ' + (sessionTitle || 'the class') + '.', 'system');
 
     // Role-based layout
-    const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
-    if (isMobileDevice) $('flip-camera').style.display = 'flex';
     if (isHost) {
       $('toggle-screen').style.display = 'flex';
       $('toggle-poll-creator').style.display = 'flex';
@@ -987,6 +1036,8 @@
     }
 
     await initLocalStream();
+    refreshCameras();
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', refreshCameras);
     initWebSocket();
 
     // Controls
