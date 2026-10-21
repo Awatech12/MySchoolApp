@@ -4547,14 +4547,34 @@ def learning_material_download(request, pk):
     disposition = f'attachment; filename="{filename}"; filename*=UTF-8\'\'{quote(filename)}'
 
     if getattr(settings, 'USE_CLOUDINARY', False):
-        url = material.file_url
-        if not url:
-            raise Http404('File not found.')
+        # Try the normal public URL first, then fall back to a signed API download link,
+        # which still works when Cloudinary blocks public delivery of raw files (PDF/ZIP etc).
+        candidates = []
+        if material.file_url:
+            candidates.append(material.file_url)
         try:
-            remote = urllib.request.urlopen(url, timeout=30)
-        except Exception:
-            logger.exception('could not fetch learning material %s from storage', material.pk)
-            raise Http404('File not found.')
+            import cloudinary.utils
+            public_id = material.file.name
+            ext = (material.file_ext or '').lower()
+            for fmt in ('', ext):
+                if fmt == '' or public_id.lower().endswith('.' + fmt) is False:
+                    candidates.append(cloudinary.utils.private_download_url(
+                        public_id, fmt, resource_type='raw', type='upload', attachment=True))
+        except Exception as exc:
+            logger.warning('could not build signed download url for material %s: %s', material.pk, exc)
+
+        remote, errors = None, []
+        for url in candidates:
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 KishiHub'})
+                remote = urllib.request.urlopen(req, timeout=30)
+                break
+            except Exception as exc:
+                errors.append(f'{exc} <- {url.split("?")[0]}')
+        if remote is None:
+            logger.error('learning material %s download failed: %s', material.pk, errors)
+            detail = ' | '.join(errors) if settings.DEBUG else ''
+            raise Http404(f'File not found. {detail}'.strip())
 
         def stream():
             try:

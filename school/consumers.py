@@ -2,468 +2,226 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
+# Messages only the teacher (the person who created the live class) may send.
+HOST_ONLY = {'screen_share', 'poll_create', 'poll_end', 'question_answered', 'mic_control', 'end_class'}
+
+MAX_CHAT = 500
+MAX_QUESTION = 300
+
 
 class LiveVideoConsumer(AsyncWebsocketConsumer):
+    """
+    Signalling + chat for one live class room.
+
+    * Only people allowed to see the class (same rule as the live_room view) may connect.
+    * Teacher-only actions are checked here on the server, not just hidden in the page.
+    * Every broadcast goes through `relay`; a message with a target_user_id (WebRTC offer / answer /
+      ICE, mic control) is delivered only to that person.
+    """
+
+    # ───────────────────────── connection ─────────────────────────
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'live_{self.room_name}'
         self.user = self.scope['user']
+        self.joined = False
+        self.is_host = False
+        self._voted = set()
 
-        # Check if user is authenticated
         if not self.user.is_authenticated:
             await self.close()
             return
 
-        # Join room group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-
+        status, reason = await self.check_access()
         await self.accept()
 
-        # Add user to participants
-        await self.add_participant()
+        if status != 'ok':
+            # Tell the page why (so it does not keep reconnecting), then close.
+            await self.send(text_data=json.dumps({'type': 'rejected', 'reason': reason}))
+            await self.close(code=4403)
+            return
 
-        # Notify others about new participant
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'user_joined',
-                'user': self.user.username,
-                'user_id': self.user.id
-            }
-        )
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        self.joined = True
+        await self.add_participant()
+        await self.broadcast({'type': 'user_joined', 'user': self.user.username, 'user_id': self.user.id})
 
     async def disconnect(self, close_code):
-        # Remove user from participants
+        if not self.joined:
+            return
+        self.joined = False
         await self.remove_participant()
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        await self.broadcast({'type': 'user_left', 'user': self.user.username, 'user_id': self.user.id})
 
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+    # ───────────────────────── incoming ─────────────────────────
+    async def receive(self, text_data=None, bytes_data=None):
+        if not text_data:
+            return
+        try:
+            data = json.loads(text_data)
+        except ValueError:
+            return
+        if not isinstance(data, dict):
+            return
 
-        # Notify others about user leaving
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'user_left',
-                'user': self.user.username,
-                'user_id': self.user.id
-            }
-        )
+        kind = data.get('type')
+        if kind in HOST_ONLY and not self.is_host:
+            return
 
-    # Receive message from WebSocket
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message_type = text_data_json.get('type')
+        msg = {'type': kind, 'user': self.user.username, 'user_id': self.user.id}
 
-        if message_type == 'offer':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'offer',
-                    'offer': text_data_json['offer'],
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'target_user_id': text_data_json.get('target_user_id')
-                }
-            )
-        elif message_type == 'answer':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'answer',
-                    'answer': text_data_json['answer'],
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'target_user_id': text_data_json.get('target_user_id')
-                }
-            )
-        elif message_type == 'ice_candidate':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'ice_candidate',
-                    'candidate': text_data_json['candidate'],
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'target_user_id': text_data_json.get('target_user_id')
-                }
-            )
-        elif message_type == 'video_toggle':
-            # Update participant's video status
-            await self.update_video_status(text_data_json.get('enabled', True))
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'video_toggle',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'enabled': text_data_json.get('enabled', True)
-                }
-            )
-        elif message_type == 'audio_toggle':
-            # Update participant's audio status
-            await self.update_audio_status(text_data_json.get('enabled', True))
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'audio_toggle',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'enabled': text_data_json.get('enabled', True)
-                }
-            )
-        elif message_type == 'screen_share':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'screen_share',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'enabled': text_data_json.get('enabled', False)
-                }
-            )
-        elif message_type == 'chat_message':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'message': text_data_json.get('message', '')
-                }
-            )
+        if kind in ('offer', 'answer', 'ice_candidate'):
+            key = 'candidate' if kind == 'ice_candidate' else kind
+            if key not in data:
+                return
+            msg[key] = data[key]
+            msg['target_user_id'] = data.get('target_user_id')
 
-        elif message_type == 'raise_hand':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'raise_hand',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'raised': text_data_json.get('raised', True)
-                }
-            )
+        elif kind == 'video_toggle':
+            msg['enabled'] = bool(data.get('enabled', True))
+            await self.update_participant(is_video_on=msg['enabled'])
 
-        elif message_type == 'reaction':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'reaction',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'emoji': text_data_json.get('emoji', '👍')
-                }
-            )
+        elif kind == 'audio_toggle':
+            msg['enabled'] = bool(data.get('enabled', True))
+            await self.update_participant(is_audio_on=msg['enabled'])
 
-        elif message_type == 'question_ask':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'question_ask',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'question': text_data_json.get('question', ''),
-                    'question_id': text_data_json.get('question_id', '')
-                }
-            )
+        elif kind == 'screen_share':
+            msg['enabled'] = bool(data.get('enabled', False))
 
-        elif message_type == 'question_answered':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'question_answered',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'question_id': text_data_json.get('question_id', '')
-                }
-            )
+        elif kind == 'chat_message':
+            text = str(data.get('message', '')).strip()[:MAX_CHAT]
+            if not text:
+                return
+            msg['message'] = text
 
-        elif message_type == 'poll_create':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'poll_create',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'poll_id': text_data_json.get('poll_id', ''),
-                    'question': text_data_json.get('question', ''),
-                    'options': text_data_json.get('options', [])
-                }
-            )
+        elif kind == 'raise_hand':
+            msg['raised'] = bool(data.get('raised', True))
 
-        elif message_type == 'poll_vote':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'poll_vote',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'poll_id': text_data_json.get('poll_id', ''),
-                    'option_index': text_data_json.get('option_index', 0)
-                }
-            )
+        elif kind == 'question_ask':
+            text = str(data.get('question', '')).strip()[:MAX_QUESTION]
+            if not text:
+                return
+            msg['question'] = text
+            msg['question_id'] = str(data.get('question_id', ''))[:64]
 
-        elif message_type == 'poll_end':
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'poll_end',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'poll_id': text_data_json.get('poll_id', '')
-                }
-            )
+        elif kind == 'question_answered':
+            msg['question_id'] = str(data.get('question_id', ''))[:64]
 
-        elif message_type == 'mic_control':
-            # Broadcast teacher's mute/unmute command to all room members
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'mic_control',
-                    'user': self.user.username,
-                    'user_id': self.user.id,
-                    'target_user_id': text_data_json.get('target_user_id'),
-                    'enabled': text_data_json.get('enabled', True)
-                }
-            )
+        elif kind == 'poll_create':
+            options = [str(o).strip()[:100] for o in (data.get('options') or []) if str(o).strip()][:8]
+            question = str(data.get('question', '')).strip()[:200]
+            if not question or len(options) < 2:
+                return
+            msg.update({'poll_id': str(data.get('poll_id', ''))[:64], 'question': question, 'options': options})
 
-    async def offer(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'offer',
-            'offer': event['offer'],
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'target_user_id': event.get('target_user_id')
-        }))
+        elif kind == 'poll_vote':
+            poll_id = str(data.get('poll_id', ''))[:64]
+            try:
+                index = int(data.get('option_index', 0))
+            except (TypeError, ValueError):
+                return
+            if poll_id in self._voted:          # one vote per person per poll
+                return
+            self._voted.add(poll_id)
+            msg.update({'poll_id': poll_id, 'option_index': index})
 
-    async def answer(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'answer',
-            'answer': event['answer'],
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'target_user_id': event.get('target_user_id')
-        }))
+        elif kind == 'poll_end':
+            msg['poll_id'] = str(data.get('poll_id', ''))[:64]
 
-    async def ice_candidate(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'ice_candidate',
-            'candidate': event['candidate'],
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'target_user_id': event.get('target_user_id')
-        }))
+        elif kind == 'mic_control':
+            try:
+                msg['target_user_id'] = int(data.get('target_user_id'))
+            except (TypeError, ValueError):
+                return
+            msg['enabled'] = bool(data.get('enabled', True))
 
-    async def user_joined(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'user_joined',
-            'user': event['user'],
-            'user_id': event['user_id']
-        }))
+        elif kind == 'end_class':
+            await self.close_session()
+            msg['type'] = 'class_ended'
 
-    async def user_left(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'user_left',
-            'user': event['user'],
-            'user_id': event['user_id']
-        }))
+        else:
+            return
 
-    async def video_toggle(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'video_toggle',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'enabled': event['enabled']
-        }))
+        await self.broadcast(msg)
 
-    async def audio_toggle(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'audio_toggle',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'enabled': event['enabled']
-        }))
+    # ───────────────────────── outgoing ─────────────────────────
+    async def broadcast(self, payload):
+        await self.channel_layer.group_send(self.room_group_name, {'type': 'relay', 'payload': payload})
 
-    async def screen_share(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'screen_share',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'enabled': event['enabled']
-        }))
+    async def relay(self, event):
+        payload = event['payload']
+        target = payload.get('target_user_id')
+        # Addressed to somebody else (WebRTC signalling, mic control): not for this connection.
+        if target is not None and str(target) != str(self.user.id):
+            return
+        await self.send(text_data=json.dumps(payload))
 
-    async def chat_message(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'chat_message',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'message': event['message']
-        }))
-
-    async def raise_hand(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'raise_hand',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'raised': event['raised']
-        }))
-
-    async def reaction(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'reaction',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'emoji': event['emoji']
-        }))
-
-    async def question_ask(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'question_ask',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'question': event['question'],
-            'question_id': event['question_id']
-        }))
-
-    async def question_answered(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'question_answered',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'question_id': event['question_id']
-        }))
-
-    async def poll_create(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'poll_create',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'poll_id': event['poll_id'],
-            'question': event['question'],
-            'options': event['options']
-        }))
-
-    async def poll_vote(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'poll_vote',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'poll_id': event['poll_id'],
-            'option_index': event['option_index']
-        }))
-
-    async def poll_end(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'poll_end',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'poll_id': event['poll_id']
-        }))
-
-    async def mic_control(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'mic_control',
-            'user': event['user'],
-            'user_id': event['user_id'],
-            'target_user_id': event['target_user_id'],
-            'enabled': event['enabled']
-        }))
+    # ───────────────────────── database ─────────────────────────
+    @database_sync_to_async
+    def check_access(self):
+        """('ok', '') when this user may be in this room, else (status, message for the page)."""
+        from school.models import LiveParticipant
+        from school.views import _live_sessions_for
+        try:
+            # Same rule as the live_room page: a student only gets their own class + registered subjects.
+            session = _live_sessions_for(self.user).filter(room_name=self.room_name).first()
+            if session is None:
+                return 'denied', 'You are not allowed to join this class.'
+            if not session.is_active:
+                return 'ended', 'This class is not running.'
+            self.is_host = session.created_by_id == self.user.id
+            connected = (LiveParticipant.objects
+                         .filter(session=session, is_connected=True)
+                         .exclude(user=self.user).count())
+            if connected >= session.max_participants:
+                return 'full', 'This class is full.'
+            return 'ok', ''
+        except Exception as e:
+            print(f'Error checking live room access: {e}')
+            return 'denied', 'Could not join this class.'
 
     @database_sync_to_async
     def add_participant(self):
-        from django.contrib.auth.models import User
         from school.models import LiveSession, LiveParticipant
         try:
-            # Get or create the live session
-            session, created = LiveSession.objects.get_or_create(
-                room_name=self.room_name,
-                defaults={
-                    'created_by': self.user,
-                    'is_active': True,
-                    'title': f'Live Session {self.room_name}'
-                }
+            session = LiveSession.objects.get(room_name=self.room_name)
+            participant, created = LiveParticipant.objects.get_or_create(
+                session=session, user=self.user,
+                defaults={'is_connected': True, 'is_video_on': True, 'is_audio_on': self.is_host},
             )
-            
-            # Add participant
-            participant, participant_created = LiveParticipant.objects.get_or_create(
-                session=session,
-                user=self.user,
-                defaults={
-                    'is_connected': True,
-                    'is_video_on': True,
-                    'is_audio_on': True
-                }
-            )
-            
-            if not participant_created:
+            if not created:
                 participant.is_connected = True
-                participant.save()
-                
-            return session
+                participant.save(update_fields=['is_connected'])
         except Exception as e:
-            print(f"Error adding participant: {e}")
-            return None
+            print(f'Error adding participant: {e}')
 
     @database_sync_to_async
     def remove_participant(self):
-        from django.contrib.auth.models import User
-        from school.models import LiveSession, LiveParticipant
+        # The class stays open when the room empties (e.g. the teacher refreshes the page).
+        # It is closed by the teacher's "End class" button.
+        from school.models import LiveParticipant
         try:
-            participant = LiveParticipant.objects.get(
-                session__room_name=self.room_name,
-                user=self.user
-            )
-            participant.is_connected = False
-            participant.save()
-            
-            # Check if session should be closed (no active participants)
-            active_count = LiveParticipant.objects.filter(
-                session__room_name=self.room_name,
-                is_connected=True
-            ).count()
-            
-            if active_count == 0:
-                session = participant.session
-                session.is_active = False
-                session.save()
-        except LiveParticipant.DoesNotExist:
-            pass
+            LiveParticipant.objects.filter(
+                session__room_name=self.room_name, user=self.user
+            ).update(is_connected=False)
         except Exception as e:
-            print(f"Error removing participant: {e}")
+            print(f'Error removing participant: {e}')
 
     @database_sync_to_async
-    def update_video_status(self, enabled):
-        from django.contrib.auth.models import User
-        from school.models import LiveSession, LiveParticipant
+    def update_participant(self, **fields):
+        from school.models import LiveParticipant
         try:
-            participant = LiveParticipant.objects.get(
-                session__room_name=self.room_name,
-                user=self.user
-            )
-            participant.is_video_on = enabled
-            participant.save()
-        except LiveParticipant.DoesNotExist:
-            pass
+            LiveParticipant.objects.filter(
+                session__room_name=self.room_name, user=self.user
+            ).update(**fields)
         except Exception as e:
-            print(f"Error updating video status: {e}")
+            print(f'Error updating participant: {e}')
 
     @database_sync_to_async
-    def update_audio_status(self, enabled):
-        from django.contrib.auth.models import User
-        from school.models import LiveSession, LiveParticipant
+    def close_session(self):
+        from school.models import LiveSession
         try:
-            participant = LiveParticipant.objects.get(
-                session__room_name=self.room_name,
-                user=self.user
-            )
-            participant.is_audio_on = enabled
-            participant.save()
-        except LiveParticipant.DoesNotExist:
-            pass
+            LiveSession.objects.filter(room_name=self.room_name).update(is_active=False)
         except Exception as e:
-            print(f"Error updating audio status: {e}")
+            print(f'Error closing session: {e}')

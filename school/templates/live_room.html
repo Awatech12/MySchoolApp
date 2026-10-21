@@ -2,967 +2,1058 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>Live Class | TopMark</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Classroom | TopMark</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --blue: #0095f6; --blue-d: #0074cc; --blue-soft: #e8f4fd;
+      --ink: #262626; --mute: #737373; --line: #e5e7eb;
+      --bg: #f4f6f9; --card: #ffffff; --stage: #0f172a;
+      --red: #ef4444; --red-soft: #fef2f2; --green: #16a34a; --amber: #f59e0b;
     }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      background: #0a0a0a;
-      overflow: hidden;
+      background: var(--bg); color: var(--ink); overflow: hidden;
       font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
       -webkit-font-smoothing: antialiased;
     }
+    button { font-family: inherit; cursor: pointer; }
 
-    .live-container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      background: #000;
+    .room { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+
+    /* ───────── TOP BAR: class information ───────── */
+    .room-header {
+      flex-shrink: 0; background: var(--card); border-bottom: 1px solid var(--line);
+      padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px;
     }
-
-    /* MAIN STAGE — host video fills entire background */
-    .host-stage {
-      position: absolute;
-      inset: 0;
-      background: #111;
-      overflow: hidden;
+    .class-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .class-icon {
+      width: 40px; height: 40px; border-radius: 12px; background: var(--blue-soft); color: var(--blue);
+      display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
     }
-
-    #host-video-element {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      background: #000;
+    .class-text { min-width: 0; }
+    .class-title { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .class-sub { font-size: 12px; color: var(--mute); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+    .tag { background: var(--blue-soft); color: var(--blue-d); font-weight: 700; padding: 2px 9px; border-radius: 20px; font-size: 11px; }
+    .header-stats { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .stat-chip {
+      display: flex; align-items: center; gap: 7px; background: var(--bg); border: 1px solid var(--line);
+      padding: 7px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; white-space: nowrap;
     }
+    .stat-chip i { color: var(--blue); }
+    .session-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
 
-    /* placeholder when host cam is off */
-    .host-avatar-placeholder {
-      display: none;
-      position: absolute;
-      inset: 0;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      background: #121212;
-      color: #aaa;
-      z-index: 5;
+    /* ───────── MAIN AREA ───────── */
+    .room-main { flex: 1; min-height: 0; display: flex; gap: 14px; padding: 14px; }
+    .stage-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+    /* Teacher stage (the "board / front of class") */
+    .stage { position: relative; flex: 1; min-height: 0; background: var(--stage); border-radius: 16px; overflow: hidden; }
+    #host-video-element { width: 100%; height: 100%; object-fit: contain; background: var(--stage); display: block; }
+
+    .stage-placeholder {
+      display: none; position: absolute; inset: 0; z-index: 5; background: #1e293b; color: #cbd5e1;
+      flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-weight: 600;
     }
-
-    .host-avatar-placeholder .avatar-circle {
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
-      background: #2a2a2a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 48px;
-      color: #0095f6;
+    .stage-placeholder .avatar-circle {
+      width: 104px; height: 104px; border-radius: 50%; background: #334155; color: #93c5fd;
+      display: flex; align-items: center; justify-content: center; font-size: 44px;
     }
-
-    /* waiting overlay while host stream not yet arrived (student side) */
     .waiting-overlay {
-      display: none;
-      position: absolute;
-      inset: 0;
-      background: #0a0a0a;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      z-index: 20;
-      backdrop-filter: blur(4px);
+      display: none; position: absolute; inset: 0; z-index: 20; background: var(--stage); color: #e2e8f0;
+      flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; padding: 20px;
     }
-
-    .waiting-overlay .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid #2c2c2c;
-      border-top-color: #0095f6;
-      border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-    }
-
+    .spinner { width: 44px; height: 44px; border: 3px solid #334155; border-top-color: var(--blue); border-radius: 50%; animation: spin 0.9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* HOST NAME BADGE (bottom-left) */
-    .host-name-badge {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(10px);
-      padding: 8px 16px;
-      border-radius: 40px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: white;
-      font-weight: 600;
-      font-size: 14px;
-      z-index: 15;
-      pointer-events: none;
+    .teacher-tag {
+      position: absolute; left: 14px; bottom: 14px; z-index: 10; background: rgba(15,23,42,0.78);
+      color: #fff; padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; pointer-events: none;
     }
+    .teacher-tag small { background: var(--blue); padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .3px; }
 
-    .host-live-dot {
-      width: 9px;
-      height: 9px;
-      background: #0095f6;
-      border-radius: 50%;
-      animation: pulse 1.4s infinite;
+    /* Student's own small preview */
+    .self-preview {
+      position: absolute; right: 14px; bottom: 14px; z-index: 12; width: 168px; aspect-ratio: 16 / 9;
+      background: #1e293b; border: 2px solid #fff; border-radius: 12px; overflow: hidden; display: none;
     }
-
-    @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
-
-    /* TOP-LEFT ROOM INFO */
-    .room-info {
-      position: absolute;
-      top: 18px;
-      left: 18px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 15;
-      flex-wrap: wrap;
+    .self-preview video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .self-preview .self-avatar { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #94a3b8; }
+    .self-label {
+      position: absolute; left: 6px; bottom: 6px; background: rgba(15,23,42,.78); color: #fff;
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
     }
-
-    .live-badge {
-      background: #e11d48;
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-      padding: 6px 12px;
-      border-radius: 30px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      backdrop-filter: blur(4px);
+    .self-mic {
+      position: absolute; right: 6px; bottom: 6px; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--red); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px;
     }
+    .self-mic.on { background: var(--green); }
 
-    .viewer-counter {
-      background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(8px);
-      padding: 5px 12px;
-      border-radius: 40px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: white;
-      font-size: 13px;
-      font-weight: 500;
-      border: 0.5px solid rgba(255,255,255,0.2);
-    }
-
-    .viewer-counter i { color: #0095f6; }
-
-    .session-title-pill {
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(8px);
-      padding: 5px 12px;
-      border-radius: 40px;
-      font-size: 12px;
-      color: #eee;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 240px;
-    }
-
-    /* Audio unlock prompt - but we'll auto-unlock aggressively */
-    .audio-unlock-prompt {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.95);
-      backdrop-filter: blur(10px);
-      padding: 12px 24px;
-      border-radius: 50px;
-      z-index: 10001;
-      color: white;
-      font-size: 14px;
-      font-weight: 500;
-      border: 2px solid #0095f6;
-      pointer-events: auto;
-      cursor: pointer;
-      white-space: nowrap;
-      display: none;
-    }
-
-    /* ─── STUDENT SELF BUBBLE (bottom-right) ─── */
-    .self-bubble-container {
-      position: absolute;
-      bottom: 100px;
-      right: 20px;
-      z-index: 25;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .self-bubble {
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
-      background: #1e1e1e;
-      border: 3px solid #0095f6;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .self-bubble video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .self-bubble .self-avatar {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #2a2a2a;
-      font-size: 40px;
-      color: #aaa;
-    }
-
-    .self-name-badge {
-      text-align: center;
-      margin-top: 6px;
-      font-size: 10px;
-      background: rgba(0,0,0,0.6);
-      padding: 2px 8px;
-      border-radius: 20px;
-      color: white;
-      font-weight: 500;
-      backdrop-filter: blur(4px);
-      white-space: nowrap;
-    }
-
-    .self-mic-icon {
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
-      background: #111;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      color: white;
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255,255,255,0.3);
-    }
-
-    /* student tray for OTHER students (host sees all students) */
-    .student-tray {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      z-index: 15;
-      max-height: 80vh;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
-
-    .student-bubble-wrapper {
-      position: relative;
-      width: 70px;
-      cursor: pointer;
-    }
-
-    .student-bubble {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      overflow: hidden;
-      background: #2a2a2a;
-      border: 2px solid rgba(255,255,255,0.3);
-      transition: 0.1s;
-    }
-
-    .student-bubble video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .student-bubble .bubble-avatar {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: #ccc;
-    }
-
-    .bubble-name {
-      text-align: center;
-      font-size: 9px;
-      margin-top: 4px;
-      color: #ddd;
-      white-space: nowrap;
-      background: rgba(0,0,0,0.5);
-      padding: 2px 4px;
-      border-radius: 12px;
-    }
-
-    .bubble-muted-icon {
-      position: absolute;
-      bottom: 2px;
-      right: 2px;
-      background: #ef4444;
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      font-size: 8px;
-      color: white;
-    }
-
-    .bubble-mic-ctrl {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: none;
-      background: rgba(0,149,246, 0.85);
-      color: white;
-      font-size: 9px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-      transition: background 0.2s, transform 0.15s;
-      z-index: 5;
-    }
-    .bubble-mic-ctrl:hover { background: rgba(0,149,246,1); transform: scale(1.15); }
-    .bubble-mic-ctrl.mic-ctrl-muted { background: rgba(239,68,68,0.9); }
-
-    /* ========== FIXED CONTROLS BAR (always visible) ========== */
-    .controls-bar {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(28, 28, 28, 0.96);
-      backdrop-filter: blur(20px);
-      border-radius: 60px;
-      padding: 10px 24px;
-      display: flex;
-      gap: 18px;
-      z-index: 9999;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.2s ease;
-      pointer-events: auto;
-    }
-
-    .control-btn {
-      background: #2d2d2d;
-      border: none;
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      color: white;
-      font-size: 22px;
-      cursor: pointer;
-      transition: 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .control-btn:hover { background: #3f3f3f; transform: scale(1.05); }
-    .control-btn.danger { background: #ef4444; }
-    .control-btn.active { background: #0095f6; }
-
-    .leave-btn {
-      background: #ef4444;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .control-group span {
-      font-size: 10px;
-      color: #ddd;
-      font-weight: 500;
-    }
-
-    /* chat sidebar */
-    .chat-sidebar {
-      position: fixed;
-      right: 0;
-      top: 0;
-      width: 320px;
-      height: 100%;
-      background: #121212e6;
-      backdrop-filter: blur(20px);
-      transform: translateX(100%);
-      transition: 0.25s ease;
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      border-left: 1px solid #333;
-    }
-
-    .chat-sidebar.open { transform: translateX(0); }
-
-    .chat-header {
-      background: #0095f6;
-      padding: 16px;
-      display: flex;
-      justify-content: space-between;
-      color: white;
-      font-weight: 800;
-      letter-spacing: -0.2px;
-    }
-
-    .chat-messages {
-      flex: 1;
-      padding: 16px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .chat-message {
-      background: #2a2a2a;
-      padding: 8px 12px;
-      border-radius: 14px;
-      font-size: 13px;
-      color: #eee;
-    }
-
-    .chat-message strong { color: #0095f6; }
-
-    .chat-input {
-      padding: 12px;
-      display: flex;
-      gap: 8px;
-      border-top: 1px solid #2a2a2a;
-    }
-
-    .chat-input input {
-      flex: 1;
-      background: #2a2a2a;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 30px;
-      color: white;
-    }
-
-    .chat-input button {
-      background: #0095f6;
-      border: none;
-      padding: 0 16px;
-      border-radius: 12px;
-      font-weight: 700;
-      color: white;
-    }
-
-    .chat-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 9995;
-      display: none;
-    }
-
-    .chat-overlay.active { display: block; }
-
-    /* responsive adjustments */
-    @media (max-width: 640px) {
-      .self-bubble { width: 72px; height: 72px; }
-      .controls-bar {
-        bottom: 16px;
-        left: 0;
-        right: 0;
-        transform: none;
-        border-radius: 0;
-        padding: 8px 16px;
-        gap: 10px;
-        overflow-x: auto;
-        justify-content: flex-start;
-        width: 100%;
-        border-radius: 20px 20px 0 0;
-      }
-      .control-btn { width: 46px; height: 46px; font-size: 18px; }
-      .student-tray { top: 12px; right: 12px; }
-      .student-bubble { width: 56px; height: 56px; }
-    }
-
-    /* reaction picker */
-    .reaction-picker {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%) scale(0.8);
-      background: rgba(28,28,28,0.96);
-      backdrop-filter: blur(20px);
-      border-radius: 60px;
-      padding: 10px 18px;
-      display: flex;
-      gap: 10px;
-      z-index: 9998;
-      border: 1px solid rgba(255,255,255,0.15);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-    }
-    .reaction-picker.open {
-      opacity: 1;
-      transform: translateX(-50%) scale(1);
-      pointer-events: auto;
-    }
-    .reaction-emoji {
-      font-size: 28px;
-      cursor: pointer;
-      transition: transform 0.15s;
-      line-height: 1;
-      user-select: none;
-    }
-    .reaction-emoji:hover { transform: scale(1.4); }
-
-    .emoji-float {
-      position: fixed;
-      font-size: 32px;
-      pointer-events: none;
-      z-index: 9997;
-      animation: floatUp 2.5s ease-out forwards;
-      user-select: none;
-    }
-    @keyframes floatUp {
-      0%   { opacity: 1; transform: translateY(0) scale(1); }
-      80%  { opacity: 1; }
-      100% { opacity: 0; transform: translateY(-160px) scale(1.4); }
-    }
-
-    .hand-queue {
-      position: fixed;
-      top: 70px;
-      left: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      z-index: 9990;
-      pointer-events: none;
-    }
+    /* Raised hands (teacher) */
+    .hand-queue { position: absolute; top: 14px; left: 14px; z-index: 15; display: flex; flex-direction: column; gap: 8px; max-width: calc(100% - 28px); }
     .hand-badge {
-      background: rgba(0,149,246,0.92);
-      backdrop-filter: blur(10px);
-      padding: 7px 14px;
-      border-radius: 40px;
-      font-size: 13px;
-      color: white;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      animation: slideIn 0.3s ease;
-      pointer-events: auto;
+      background: #fff; color: var(--ink); border-left: 4px solid var(--amber); padding: 8px 10px 8px 12px;
+      border-radius: 10px; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
+      animation: slideIn .25s ease;
     }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(-20px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    .hand-badge .dismiss-hand {
-      background: rgba(255,255,255,0.25);
-      border: none;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      font-size: 10px;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: auto;
-    }
+    .hand-badge i { color: var(--amber); }
+    .hand-badge .dismiss-hand { margin-left: 6px; background: var(--bg); border: none; border-radius: 6px; padding: 3px 9px; font-size: 11px; font-weight: 700; color: var(--mute); }
+    .hand-badge .dismiss-hand:hover { background: var(--line); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
 
+    /* Poll shown on the stage */
     .poll-overlay {
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(380px, 92vw);
-      background: rgba(18,18,18,0.97);
-      backdrop-filter: blur(20px);
-      border-radius: 20px;
-      border: 1px solid #333;
-      z-index: 9995;
-      padding: 20px;
-      display: none;
+      position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 18;
+      width: min(400px, calc(100% - 28px)); background: #fff; color: var(--ink); border-radius: 14px;
+      padding: 16px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.3);
     }
-    .poll-overlay.open { display: block; animation: slideUp 0.25s ease; }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .poll-overlay.open { display: block; }
+    .poll-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .poll-title-bar h4 { color: var(--blue-d); font-size: 13px; font-weight: 800; display: flex; gap: 6px; align-items: center; }
+    .poll-title-bar button { background: none; border: none; color: var(--mute); font-size: 16px; }
+    .poll-question { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+    .poll-option { position: relative; overflow: hidden; background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+    .poll-option:hover { border-color: var(--blue); }
+    .poll-option.voted { border-color: var(--blue); }
+    .poll-option .opt-bar { position: absolute; inset: 0 auto 0 0; background: rgba(0,149,246,.16); transition: width .4s ease; }
+    .poll-option .opt-label, .poll-option .opt-pct { position: relative; font-size: 13px; font-weight: 600; }
+    .poll-option .opt-pct { float: right; color: var(--blue-d); font-weight: 700; font-size: 12px; }
+    .poll-vote-count { font-size: 11px; color: var(--mute); margin-top: 4px; }
+
+    /* ───────── CONTROLS BAR ───────── */
+    .controls-bar { flex-shrink: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px; overflow-x: auto; scrollbar-width: none; }
+    .controls-bar::-webkit-scrollbar { display: none; }
+    .controls-inner { display: flex; gap: 8px; margin: 0 auto; width: max-content; align-items: stretch; }
+    .ctl {
+      position: relative; min-width: 66px; background: var(--bg); border: 1px solid var(--line); color: var(--ink);
+      border-radius: 12px; padding: 8px 8px 7px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; transition: background .15s, border-color .15s;
     }
-    .poll-title-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
+    .ctl i { font-size: 18px; }
+    .ctl:hover { background: #eceff3; }
+    .ctl.on { background: var(--blue-soft); border-color: var(--blue); color: var(--blue-d); }
+    .ctl.off { background: var(--red-soft); border-color: #fecaca; color: #dc2626; }
+    .ctl.end { background: var(--red); border-color: var(--red); color: #fff; }
+    .ctl.end:hover { background: #dc2626; }
+    .ctl.leave { color: #dc2626; }
+    .ctl .dot { position: absolute; top: 6px; right: 10px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: none; }
+    .ctl .dot.show { display: block; }
+    .ctl-divider { width: 1px; background: var(--line); margin: 4px 4px; }
+    .only-mobile { display: none; }
+
+    /* ───────── SIDE PANEL ───────── */
+    .side-panel { width: 340px; flex-shrink: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-head { display: none; padding: 14px 16px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); font-weight: 800; }
+    .panel-head button { background: var(--bg); border: none; width: 32px; height: 32px; border-radius: 50%; color: var(--mute); }
+    .sidebar-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    .sidebar-tab {
+      flex: 1; background: none; border: none; border-bottom: 3px solid transparent; padding: 13px 4px 11px;
+      font-size: 13px; font-weight: 700; color: var(--mute); display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .poll-title-bar h4 { color: #0095f6; font-size: 14px; font-weight: 700; display: flex; gap: 6px; }
-    .poll-question { color: #eee; font-size: 14px; font-weight: 600; margin-bottom: 14px; }
-    .poll-option {
-      background: #2a2a2a;
-      border: 1.5px solid #3a3a3a;
-      border-radius: 12px;
-      padding: 10px 14px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-    .poll-option:hover { border-color: #0095f6; }
-    .poll-option .opt-label { color: #eee; font-size: 13px; font-weight: 500; position: relative; z-index: 1; }
-    .poll-option .opt-pct { color: #0095f6; font-size: 12px; font-weight: 700; float: right; position: relative; z-index: 1; }
-    .poll-option .opt-bar {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      background: rgba(0,149,246,0.15);
-      border-radius: 10px;
-      transition: width 0.5s ease;
-    }
-    .poll-creator {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 10001;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
+    .sidebar-tab.active { color: var(--blue-d); border-bottom-color: var(--blue); }
+    .tab-badge { background: var(--red); color: #fff; border-radius: 20px; font-size: 10px; min-width: 17px; height: 17px; padding: 0 5px; display: none; align-items: center; justify-content: center; }
+    .tab-badge.show { display: inline-flex; }
+    .tab-content { display: none; flex: 1; min-height: 0; flex-direction: column; }
+    .tab-content.active { display: flex; }
+
+    .chat-messages, .qa-list, .roster-list { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .chat-message { background: var(--bg); padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; align-self: flex-start; max-width: 92%; word-wrap: break-word; }
+    .chat-message .who { font-weight: 700; color: var(--ink); font-size: 12px; display: block; margin-bottom: 1px; }
+    .chat-message.mine { background: var(--blue-soft); align-self: flex-end; }
+    .chat-message.teacher .who { color: var(--blue-d); }
+    .chat-message.teacher .who::after { content: 'Teacher'; margin-left: 6px; background: var(--blue); color: #fff; font-size: 9px; padding: 1px 6px; border-radius: 10px; font-weight: 700; }
+    .chat-message.system { background: none; align-self: center; color: var(--mute); font-size: 12px; text-align: center; padding: 2px 8px; }
+
+    .panel-input { padding: 12px; display: flex; gap: 8px; border-top: 1px solid var(--line); }
+    .panel-input input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid transparent; padding: 11px 14px; border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--ink); outline: none; }
+    .panel-input input:focus { border-color: var(--blue); background: #fff; }
+    .panel-input button { background: var(--blue); border: none; padding: 0 16px; border-radius: 10px; font-weight: 700; color: #fff; font-size: 13px; }
+    .panel-input button:hover { background: var(--blue-d); }
+
+    .qa-item { background: var(--bg); border-radius: 12px; padding: 10px 12px; border-left: 4px solid var(--amber); }
+    .qa-item.answered { border-left-color: var(--green); opacity: .75; }
+    .qa-asker { font-size: 12px; font-weight: 700; color: var(--mute); margin-bottom: 3px; }
+    .qa-text { font-size: 13px; line-height: 1.45; }
+    .qa-status { font-size: 11px; font-weight: 700; color: var(--green); margin-top: 6px; display: none; }
+    .qa-item.answered .qa-status { display: block; }
+    .qa-mark-btn { margin-top: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 700; color: var(--green); }
+    .qa-item.answered .qa-mark-btn { display: none; }
+    .empty-note { color: var(--mute); font-size: 13px; text-align: center; padding: 34px 16px; line-height: 1.6; }
+    .empty-note i { font-size: 28px; color: #cbd5e1; display: block; margin-bottom: 8px; }
+
+    /* Class register / students list */
+    .roster-list { gap: 4px; padding: 8px; }
+    .roster-summary { padding: 10px 16px; font-size: 12px; color: var(--mute); font-weight: 600; border-bottom: 1px solid var(--line); }
+    .roster-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; }
+    .roster-row:hover { background: var(--bg); }
+    .roster-row.hand { background: #fffbeb; }
+    .thumb { position: relative; width: 38px; height: 38px; border-radius: 10px; background: var(--blue-soft); overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+    .thumb.has-video video { display: block; }
+    .thumb-initials { font-size: 12px; font-weight: 800; color: var(--blue-d); }
+    .thumb.has-video .thumb-initials { display: none; }
+    .r-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .r-hand { color: var(--amber); font-size: 14px; display: none; }
+    .roster-row.hand .r-hand { display: inline-block; }
+    .r-mic { width: 30px; height: 30px; border-radius: 8px; border: none; background: #dcfce7; color: var(--green); font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .r-mic.muted { background: var(--red-soft); color: #dc2626; }
+    button.r-mic:hover { filter: brightness(.96); }
+
+    .panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 40; display: none; }
+    .panel-overlay.active { display: block; }
+
+    /* Poll creator dialog */
+    .poll-creator { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60; display: none; align-items: center; justify-content: center; padding: 20px; }
     .poll-creator.open { display: flex; }
-    .poll-creator-box {
-      background: #181818;
-      border-radius: 20px;
-      padding: 24px;
-      width: min(400px, 100%);
-      border: 1px solid #333;
-    }
-    .poll-creator-box h3 { color: #0095f6; font-size: 16px; margin-bottom: 18px; }
-    .poll-creator-box input, .poll-creator-box .poll-opt-input {
-      width: 100%;
-      background: #2a2a2a;
-      border: 1px solid #3a3a3a;
-      border-radius: 10px;
-      padding: 10px 14px;
-      color: white;
-      font-size: 13px;
-      margin-bottom: 10px;
-    }
-    .add-option-btn {
-      background: none;
-      border: 1px dashed #555;
-      color: #888;
-      border-radius: 10px;
-      padding: 8px;
-      width: 100%;
-      cursor: pointer;
-      font-size: 12px;
-      margin-bottom: 10px;
-    }
-    .add-option-btn:hover { border-color: #0095f6; color: #0095f6; }
+    .poll-creator-box { background: #fff; border-radius: 18px; padding: 24px; width: min(420px, 100%); }
+    .poll-creator-box h3 { font-size: 17px; font-weight: 800; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+    .poll-creator-box h3 i { color: var(--blue); }
+    .poll-creator-box input { width: 100%; background: var(--bg); border: 1px solid transparent; border-radius: 10px; padding: 11px 14px; font-size: 13px; font-family: inherit; margin-bottom: 10px; outline: none; color: var(--ink); }
+    .poll-creator-box input:focus { border-color: var(--blue); background: #fff; }
+    .poll-opt-row { display: flex; gap: 6px; align-items: flex-start; }
+    .poll-opt-row input { flex: 1; }
+    .remove-opt { background: var(--bg); border: none; width: 38px; height: 38px; border-radius: 10px; color: var(--mute); flex-shrink: 0; }
+    .add-option-btn { background: none; border: 1.5px dashed #cbd5e1; color: var(--mute); border-radius: 10px; padding: 9px; width: 100%; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .add-option-btn:hover { border-color: var(--blue); color: var(--blue); }
     .poll-creator-actions { display: flex; gap: 10px; margin-top: 14px; }
-    .btn-launch-poll { background: #0095f6; color: white; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
-    .btn-cancel-poll { background: #2a2a2a; color: #aaa; padding: 11px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
+    .poll-creator-actions button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; font-size: 13px; }
+    .btn-launch-poll { background: var(--blue); color: #fff; flex: 2 !important; }
+    .btn-cancel-poll { background: var(--bg); color: var(--ink); }
+
+    /* ───────── RESPONSIVE ───────── */
+    @media (max-width: 900px) {
+      .room-header { padding: 8px 12px; }
+      .class-icon { width: 34px; height: 34px; font-size: 15px; }
+      .stat-chip.timer-chip { display: none; }
+      .room-main { padding: 0; gap: 0; }
+      .stage-col { gap: 0; }
+      .stage { border-radius: 0; }
+      .controls-bar { border-radius: 0; border-width: 1px 0 0; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
+      .controls-inner { margin: 0; }
+      .only-mobile { display: flex; }
+      .self-preview { width: 110px; right: 10px; bottom: 10px; }
+      .teacher-tag { left: 10px; bottom: 10px; }
+      .side-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 92vw); border-radius: 0; z-index: 50; transform: translateX(100%); transition: transform .25s ease; }
+      .side-panel.open { transform: translateX(0); }
+      .panel-head { display: flex; }
+    }
+    @media (max-width: 480px) {
+      .stat-chip { padding: 6px 9px; font-size: 12px; }
+    }
   </style>
 </head>
 <body>
-<div class="live-container">
-  <div class="host-stage" id="host-stage">
-    <video id="host-video-element" autoplay playsinline></video>
-    <div class="host-avatar-placeholder" id="host-placeholder">
-      <div class="avatar-circle"><i class="fa-solid fa-chalkboard-user"></i></div>
-      <span id="host-placeholder-name">Host</span>
-    </div>
-    <div class="waiting-overlay" id="waiting-overlay">
-      <div class="spinner"></div>
-      <span>Waiting for host to start the stream...</span>
-    </div>
-    <div class="room-info">
-      <span class="live-badge"><span class="host-live-dot"></span> LIVE</span>
-      <div class="viewer-counter"><i class="fa-regular fa-eye"></i> <span id="participant-count">1</span> <span style="font-size:10px;">watching</span></div>
-      <span class="session-title-pill" id="session-title-display">Loading...</span>
-    </div>
-    <div class="host-name-badge">
-      <div class="host-live-dot"></div>
-      <span id="host-display-name">Host</span>
-      <small>(Host)</small>
-    </div>
-    <div class="student-tray" id="student-tray"></div>
-    <div class="self-bubble-container" id="self-bubble-container" style="display: none;">
-      <div class="self-bubble" id="self-bubble">
-        <video id="self-video" autoplay playsinline muted></video>
-        <div class="self-avatar" id="self-avatar"><i class="fa-solid fa-user"></i></div>
-        <div class="self-mic-icon" id="self-mic-icon"><i class="fa-solid fa-microphone"></i></div>
+<div class="room">
+
+  <!-- ═════════ CLASS INFORMATION BAR ═════════ -->
+  <header class="room-header">
+    <div class="class-info">
+      <div class="class-icon"><i class="fa-solid fa-chalkboard"></i></div>
+      <div class="class-text">
+        <div class="class-title" id="session-title-display">Classroom</div>
+        <div class="class-sub">
+          <span class="tag" id="subject-class-tag" style="display:none;"></span>
+          <span><i class="fa-solid fa-chalkboard-user"></i> <span id="teacher-name-header">Teacher</span></span>
+        </div>
       </div>
-      <div class="self-name-badge" id="self-name-label">You</div>
     </div>
+    <div class="header-stats">
+      <div class="stat-chip timer-chip"><i class="fa-regular fa-clock"></i> <span id="class-timer">00:00</span></div>
+      <div class="stat-chip"><span class="session-dot"></span> <span id="participant-count">1</span> in class</div>
+    </div>
+  </header>
+
+  <div class="room-main">
+    <!-- ═════════ TEACHER STAGE + CONTROLS ═════════ -->
+    <section class="stage-col">
+      <div class="stage" id="host-stage">
+        <video id="host-video-element" autoplay playsinline></video>
+
+        <div class="stage-placeholder" id="host-placeholder">
+          <div class="avatar-circle"><i class="fa-solid fa-chalkboard-user"></i></div>
+          <span id="host-placeholder-name">Teacher</span>
+          <small style="font-weight:500;color:#94a3b8;">Camera is off</small>
+        </div>
+
+        <div class="waiting-overlay" id="waiting-overlay">
+          <div class="spinner"></div>
+          <span style="font-weight:600;">Waiting for the teacher to start the class…</span>
+        </div>
+
+        <div class="hand-queue" id="hand-queue"></div>
+
+        <div class="teacher-tag"><i class="fa-solid fa-chalkboard-user"></i> <span id="host-display-name">Teacher</span> <small>TEACHER</small></div>
+
+        <!-- student's own preview -->
+        <div class="self-preview" id="self-preview">
+          <video id="self-video" autoplay playsinline muted></video>
+          <div class="self-avatar" id="self-avatar"><i class="fa-solid fa-user"></i></div>
+          <span class="self-label">You</span>
+          <span class="self-mic" id="self-mic-icon"><i class="fa-solid fa-microphone-slash"></i></span>
+        </div>
+
+        <!-- poll -->
+        <div class="poll-overlay" id="poll-overlay">
+          <div class="poll-title-bar"><h4><i class="fa-solid fa-chart-simple"></i> Class Poll</h4><button id="close-poll" aria-label="Close poll"><i class="fa-solid fa-xmark"></i></button></div>
+          <div class="poll-question" id="poll-question-text"></div>
+          <div id="poll-options-list"></div>
+          <div class="poll-vote-count" id="poll-vote-count">0 votes</div>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="controls-inner">
+          <button class="ctl" id="toggle-audio"><i class="fa-solid fa-microphone"></i><span>Mic</span></button>
+          <button class="ctl" id="toggle-video"><i class="fa-solid fa-video"></i><span>Camera</span></button>
+          <button class="ctl" id="flip-camera" style="display:none;"><i class="fa-solid fa-rotate"></i><span>Flip</span></button>
+          <button class="ctl" id="toggle-screen" style="display:none;"><i class="fa-solid fa-display"></i><span>Share screen</span></button>
+          <button class="ctl" id="raise-hand-btn" style="display:none;"><i class="fa-solid fa-hand"></i><span>Raise hand</span></button>
+          <button class="ctl" id="toggle-poll-creator" style="display:none;"><i class="fa-solid fa-chart-bar"></i><span>Poll</span></button>
+          <button class="ctl" id="mute-all-btn" style="display:none;"><i class="fa-solid fa-microphone-slash"></i><span>Mute all</span></button>
+          <button class="ctl only-mobile" id="toggle-panel"><i class="fa-regular fa-comments"></i><span>Class</span><span class="dot" id="panel-dot"></span></button>
+          <span class="ctl-divider"></span>
+          <button class="ctl leave" id="leave-room"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Leave</span></button>
+          <button class="ctl end" id="end-class" style="display:none;"><i class="fa-solid fa-power-off"></i><span>End class</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ SIDE PANEL: chat / questions / students ═════════ -->
+    <aside class="side-panel" id="side-panel">
+      <div class="panel-head"><span>Class Panel</span><button id="close-panel" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" id="tab-chat" data-tab="chat"><i class="fa-regular fa-comment"></i> Chat <span class="tab-badge" id="chat-dot"></span></button>
+        <button class="sidebar-tab" id="tab-qa" data-tab="qa"><i class="fa-regular fa-circle-question"></i> Questions <span class="tab-badge" id="qa-dot"></span></button>
+        <button class="sidebar-tab" id="tab-students" data-tab="students"><i class="fa-solid fa-users"></i> Students <span class="tab-badge" id="hand-dot"></span></button>
+      </div>
+
+      <div class="tab-content active" id="tab-content-chat">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="panel-input"><input type="text" id="chat-input" placeholder="Type a message to the class…" maxlength="500"><button id="send-chat">Send</button></div>
+      </div>
+
+      <div class="tab-content" id="tab-content-qa">
+        <div class="qa-list" id="qa-list">
+          <div class="empty-note" id="qa-empty"><i class="fa-regular fa-circle-question"></i>No questions yet.<br>Students can ask the teacher here.</div>
+        </div>
+        <div class="panel-input" id="qa-input-area"><input type="text" id="qa-input" placeholder="Ask the teacher a question…" maxlength="300"><button id="send-qa">Ask</button></div>
+      </div>
+
+      <div class="tab-content" id="tab-content-students">
+        <div class="roster-summary" id="roster-summary">Students present: 0</div>
+        <div class="roster-list" id="roster-list">
+          <div class="empty-note" id="roster-empty"><i class="fa-solid fa-user-group"></i>No students have joined yet.</div>
+        </div>
+      </div>
+    </aside>
   </div>
 
-  <div class="controls-bar">
-    <div class="control-group"><button class="control-btn" id="toggle-video"><i class="fa-solid fa-video"></i></button><span>Camera</span></div>
-    <div class="control-group"><button class="control-btn" id="toggle-audio"><i class="fa-solid fa-microphone"></i></button><span>Mic</span></div>
-    <div class="control-group" id="flip-camera-group" style="display:none;"><button class="control-btn" id="flip-camera"><i class="fa-solid fa-rotate"></i></button><span>Flip</span></div>
-    <div class="control-group" id="screen-share-group"><button class="control-btn" id="toggle-screen"><i class="fa-solid fa-desktop"></i></button><span>Screen</span></div>
-    <div class="control-group" id="raise-hand-group"><button class="control-btn" id="raise-hand-btn"><i class="fa-solid fa-hand"></i></button><span>Hand</span></div>
-    <div class="control-group"><button class="control-btn" id="toggle-react"><i class="fa-solid fa-face-smile"></i></button><span>React</span></div>
-    <div class="control-group" id="poll-btn-group" style="display:none;"><button class="control-btn" id="toggle-poll-creator"><i class="fa-solid fa-chart-bar"></i></button><span>Poll</span></div>
-    <div class="control-group" id="mute-all-group" style="display:none;"><button class="control-btn" id="mute-all-btn" title="Mute all students"><i class="fa-solid fa-microphone-slash"></i></button><span>Mute All</span></div>
-    <div class="control-group"><button class="control-btn" id="toggle-chat"><i class="fa-regular fa-comment-dots"></i></button><span>Chat</span></div>
-    <div class="control-group"><button class="control-btn leave-btn" id="leave-room"><i class="fa-solid fa-phone-slash"></i></button><span>Leave</span></div>
-  </div>
+  <div class="panel-overlay" id="panel-overlay"></div>
 
-  <div class="reaction-picker" id="reaction-picker">
-    <span class="reaction-emoji" data-emoji="👍">👍</span><span class="reaction-emoji" data-emoji="❤️">❤️</span>
-    <span class="reaction-emoji" data-emoji="😂">😂</span><span class="reaction-emoji" data-emoji="😮">😮</span>
-    <span class="reaction-emoji" data-emoji="🔥">🔥</span><span class="reaction-emoji" data-emoji="👏">👏</span>
-    <span class="reaction-emoji" data-emoji="🙋">🙋</span>
-  </div>
-
-  <div class="hand-queue" id="hand-queue"></div>
-  <div class="poll-overlay" id="poll-overlay">
-    <div class="poll-title-bar"><h4><i class="fa-solid fa-chart-simple"></i> Live Poll</h4><i class="fa-solid fa-xmark" id="close-poll" style="color:#aaa;cursor:pointer;"></i></div>
-    <div class="poll-question" id="poll-question-text"></div>
-    <div id="poll-options-list"></div>
-    <div class="poll-vote-count" id="poll-vote-count">0 votes</div>
-  </div>
+  <!-- ═════════ POLL CREATOR (teacher) ═════════ -->
   <div class="poll-creator" id="poll-creator">
     <div class="poll-creator-box">
-      <h3><i class="fa-solid fa-chart-bar"></i> Create a Poll</h3>
-      <input type="text" id="poll-q-input" placeholder="Ask the class a question...">
+      <h3><i class="fa-solid fa-chart-bar"></i> Ask the class a question</h3>
+      <input type="text" id="poll-q-input" placeholder="Poll question" maxlength="200">
       <div id="poll-options-builder">
-        <div class="poll-opt-row"><input class="poll-opt-input" placeholder="Option A" value=""><button class="remove-opt" onclick="removePollOption(this)">✕</button></div>
-        <div class="poll-opt-row"><input class="poll-opt-input" placeholder="Option B" value=""><button class="remove-opt" onclick="removePollOption(this)">✕</button></div>
+        <div class="poll-opt-row"><input class="poll-opt-input" placeholder="Option A" maxlength="100"><button class="remove-opt" onclick="removePollOption(this)">✕</button></div>
+        <div class="poll-opt-row"><input class="poll-opt-input" placeholder="Option B" maxlength="100"><button class="remove-opt" onclick="removePollOption(this)">✕</button></div>
       </div>
-      <button class="add-option-btn" id="add-option-btn"><i class="fa-solid fa-plus"></i> Add Option</button>
-      <div class="poll-creator-actions"><button class="btn-cancel-poll" id="cancel-poll-btn">Cancel</button><button class="btn-launch-poll" id="launch-poll-btn"><i class="fa-solid fa-bolt"></i> Launch Poll</button></div>
+      <button class="add-option-btn" id="add-option-btn"><i class="fa-solid fa-plus"></i> Add option</button>
+      <div class="poll-creator-actions"><button class="btn-cancel-poll" id="cancel-poll-btn">Cancel</button><button class="btn-launch-poll" id="launch-poll-btn">Start poll</button></div>
     </div>
   </div>
-
-  <div class="chat-sidebar" id="chat-sidebar">
-    <div class="chat-header"><span><i class="fa-regular fa-comment"></i> Class Panel</span><i class="fa-solid fa-xmark" id="close-chat" style="cursor:pointer;"></i></div>
-    <div class="sidebar-tabs">
-      <button class="sidebar-tab active" id="tab-chat" onclick="switchTab('chat')">Chat <span class="tab-dot" id="chat-dot"></span></button>
-      <button class="sidebar-tab" id="tab-qa" onclick="switchTab('qa')">Q&amp;A <span class="tab-dot" id="qa-dot"></span></button>
-    </div>
-    <div class="tab-content active" id="tab-content-chat">
-      <div class="chat-messages" id="chat-messages"><div class="chat-message"><strong>✨ System:</strong> Welcome to the live class</div></div>
-      <div class="chat-input"><input type="text" id="chat-input" placeholder="Say something..."><button id="send-chat">Send</button></div>
-    </div>
-    <div class="tab-content" id="tab-content-qa">
-      <div class="qa-list" id="qa-list"><div class="qa-empty" id="qa-empty"><i class="fa-solid fa-question-circle" style="font-size:28px;color:#333;margin-bottom:8px;display:block;"></i>No questions yet.<br>Students can ask questions here.</div></div>
-      <div class="qa-input-area" id="qa-input-area"><input type="text" id="qa-input" placeholder="Ask the teacher a question..."><button id="send-qa">Ask</button></div>
-    </div>
-  </div>
-  <div class="chat-overlay" id="chat-overlay"></div>
 </div>
 
 <script>
-  // Django template variables (to be replaced by backend)
-  const roomName = '{{ room_name }}';
-  const userName = '{{ user.username }}';
-  const userId   = Number('{{ user.id }}');
-  const isHost   = Boolean({{ is_creator|yesno:"true,false" }});
-  const hostId   = Number('{{ host_id }}');
+  // ── Django template variables ─────────────────────────────────
+  const roomName     = '{{ room_name|escapejs }}';
+  const userName     = '{{ user.username|escapejs }}';
+  const userId       = Number('{{ user.id }}');
+  const isHost       = Boolean({{ is_creator|yesno:"true,false" }});
+  const hostId       = Number('{{ host_id }}');
   const sessionTitle = '{{ session.title|escapejs }}';
+  const sessionSubject = '{{ session.subject_name|escapejs }}';
+  const sessionClass   = '{{ session.class_level|escapejs }}';
   const hostUsername = '{{ session.created_by.username|escapejs }}';
+  const hostFullName = '{{ session.created_by.get_full_name|escapejs }}';
+  const LIST_URL     = "{% url 'live_room_list' %}";
+  const END_URL      = "{% url 'end_live_room' room_name=room_name %}";
 
   const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }], iceCandidatePoolSize: 10 };
-  
-  let localStream = null, peerConnections = {}, socket = null, isVideoEnabled = true, isAudioEnabled = true;
-  let isScreenSharing = false, screenStream = null, currentFacingMode = 'user', handRaised = false;
-  let activePoll = null, pollVotes = {}, myVote = null, activeSidebarTab = 'chat', questions = {};
-  let hostStreamAttached = false;
-  
-  const hostVideoEl = document.getElementById('host-video-element'), waitingOverlay = document.getElementById('waiting-overlay');
-  const studentTray = document.getElementById('student-tray'), selfBubbleContainer = document.getElementById('self-bubble-container');
-  const selfVideo = document.getElementById('self-video'), selfAvatar = document.getElementById('self-avatar'), selfMicIcon = document.getElementById('self-mic-icon');
-  const participantCountSpan = document.getElementById('participant-count'), sessionTitleSpan = document.getElementById('session-title-display');
-  const hostDisplaySpan = document.getElementById('host-display-name');
-  sessionTitleSpan.textContent = sessionTitle || 'Live Class'; hostDisplaySpan.textContent = hostUsername || 'Host';
-  document.getElementById('host-placeholder-name').textContent = hostUsername || 'Host';
+  const teacherLabel = hostFullName || hostUsername || 'Teacher';
 
-  // CRITICAL: Force host audio to always play for students
-  function ensureHostAudioAlwaysPlays() {
-    if (isHost) return;
-    hostVideoEl.volume = 1.0;
-    hostVideoEl.muted = false;
-    const playAudio = () => {
-      if (hostVideoEl.srcObject) {
-        hostVideoEl.play().catch(e => console.log("play retry:", e));
-      }
-    };
-    hostVideoEl.addEventListener('canplaythrough', playAudio, { once: true });
-    playAudio();
-    // Also, if any interaction, ensure unmuted
-    const events = ['click', 'touchstart', 'keydown'];
-    const handler = () => {
-      hostVideoEl.muted = false;
-      hostVideoEl.volume = 1.0;
-      hostVideoEl.play().catch(()=>{});
-    };
-    events.forEach(ev => document.addEventListener(ev, handler, { once: true, passive: true }));
+  // ── State ─────────────────────────────────────────────────────
+  let localStream = null, screenStream = null, socket = null, leaving = false;
+  const peerConnections = {};
+  const present  = new Map();   // everyone else in the room: userId -> name
+  const students = new Map();   // students on the register: userId -> {name, mic, hand}
+  let isVideoEnabled = true;
+  let isAudioEnabled = isHost;  // students join muted, like a real class; the teacher joins live
+  let isScreenSharing = false, currentFacingMode = 'user', handRaised = false;
+  let activePoll = null, activePollOptions = [], pollVotes = {}, myVote = null;
+  let activeSidebarTab = 'chat';
+  const joinedAt = Date.now();
+
+  const $ = (id) => document.getElementById(id);
+  const hostVideoEl = $('host-video-element');
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   }
+  function initials(name) { return (name || '?').trim().slice(0, 2).toUpperCase(); }
+  function send(obj) { if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(obj)); }
 
+  // ── Header / info ─────────────────────────────────────────────
+  $('session-title-display').textContent = sessionTitle || 'Classroom';
+  $('teacher-name-header').textContent = teacherLabel;
+  $('host-display-name').textContent = teacherLabel;
+  $('host-placeholder-name').textContent = teacherLabel;
+  if (sessionSubject || sessionClass) {
+    const tag = $('subject-class-tag');
+    tag.textContent = [sessionSubject, sessionClass].filter(Boolean).join(' · ');
+    tag.style.display = 'inline-block';
+  }
+  document.title = (sessionTitle || 'Classroom') + ' | TopMark';
+
+  setInterval(() => {
+    const s = Math.floor((Date.now() - joinedAt) / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const pad = n => String(n).padStart(2, '0');
+    $('class-timer').textContent = (h ? pad(h) + ':' : '') + pad(m) + ':' + pad(sec);
+  }, 1000);
+
+  function updateAttendance() { $('participant-count').textContent = present.size + 1; }
+
+  // ── Teacher stage ─────────────────────────────────────────────
   function setHostVideo(stream) {
     hostVideoEl.srcObject = stream;
     hostVideoEl.style.display = 'block';
-    document.getElementById('host-placeholder').style.display = 'none';
-    waitingOverlay.style.display = 'none';
+    $('waiting-overlay').style.display = 'none';
     if (isHost) {
       hostVideoEl.muted = true;
-      hostVideoEl.play().catch(e=>console.log(e));
     } else {
       hostVideoEl.muted = false;
       hostVideoEl.volume = 1.0;
-      hostVideoEl.play().then(() => console.log("✅ Host audio playing")).catch(err => {
-        console.warn("Auto-play blocked, forcing via user interaction", err);
-        hostVideoEl.muted = true;
-        hostVideoEl.play().catch(()=>{});
-        const unlock = () => { hostVideoEl.muted = false; hostVideoEl.play(); document.removeEventListener('click', unlock); };
-        document.addEventListener('click', unlock, { once: true });
-      });
-      ensureHostAudioAlwaysPlays();
+    }
+    hostVideoEl.play().catch(() => {
+      // Autoplay with sound blocked: start muted, unmute on the first tap / key press.
+      hostVideoEl.muted = true;
+      hostVideoEl.play().catch(() => {});
+      const unlock = () => { hostVideoEl.muted = false; hostVideoEl.play().catch(() => {}); };
+      ['click', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, unlock, { once: true, passive: true }));
+    });
+  }
+  function showWaitingOverlay() { hostVideoEl.style.display = 'none'; $('host-placeholder').style.display = 'none'; $('waiting-overlay').style.display = 'flex'; }
+  function setHostCameraOff(off) { $('host-placeholder').style.display = off ? 'flex' : 'none'; }
+
+  function showSelfPreview() {
+    if (isHost) return;
+    $('self-preview').style.display = 'block';
+    if (localStream && localStream.getVideoTracks().length) {
+      $('self-video').srcObject = localStream;
+      $('self-avatar').style.display = isVideoEnabled ? 'none' : 'flex';
+      $('self-video').style.display = isVideoEnabled ? 'block' : 'none';
+    }
+    updateSelfMicIcon();
+  }
+  function updateSelfMicIcon() {
+    const el = $('self-mic-icon');
+    el.innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>';
+    el.classList.toggle('on', isAudioEnabled);
+  }
+
+  // ── Control button states ─────────────────────────────────────
+  function refreshControls() {
+    const a = $('toggle-audio'), v = $('toggle-video');
+    a.innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i><span>Mic</span>' : '<i class="fa-solid fa-microphone-slash"></i><span>Unmute</span>';
+    a.classList.toggle('off', !isAudioEnabled);
+    v.innerHTML = isVideoEnabled ? '<i class="fa-solid fa-video"></i><span>Camera</span>' : '<i class="fa-solid fa-video-slash"></i><span>Camera off</span>';
+    v.classList.toggle('off', !isVideoEnabled);
+    updateSelfMicIcon();
+  }
+
+  // ── Student register (class list) ─────────────────────────────
+  function updateRosterSummary() {
+    const total = students.size;
+    let hands = 0, speaking = 0;
+    students.forEach(s => { if (s.hand) hands++; if (s.mic) speaking++; });
+    $('roster-summary').textContent = 'Students present: ' + total + (isHost && total ? ' · Mic on: ' + speaking : '');
+    $('roster-empty').style.display = total ? 'none' : 'block';
+    const badge = $('hand-dot');
+    badge.textContent = hands;
+    badge.classList.toggle('show', hands > 0 && isHost);
+    $('panel-dot').classList.toggle('show', hands > 0 && isHost);
+  }
+
+  function addStudent(uid, name) {
+    uid = Number(uid);
+    if (students.has(uid)) return;
+    students.set(uid, { name, mic: false, hand: false });
+    const row = document.createElement('div');
+    row.className = 'roster-row';
+    row.id = 'student-row-' + uid;
+    row.innerHTML =
+      '<div class="thumb" id="thumb-' + uid + '">' +
+        (isHost ? '<video id="video-element-' + uid + '" autoplay playsinline></video>' : '') +
+        '<span class="thumb-initials">' + escapeHtml(initials(name)) + '</span>' +
+      '</div>' +
+      '<div class="r-name">' + escapeHtml(name) + '</div>' +
+      '<i class="fa-solid fa-hand r-hand" title="Hand raised"></i>';
+    const mic = document.createElement(isHost ? 'button' : 'span');
+    mic.className = 'r-mic muted';
+    mic.id = 'r-mic-' + uid;
+    mic.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
+    if (isHost) {
+      mic.title = 'Mute / unmute ' + name;
+      mic.onclick = () => teacherToggleStudentMic(uid);
+    }
+    row.appendChild(mic);
+    $('roster-list').appendChild(row);
+    updateRosterSummary();
+  }
+  function removeStudent(uid) {
+    uid = Number(uid);
+    students.delete(uid);
+    $('student-row-' + uid)?.remove();
+    if (peerConnections[uid]) { peerConnections[uid].close(); delete peerConnections[uid]; }
+    dismissHand(uid);
+    updateRosterSummary();
+  }
+  function setStudentMic(uid, enabled) {
+    uid = Number(uid);
+    const s = students.get(uid);
+    if (!s) return;
+    s.mic = !!enabled;
+    const el = $('r-mic-' + uid);
+    if (el) {
+      el.classList.toggle('muted', !enabled);
+      el.innerHTML = enabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>';
+    }
+    updateRosterSummary();
+  }
+  function setStudentVideo(uid, enabled) {
+    const thumb = $('thumb-' + Number(uid));
+    if (!thumb) return;
+    const vid = thumb.querySelector('video');
+    thumb.classList.toggle('has-video', !!(enabled && vid && vid.srcObject));
+  }
+  function setStudentHand(uid, raised, name) {
+    uid = Number(uid);
+    const s = students.get(uid);
+    if (!s) return;
+    s.hand = !!raised;
+    const row = $('student-row-' + uid);
+    if (row) {
+      row.classList.toggle('hand', !!raised);
+      if (raised) $('roster-list').prepend(row);   // raised hands go to the top of the register
+    }
+    if (isHost) { raised ? showHandBadge(name || s.name, uid) : $('hand-badge-' + uid)?.remove(); }
+    updateRosterSummary();
+  }
+  function showHandBadge(username, uid) {
+    if ($('hand-badge-' + uid)) return;
+    const badge = document.createElement('div');
+    badge.className = 'hand-badge';
+    badge.id = 'hand-badge-' + uid;
+    badge.innerHTML = '<i class="fa-solid fa-hand"></i><span><strong>' + escapeHtml(username) + '</strong> has a question</span><button class="dismiss-hand" onclick="dismissHand(' + uid + ')">Done</button>';
+    $('hand-queue').appendChild(badge);
+  }
+  function dismissHand(uid) {
+    uid = Number(uid);
+    $('hand-badge-' + uid)?.remove();
+    const s = students.get(uid);
+    if (s && s.hand) { s.hand = false; $('student-row-' + uid)?.classList.remove('hand'); updateRosterSummary(); }
+  }
+  function teacherToggleStudentMic(uid) {
+    uid = Number(uid);
+    const s = students.get(uid);
+    if (!s) return;
+    const enabled = !s.mic;
+    send({ type: 'mic_control', target_user_id: uid, enabled });
+    setStudentMic(uid, enabled);
+  }
+  function muteAllStudents() {
+    students.forEach((s, uid) => {
+      if (s.mic) { send({ type: 'mic_control', target_user_id: uid, enabled: false }); setStudentMic(uid, false); }
+    });
+    addChatMessage('System', 'All students have been muted.', 'system');
+  }
+
+  function routeRemoteStream(remoteUserId, stream) {
+    if (Number(remoteUserId) === hostId) { setHostVideo(stream); return; }
+    const vid = $('video-element-' + remoteUserId);
+    if (vid && stream) {
+      vid.srcObject = stream;
+      vid.play().catch(() => {});
+      $('thumb-' + remoteUserId)?.classList.add('has-video');
     }
   }
 
-  function showWaitingOverlay() { hostVideoEl.style.display = 'none'; document.getElementById('host-placeholder').style.display = 'none'; waitingOverlay.style.display = 'flex'; }
-  function showSelfBubble() { selfBubbleContainer.style.display = 'block'; if(localStream) { selfVideo.srcObject = localStream; selfVideo.style.display = 'block'; selfAvatar.style.display = 'none'; } }
-  function updateSelfMicIcon() { selfMicIcon.innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>'; selfMicIcon.style.background = isAudioEnabled ? '#111' : '#ef4444'; }
-
-  function addStudentBubble(username, uid) {
-    if(document.getElementById(`bubble-wrapper-${uid}`)) return;
-    const wrapper = document.createElement('div'); wrapper.className = 'student-bubble-wrapper'; wrapper.id = `bubble-wrapper-${uid}`;
-    const bubble = document.createElement('div'); bubble.className = 'student-bubble';
-    const video = document.createElement('video'); video.autoplay = true; video.playsInline = true; video.id = `video-element-${uid}`;
-    const avatarDiv = document.createElement('div'); avatarDiv.className = 'bubble-avatar'; avatarDiv.innerHTML = '<i class="fa-solid fa-user"></i>';
-    const mutedIcon = document.createElement('div'); mutedIcon.className = 'bubble-muted-icon'; mutedIcon.id = `bubble-muted-${uid}`;
-    bubble.appendChild(video); bubble.appendChild(avatarDiv); bubble.appendChild(mutedIcon);
-    if(isHost) { const ctrl = document.createElement('button'); ctrl.className = 'bubble-mic-ctrl'; ctrl.innerHTML = '<i class="fa-solid fa-microphone"></i>'; ctrl.onclick = (e) => { e.stopPropagation(); teacherToggleStudentMic(uid); }; bubble.appendChild(ctrl); }
-    const nameSpan = document.createElement('div'); nameSpan.className = 'bubble-name'; nameSpan.textContent = username;
-    wrapper.appendChild(bubble); wrapper.appendChild(nameSpan); studentTray.appendChild(wrapper);
-  }
-  function removeStudentBubble(uid) { document.getElementById(`bubble-wrapper-${uid}`)?.remove(); if(peerConnections[uid]) { peerConnections[uid].close(); delete peerConnections[uid]; } }
-  
-  function routeRemoteStream(remoteUserId, stream) {
-    if(remoteUserId == hostId) { setHostVideo(stream); }
-    else { const vid = document.getElementById(`video-element-${remoteUserId}`); if(vid && stream) { vid.srcObject = stream; document.getElementById(`bubble-avatar-${remoteUserId}`).style.display = 'none'; } }
-  }
-
-  async function createOffer(remoteUserId) {
+  // ── WebRTC ────────────────────────────────────────────────────
+  function buildPeer(remoteUserId) {
+    if (peerConnections[remoteUserId]) { try { peerConnections[remoteUserId].close(); } catch (e) {} }
     const pc = new RTCPeerConnection(configuration);
     peerConnections[remoteUserId] = pc;
-    if(localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-    pc.onicecandidate = e => { if(e.candidate) socket.send(JSON.stringify({ type: 'ice_candidate', candidate: e.candidate, target_user_id: remoteUserId })); };
-    pc.ontrack = e => { if(e.streams?.[0]) routeRemoteStream(remoteUserId, e.streams[0]); };
-    const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
-    socket.send(JSON.stringify({ type: 'offer', offer, target_user_id: remoteUserId }));
+    if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    pc.onicecandidate = e => { if (e.candidate) send({ type: 'ice_candidate', candidate: e.candidate, target_user_id: remoteUserId }); };
+    pc.ontrack = e => { if (e.streams && e.streams[0]) routeRemoteStream(remoteUserId, e.streams[0]); };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'failed' && isHost && peerConnections[remoteUserId] === pc) {
+        pc.close(); delete peerConnections[remoteUserId];
+        if (students.has(Number(remoteUserId))) setTimeout(() => ensureOffer(remoteUserId), 1500);
+      }
+    };
+    return pc;
   }
-  async function handleOffer(data) { if(data.target_user_id && data.target_user_id != userId) return;
-    const pc = new RTCPeerConnection(configuration); peerConnections[data.user_id] = pc;
-    if(localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-    pc.onicecandidate = e => { if(e.candidate) socket.send(JSON.stringify({ type: 'ice_candidate', candidate: e.candidate, target_user_id: data.user_id })); };
-    pc.ontrack = e => { if(e.streams?.[0]) routeRemoteStream(data.user_id, e.streams[0]); };
+  async function createOffer(remoteUserId) {
+    const pc = buildPeer(remoteUserId);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    send({ type: 'offer', offer, target_user_id: remoteUserId });
+  }
+  async function handleOffer(data) {
+    if (data.target_user_id && data.target_user_id != userId) return;
+    if (!isHost && data.user_id == hostId) { present.set(hostId, data.user); updateAttendance(); }
+    const pc = buildPeer(data.user_id);
     await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-    socket.send(JSON.stringify({ type: 'answer', answer, target_user_id: data.user_id }));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    send({ type: 'answer', answer, target_user_id: data.user_id });
   }
-  async function handleAnswer(data) { const pc = peerConnections[data.user_id]; if(pc) await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); }
-  async function handleIceCandidate(data) { const pc = peerConnections[data.user_id]; if(pc && data.candidate) await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
-  function updateRemoteMute(uid, enabled) { const icon = document.getElementById(`bubble-muted-${uid}`); if(icon) icon.style.display = enabled ? 'none' : 'flex'; }
-  function teacherToggleStudentMic(targetUserId) { const wrapper = document.getElementById(`bubble-wrapper-${targetUserId}`); const currentlyEnabled = wrapper?.dataset.micEnabled !== '0'; const newEnabled = !currentlyEnabled; socket.send(JSON.stringify({ type: 'mic_control', target_user_id: targetUserId, enabled: newEnabled })); updateRemoteMute(targetUserId, newEnabled); if(wrapper) wrapper.dataset.micEnabled = newEnabled ? '1' : '0'; }
-  
-  function addChatMessage(sender, msg) { const container = document.getElementById('chat-messages'); const div = document.createElement('div'); div.className = 'chat-message'; div.innerHTML = `<strong>${escapeHtml(sender)}</strong>: ${escapeHtml(msg)}`; container.appendChild(div); container.scrollTop = container.scrollHeight; }
-  function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
-  function updateParticipantCount() { participantCountSpan.textContent = Object.keys(peerConnections).length + 1; }
-  
+  // The server relays offer/answer/ICE to the whole room, so ignore anything addressed to someone else.
+  async function handleAnswer(data) {
+    if (data.target_user_id && data.target_user_id != userId) return;
+    const pc = peerConnections[data.user_id];
+    try { if (pc) await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); } catch (e) { console.warn('answer failed', e); }
+  }
+  async function handleIceCandidate(data) {
+    if (data.target_user_id && data.target_user_id != userId) return;
+    const pc = peerConnections[data.user_id];
+    try { if (pc && data.candidate) await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) { /* late candidate for a closed connection */ }
+  }
+  // Teacher side: open a connection to a student only once.
+  function ensureOffer(uid) {
+    uid = Number(uid);
+    if (peerConnections[uid]) return;
+    createOffer(uid).catch(e => console.warn('offer failed', e));
+  }
+  function replaceVideoTrack(track) {
+    Object.values(peerConnections).forEach(pc => {
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (sender) sender.replaceTrack(track).catch(() => {});
+    });
+  }
+
+  // ── Local camera / mic ────────────────────────────────────────
   async function initLocalStream() {
+    const audio = { echoCancellation: true, noiseSuppression: true };
     try {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode }, audio: { echoCancellation: true, noiseSuppression: true } });
+      localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode }, audio });
+    } catch (err) {
+      try {                                            // no camera? join with the microphone only
+        localStream = await navigator.mediaDevices.getUserMedia({ audio });
+        isVideoEnabled = false;
+        addChatMessage('System', 'Camera not available. You joined with audio only.', 'system');
+      } catch (err2) {
+        addChatMessage('System', 'Cannot access camera/microphone: ' + err2.message, 'system');
+      }
+    }
+    if (localStream) {
       localStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
       localStream.getVideoTracks().forEach(t => t.enabled = isVideoEnabled);
-      if(isHost) { setHostVideo(localStream); selfBubbleContainer.style.display = 'none'; studentTray.style.display = 'flex'; }
-      else { showSelfBubble(); studentTray.style.display = 'none'; showWaitingOverlay(); updateSelfMicIcon(); }
-      document.getElementById('toggle-video').innerHTML = isVideoEnabled ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-video-slash"></i>';
-      document.getElementById('toggle-audio').innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>';
-    } catch(err) { addChatMessage('System', 'Cannot access camera/mic: ' + err.message); }
+    }
+    if (isHost) {
+      if (localStream) setHostVideo(localStream);
+      setHostCameraOff(!isVideoEnabled);
+    } else {
+      showSelfPreview();
+      showWaitingOverlay();
+    }
+    refreshControls();
   }
-  function toggleVideo() { isVideoEnabled = !isVideoEnabled; localStream?.getVideoTracks()[0]?.setEnabled(isVideoEnabled); document.getElementById('toggle-video').innerHTML = isVideoEnabled ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-video-slash"></i>'; socket.send(JSON.stringify({ type: 'video_toggle', enabled: isVideoEnabled })); }
-  function toggleAudio(forcedState) { if(typeof forcedState === 'boolean') isAudioEnabled = forcedState; else isAudioEnabled = !isAudioEnabled; localStream?.getAudioTracks()[0]?.setEnabled(isAudioEnabled); document.getElementById('toggle-audio').innerHTML = isAudioEnabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>'; updateSelfMicIcon(); socket.send(JSON.stringify({ type: 'audio_toggle', enabled: isAudioEnabled })); }
-  
-  function toggleHand() { handRaised = !handRaised; document.getElementById('raise-hand-btn').classList.toggle('active', handRaised); socket.send(JSON.stringify({ type: 'raise_hand', raised: handRaised })); }
-  function sendReaction(emoji) { socket.send(JSON.stringify({ type: 'reaction', emoji })); for(let i=0;i<4;i++) setTimeout(()=>{ const el=document.createElement('div'); el.className='emoji-float'; el.textContent=emoji; el.style.left=(20+Math.random()*60)+'vw'; el.style.bottom='120px'; document.body.appendChild(el); el.addEventListener('animationend',()=>el.remove()); }, i*100); document.getElementById('reaction-picker').classList.remove('open'); }
-  function showHandBadge(username, uid) { if(document.getElementById(`hand-badge-${uid}`)) return; const badge=document.createElement('div'); badge.className='hand-badge'; badge.id=`hand-badge-${uid}`; badge.innerHTML=`✋ <strong>${escapeHtml(username)}</strong> has a question <button class="dismiss-hand" onclick="dismissHand(${uid})">✕</button>`; document.getElementById('hand-queue').appendChild(badge); }
-  function dismissHand(uid) { document.getElementById(`hand-badge-${uid}`)?.remove(); }
-  function addQuestionToPanel(qid, username, text) { const list=document.getElementById('qa-list'); document.getElementById('qa-empty').style.display='none'; const item=document.createElement('div'); item.className='qa-item'; item.id=`qa-${qid}`; item.innerHTML=`<div class="qa-asker">🎓 ${escapeHtml(username)}</div><div class="qa-text">${escapeHtml(text)}</div>${isHost?'<div class="qa-actions"><button class="qa-mark-btn" onclick="markAnswered(\''+qid+'\')">✓ Mark Answered</button></div>':''}`; list.appendChild(item); list.scrollTop=list.scrollHeight; if(activeSidebarTab!=='qa') document.getElementById('qa-dot').classList.add('show'); }
-  function markAnswered(qid) { socket.send(JSON.stringify({ type: 'question_answered', question_id: qid })); document.getElementById(`qa-${qid}`)?.classList.add('answered'); }
-  function showPoll(pollId, question, options) { activePoll=pollId; pollVotes={}; myVote=null; options.forEach((_,i)=>pollVotes[i]=0); document.getElementById('poll-question-text').textContent=question; renderPollOptions(options); document.getElementById('poll-overlay').classList.add('open'); }
-  function renderPollOptions(options) { const container=document.getElementById('poll-options-list'); container.innerHTML=''; const total=Object.values(pollVotes).reduce((a,b)=>a+b,0); options.forEach((opt,i)=>{ const votes=pollVotes[i]||0; const pct=total>0?Math.round((votes/total)*100):0; const div=document.createElement('div'); div.className='poll-option'+(myVote===i?' voted':''); div.dataset.index=i; div.innerHTML=`<div class="opt-bar" style="width:${pct}%"></div><span class="opt-label">${escapeHtml(opt)}</span><span class="opt-pct">${pct}%</span>`; if(myVote===null && !isHost) div.addEventListener('click',()=>castVote(i)); container.appendChild(div); }); document.getElementById('poll-vote-count').textContent=`${total} vote${total!==1?'s':''}`; }
-  function castVote(idx) { if(myVote!==null || !activePoll) return; myVote=idx; socket.send(JSON.stringify({ type:'poll_vote', poll_id:activePoll, option_index:idx })); pollVotes[idx]=(pollVotes[idx]||0)+1; renderPollOptions(Array.from(document.querySelectorAll('.poll-option')).map(o=>o.innerText)); }
-  
-  function initWebSocket() { const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'; socket = new WebSocket(`${protocol}//${location.host}/ws/live/${roomName}/`); socket.onmessage = (e) => { const data=JSON.parse(e.data); if(data.type==='user_joined' && data.user_id!=userId) { if(isHost && data.user_id!=hostId) addStudentBubble(data.user, data.user_id); if(!isHost && data.user_id==hostId) waitingOverlay.style.display='none'; if(!isHost && data.user_id!=hostId) addStudentBubble(data.user, data.user_id); else if(isHost && data.user_id!=hostId) createOffer(data.user_id); addChatMessage('System',`${data.user} joined`); updateParticipantCount(); } else if(data.type==='user_left') { removeStudentBubble(data.user_id); dismissHand(data.user_id); addChatMessage('System',`${data.user} left`); updateParticipantCount(); if(!isHost && data.user_id==hostId) showWaitingOverlay(); } else if(data.type==='offer') handleOffer(data); else if(data.type==='answer') handleAnswer(data); else if(data.type==='ice_candidate') handleIceCandidate(data); else if(data.type==='audio_toggle') updateRemoteMute(data.user_id, data.enabled); else if(data.type==='chat_message') { addChatMessage(data.user, data.message); if(activeSidebarTab!=='chat') document.getElementById('chat-dot').classList.add('show'); } else if(data.type==='raise_hand') { if(data.user_id!=userId) { if(data.raised) showHandBadge(data.user, data.user_id); else dismissHand(data.user_id); } } else if(data.type==='reaction') { if(data.user_id!=userId) { for(let i=0;i<4;i++) setTimeout(()=>{ const el=document.createElement('div'); el.className='emoji-float'; el.textContent=data.emoji; el.style.left=(20+Math.random()*60)+'vw'; document.body.appendChild(el); el.addEventListener('animationend',()=>el.remove()); }, i*100); } } else if(data.type==='question_ask') { addQuestionToPanel(data.question_id, data.user, data.question); } else if(data.type==='question_answered') { document.getElementById(`qa-${data.question_id}`)?.classList.add('answered'); } else if(data.type==='poll_create') { showPoll(data.poll_id, data.question, data.options); addChatMessage('System',`📊 ${data.user} launched a poll: "${data.question}"`); } else if(data.type==='poll_vote') { if(activePoll===data.poll_id) { pollVotes[data.option_index]=(pollVotes[data.option_index]||0)+1; renderPollOptions(Array.from(document.querySelectorAll('.poll-option')).map(o=>o.innerText)); } } else if(data.type==='mic_control' && data.target_user_id==userId && !isHost) { toggleAudio(data.enabled); addChatMessage('System', data.enabled ? '🎙️ Mic unmuted by teacher.' : '🔇 Mic muted by teacher.'); } }; socket.onclose = () => setTimeout(initWebSocket, 3000); }
-  
-  function leaveRoom() { localStream?.getTracks().forEach(t=>t.stop()); screenStream?.getTracks().forEach(t=>t.stop()); socket?.close(); window.location.href = "{% url 'live_room_list' %}"; }
-  
+  function toggleVideo() {
+    if (!localStream || !localStream.getVideoTracks().length) return;
+    isVideoEnabled = !isVideoEnabled;
+    localStream.getVideoTracks().forEach(t => t.enabled = isVideoEnabled);
+    if (isHost && !isScreenSharing) setHostCameraOff(!isVideoEnabled);
+    if (!isHost) showSelfPreview();
+    refreshControls();
+    send({ type: 'video_toggle', enabled: isVideoEnabled });
+  }
+  function toggleAudio(forced) {
+    isAudioEnabled = (typeof forced === 'boolean') ? forced : !isAudioEnabled;
+    localStream?.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
+    refreshControls();
+    send({ type: 'audio_toggle', enabled: isAudioEnabled });
+  }
+  async function flipCamera() {
+    if (!localStream) return;
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+      const track = s.getVideoTracks()[0];
+      track.enabled = isVideoEnabled;
+      const old = localStream.getVideoTracks()[0];
+      if (old) { localStream.removeTrack(old); old.stop(); }
+      localStream.addTrack(track);
+      if (!isScreenSharing) replaceVideoTrack(track);
+      if (isHost) { if (!isScreenSharing) setHostVideo(localStream); } else { $('self-video').srcObject = localStream; }
+    } catch (e) {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      addChatMessage('System', 'Could not switch camera.', 'system');
+    }
+  }
+  async function toggleScreenShare() {
+    if (!isHost) return;
+    if (isScreenSharing) { stopScreenShare(); return; }
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    } catch (e) { return; }
+    const track = screenStream.getVideoTracks()[0];
+    track.onended = stopScreenShare;
+    replaceVideoTrack(track);
+    hostVideoEl.srcObject = screenStream;
+    setHostCameraOff(false);
+    isScreenSharing = true;
+    send({ type: 'screen_share', enabled: true });
+    $('toggle-screen').classList.add('on');
+    $('toggle-screen').querySelector('span').textContent = 'Stop sharing';
+  }
+  function stopScreenShare() {
+    if (!isScreenSharing) return;
+    screenStream?.getTracks().forEach(t => t.stop());
+    screenStream = null;
+    isScreenSharing = false;
+    send({ type: 'screen_share', enabled: false });
+    const cam = localStream && localStream.getVideoTracks()[0];
+    if (cam) replaceVideoTrack(cam);
+    if (localStream) hostVideoEl.srcObject = localStream;
+    setHostCameraOff(!isVideoEnabled);
+    $('toggle-screen').classList.remove('on');
+    $('toggle-screen').querySelector('span').textContent = 'Share screen';
+  }
+
+  // ── Hand, chat, questions ─────────────────────────────────────
+  function toggleHand() {
+    handRaised = !handRaised;
+    const b = $('raise-hand-btn');
+    b.classList.toggle('on', handRaised);
+    b.querySelector('span').textContent = handRaised ? 'Lower hand' : 'Raise hand';
+    send({ type: 'raise_hand', raised: handRaised });
+  }
+  function addChatMessage(sender, msg, kind) {
+    const box = $('chat-messages');
+    const div = document.createElement('div');
+    if (kind === 'system') {
+      div.className = 'chat-message system';
+      div.textContent = msg;
+    } else {
+      const mine = sender === userName;
+      const fromTeacher = sender === hostUsername;
+      div.className = 'chat-message' + (mine ? ' mine' : '') + (fromTeacher ? ' teacher' : '');
+      div.innerHTML = '<span class="who">' + escapeHtml(mine ? 'You' : sender) + '</span>' + escapeHtml(msg);
+    }
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+  function addQuestionToPanel(qid, username, text) {
+    if ($('qa-' + qid)) return;
+    $('qa-empty').style.display = 'none';
+    const item = document.createElement('div');
+    item.className = 'qa-item';
+    item.id = 'qa-' + qid;
+    item.innerHTML =
+      '<div class="qa-asker">' + escapeHtml(username) + ' asks:</div>' +
+      '<div class="qa-text">' + escapeHtml(text) + '</div>' +
+      '<div class="qa-status"><i class="fa-solid fa-circle-check"></i> Answered</div>' +
+      (isHost ? '<button class="qa-mark-btn" onclick="markAnswered(\'' + qid + '\')"><i class="fa-solid fa-check"></i> Mark answered</button>' : '');
+    const list = $('qa-list');
+    list.appendChild(item);
+    list.scrollTop = list.scrollHeight;
+    if (activeSidebarTab !== 'qa') $('qa-dot').classList.add('show');
+    updateTabDots();
+  }
+  function markAnswered(qid) { send({ type: 'question_answered', question_id: qid }); $('qa-' + qid)?.classList.add('answered'); }
+
+  // Small red dot on the tabs (empty dots, count shown only for raised hands)
+  function updateTabDots() {
+    const unread = $('chat-dot').classList.contains('show') || $('qa-dot').classList.contains('show');
+    if (unread && window.matchMedia('(max-width: 900px)').matches) $('panel-dot').classList.add('show');
+  }
+
+  // ── Poll ──────────────────────────────────────────────────────
+  function showPoll(pollId, question, options) {
+    activePoll = pollId; activePollOptions = options; pollVotes = {}; myVote = null;
+    options.forEach((_, i) => pollVotes[i] = 0);
+    $('poll-question-text').textContent = question;
+    renderPollOptions();
+    $('poll-overlay').classList.add('open');
+  }
+  function renderPollOptions() {
+    const box = $('poll-options-list');
+    box.innerHTML = '';
+    const total = Object.values(pollVotes).reduce((a, b) => a + b, 0);
+    activePollOptions.forEach((opt, i) => {
+      const votes = pollVotes[i] || 0;
+      const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
+      const div = document.createElement('div');
+      div.className = 'poll-option' + (myVote === i ? ' voted' : '');
+      div.innerHTML = '<div class="opt-bar" style="width:' + pct + '%"></div><span class="opt-label">' + escapeHtml(opt) + '</span><span class="opt-pct">' + pct + '%</span>';
+      if (myVote === null && !isHost) div.addEventListener('click', () => castVote(i));
+      box.appendChild(div);
+    });
+    $('poll-vote-count').textContent = total + ' vote' + (total !== 1 ? 's' : '');
+  }
+  function castVote(idx) {
+    if (myVote !== null || !activePoll) return;
+    myVote = idx;
+    send({ type: 'poll_vote', poll_id: activePoll, option_index: idx });
+    pollVotes[idx] = (pollVotes[idx] || 0) + 1;
+    renderPollOptions();
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────
+  function initWebSocket() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    socket = new WebSocket(protocol + '//' + location.host + '/ws/live/' + roomName + '/');
+
+    socket.onopen = () => { send({ type: 'audio_toggle', enabled: isAudioEnabled }); };
+
+    socket.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      switch (data.type) {
+        case 'user_joined': {
+          if (data.user_id == userId) break;
+          present.set(Number(data.user_id), data.user);
+          if (data.user_id == hostId) {
+            if (!isHost) {
+              // Teacher (re)joined: drop the old link and wait for a fresh offer. Announce ourselves so
+              // the teacher finds us, because the server does not list who is already in the room.
+              if (peerConnections[hostId]) { peerConnections[hostId].close(); delete peerConnections[hostId]; }
+              showWaitingOverlay();
+              send({ type: 'audio_toggle', enabled: isAudioEnabled });
+            }
+          } else {
+            addStudent(data.user_id, data.user);
+            if (isHost) ensureOffer(data.user_id);
+          }
+          addChatMessage('System', data.user + ' joined the class', 'system');
+          updateAttendance();
+          break;
+        }
+        case 'user_left': {
+          present.delete(Number(data.user_id));
+          removeStudent(data.user_id);
+          addChatMessage('System', data.user + ' left the class', 'system');
+          updateAttendance();
+          if (!isHost && data.user_id == hostId) {
+            if (peerConnections[hostId]) { peerConnections[hostId].close(); delete peerConnections[hostId]; }
+            showWaitingOverlay();
+          }
+          break;
+        }
+        case 'offer': handleOffer(data); break;
+        case 'answer': handleAnswer(data); break;
+        case 'ice_candidate': handleIceCandidate(data); break;
+        case 'audio_toggle': {
+          if (data.user_id == userId) break;
+          // A mic update from someone we have not met yet means they were already in the room before us.
+          if (data.user_id != hostId && !students.has(Number(data.user_id))) {
+            present.set(Number(data.user_id), data.user);
+            addStudent(data.user_id, data.user);
+            updateAttendance();
+          }
+          if (isHost && data.user_id != hostId) ensureOffer(data.user_id);
+          setStudentMic(data.user_id, data.enabled);
+          break;
+        }
+        case 'screen_share':
+          if (!isHost && data.user_id == hostId) {
+            if (data.enabled) setHostCameraOff(false);
+            addChatMessage('System', teacherLabel + (data.enabled ? ' is sharing their screen.' : ' stopped sharing their screen.'), 'system');
+          }
+          break;
+        case 'video_toggle':
+          if (data.user_id == hostId) { if (!isHost) setHostCameraOff(!data.enabled); }
+          else setStudentVideo(data.user_id, data.enabled);
+          break;
+        case 'chat_message':
+          addChatMessage(data.user, data.message);
+          if (activeSidebarTab !== 'chat' && data.user !== userName) { $('chat-dot').classList.add('show'); updateTabDots(); }
+          break;
+        case 'raise_hand':
+          if (data.user_id != userId) setStudentHand(data.user_id, data.raised, data.user);
+          break;
+        case 'question_ask': addQuestionToPanel(data.question_id, data.user, data.question); break;
+        case 'question_answered': $('qa-' + data.question_id)?.classList.add('answered'); break;
+        case 'poll_create':
+          showPoll(data.poll_id, data.question, data.options);
+          addChatMessage('System', data.user + ' started a poll: ' + data.question, 'system');
+          break;
+        case 'poll_vote':
+          if (activePoll === data.poll_id && data.user_id != userId) {
+            pollVotes[data.option_index] = (pollVotes[data.option_index] || 0) + 1;
+            renderPollOptions();
+          }
+          break;
+        case 'poll_end':
+          if (!isHost && activePoll === data.poll_id) { $('poll-overlay').classList.remove('open'); activePoll = null; }
+          break;
+        case 'class_ended':
+          if (!isHost) showClassClosed('The teacher has ended the class.');
+          break;
+        case 'rejected':
+          showClassClosed(data.reason || 'You cannot join this class.');
+          break;
+        case 'mic_control':
+          if (data.target_user_id == userId && !isHost) {
+            toggleAudio(data.enabled);
+            addChatMessage('System', data.enabled ? 'The teacher unmuted your microphone.' : 'The teacher muted your microphone.', 'system');
+          }
+          break;
+      }
+    };
+    socket.onclose = () => {
+      if (leaving) return;
+      addChatMessage('System', 'Connection lost. Reconnecting…', 'system');
+      setTimeout(() => { if (!leaving) initWebSocket(); }, 3000);
+    };
+  }
+
+  // ── Leave / end ───────────────────────────────────────────────
+  function cleanup() {
+    leaving = true;
+    localStream?.getTracks().forEach(t => t.stop());
+    screenStream?.getTracks().forEach(t => t.stop());
+    Object.values(peerConnections).forEach(pc => pc.close());
+    try { socket && socket.close(); } catch (e) {}
+  }
+  function leaveRoom() { cleanup(); window.location.href = LIST_URL; }
+  function showClassClosed(message) {
+    cleanup();
+    const ov = $('waiting-overlay');
+    ov.innerHTML = '<i class="fa-solid fa-door-closed" style="font-size:42px;color:#94a3b8;"></i>' +
+      '<span style="font-weight:700;font-size:16px;">' + escapeHtml(message) + '</span>' +
+      '<a href="' + LIST_URL + '" style="background:#0095f6;color:#fff;padding:10px 20px;border-radius:10px;font-weight:700;text-decoration:none;font-size:13px;">Back to live classes</a>';
+    $('host-placeholder').style.display = 'none';
+    ov.style.display = 'flex';
+    setTimeout(() => { window.location.href = LIST_URL; }, 5000);
+  }
+  function endClass() {
+    if (!confirm('End this class for everyone?')) return;
+    send({ type: 'end_class' });              // tells every student, and closes the class on the server
+    leaving = true;
+    setTimeout(() => { cleanup(); window.location.href = END_URL; }, 500);
+  }
+
+  // ── Side panel tabs ───────────────────────────────────────────
+  function switchTab(tab) {
+    activeSidebarTab = tab;
+    ['chat', 'qa', 'students'].forEach(t => {
+      $('tab-' + t).classList.toggle('active', t === tab);
+      $('tab-content-' + t).classList.toggle('active', t === tab);
+    });
+    if (tab === 'chat') $('chat-dot').classList.remove('show');
+    if (tab === 'qa') $('qa-dot').classList.remove('show');
+  }
+  function openPanel() { $('side-panel').classList.add('open'); $('panel-overlay').classList.add('active'); $('panel-dot').classList.remove('show'); }
+  function closePanel() { $('side-panel').classList.remove('open'); $('panel-overlay').classList.remove('active'); }
+
+  // ── Boot ──────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
-    await initLocalStream(); initWebSocket();
-    if(isHost) { document.getElementById('flip-camera-group').style.display = /Mobi|Android/i.test(navigator.userAgent) ? 'flex' : 'none'; document.getElementById('poll-btn-group').style.display = 'flex'; document.getElementById('mute-all-group').style.display = 'flex'; document.getElementById('raise-hand-group').style.display = 'none'; document.getElementById('qa-input-area').style.display = 'none'; }
-    else { document.getElementById('screen-share-group').style.display = 'none'; document.getElementById('poll-btn-group').style.display = 'none'; ensureHostAudioAlwaysPlays(); }
-    document.getElementById('toggle-video').onclick = toggleVideo;
-    document.getElementById('toggle-audio').onclick = () => toggleAudio();
-    document.getElementById('leave-room').onclick = leaveRoom;
-    document.getElementById('raise-hand-btn').onclick = toggleHand;
-    document.getElementById('toggle-react').onclick = (e) => { e.stopPropagation(); document.getElementById('reaction-picker').classList.toggle('open'); };
-    document.querySelectorAll('.reaction-emoji').forEach(em => em.onclick = () => sendReaction(em.dataset.emoji));
-    document.addEventListener('click', () => document.getElementById('reaction-picker').classList.remove('open'));
-    document.getElementById('toggle-poll-creator')?.addEventListener('click', () => document.getElementById('poll-creator').classList.add('open'));
-    document.getElementById('cancel-poll-btn').onclick = () => document.getElementById('poll-creator').classList.remove('open');
-    document.getElementById('launch-poll-btn').onclick = () => { const q=document.getElementById('poll-q-input').value; const opts=Array.from(document.querySelectorAll('.poll-opt-input')).map(i=>i.value.trim()).filter(Boolean); if(q && opts.length>=2) { socket.send(JSON.stringify({ type:'poll_create', poll_id:'poll_'+Date.now(), question:q, options:opts })); document.getElementById('poll-creator').classList.remove('open'); } else addChatMessage('System','Please fill question and at least 2 options.'); };
-    document.getElementById('add-option-btn').onclick = () => { const builder=document.getElementById('poll-options-builder'); const row=document.createElement('div'); row.className='poll-opt-row'; row.innerHTML='<input class="poll-opt-input" placeholder="Option"><button class="remove-opt" onclick="this.parentElement.remove()">✕</button>'; builder.appendChild(row); };
-    document.getElementById('close-poll').onclick = () => { document.getElementById('poll-overlay').classList.remove('open'); if(isHost && activePoll) socket.send(JSON.stringify({ type:'poll_end', poll_id:activePoll })); activePoll=null; };
-    document.getElementById('toggle-chat').onclick = () => { document.getElementById('chat-sidebar').classList.add('open'); document.getElementById('chat-overlay').classList.add('active'); };
-    document.getElementById('close-chat').onclick = () => { document.getElementById('chat-sidebar').classList.remove('open'); document.getElementById('chat-overlay').classList.remove('active'); };
-    document.getElementById('send-chat').onclick = () => { const input=document.getElementById('chat-input'); if(input.value.trim()) { socket.send(JSON.stringify({ type:'chat_message', message:input.value })); input.value=''; } };
-    document.getElementById('send-qa').onclick = () => { const input=document.getElementById('qa-input'); if(input.value.trim()) { const qid='q_'+Date.now()+'_'+userId; addQuestionToPanel(qid, userName, input.value); socket.send(JSON.stringify({ type:'question_ask', question:input.value, question_id:qid })); input.value=''; } };
-    document.getElementById('mute-all-btn')?.addEventListener('click', () => { document.querySelectorAll('.student-bubble-wrapper').forEach(wrapper => { const uid=wrapper.id.replace('bubble-wrapper-',''); const currentlyEnabled = wrapper.dataset.micEnabled !== '0'; if(currentlyEnabled) { socket.send(JSON.stringify({ type:'mic_control', target_user_id:uid, enabled:false })); updateRemoteMute(uid, false); wrapper.dataset.micEnabled='0'; const ctrl=document.getElementById(`bubble-mic-ctrl-${uid}`); if(ctrl) { ctrl.innerHTML='<i class="fa-solid fa-microphone-slash"></i>'; ctrl.classList.add('mic-ctrl-muted'); } } }); addChatMessage('System','🔇 Muted all students.'); });
+    addChatMessage('System', 'Welcome to ' + (sessionTitle || 'the class') + '.', 'system');
+
+    // Role-based layout
+    const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
+    if (isMobileDevice) $('flip-camera').style.display = 'flex';
+    if (isHost) {
+      $('toggle-screen').style.display = 'flex';
+      $('toggle-poll-creator').style.display = 'flex';
+      $('mute-all-btn').style.display = 'flex';
+      $('end-class').style.display = 'flex';
+      $('qa-input-area').style.display = 'none';
+      $('qa-empty').innerHTML = '<i class="fa-regular fa-circle-question"></i>No questions yet.<br>Students\' questions will appear here.';
+    } else {
+      $('raise-hand-btn').style.display = 'flex';
+      addChatMessage('System', 'You joined with your microphone off. Tap Mic to speak, or Raise hand to ask a question.', 'system');
+    }
+
+    await initLocalStream();
+    initWebSocket();
+
+    // Controls
+    $('toggle-video').onclick = toggleVideo;
+    $('toggle-audio').onclick = () => toggleAudio();
+    $('flip-camera').onclick = flipCamera;
+    $('toggle-screen').onclick = toggleScreenShare;
+    $('raise-hand-btn').onclick = toggleHand;
+    $('leave-room').onclick = leaveRoom;
+    $('end-class').onclick = endClass;
+    $('mute-all-btn').onclick = muteAllStudents;
+
+    // Panel
+    document.querySelectorAll('.sidebar-tab').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+    $('toggle-panel').onclick = openPanel;
+    $('close-panel').onclick = closePanel;
+    $('panel-overlay').onclick = closePanel;
+
+    // Chat & questions
+    const sendChat = () => { const i = $('chat-input'); if (i.value.trim()) { send({ type: 'chat_message', message: i.value.trim() }); i.value = ''; } };
+    $('send-chat').onclick = sendChat;
+    $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+    const sendQa = () => {
+      const i = $('qa-input');
+      if (!i.value.trim()) return;
+      const qid = 'q_' + Date.now() + '_' + userId;
+      addQuestionToPanel(qid, userName, i.value.trim());
+      send({ type: 'question_ask', question: i.value.trim(), question_id: qid });
+      i.value = '';
+    };
+    $('send-qa').onclick = sendQa;
+    $('qa-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendQa(); });
+
+    // Poll (teacher)
+    $('toggle-poll-creator').onclick = () => $('poll-creator').classList.add('open');
+    $('cancel-poll-btn').onclick = () => $('poll-creator').classList.remove('open');
+    $('add-option-btn').onclick = () => {
+      const row = document.createElement('div');
+      row.className = 'poll-opt-row';
+      row.innerHTML = '<input class="poll-opt-input" placeholder="Option" maxlength="100"><button class="remove-opt" onclick="removePollOption(this)">✕</button>';
+      $('poll-options-builder').appendChild(row);
+    };
+    $('launch-poll-btn').onclick = () => {
+      const q = $('poll-q-input').value.trim();
+      const opts = Array.from(document.querySelectorAll('.poll-opt-input')).map(i => i.value.trim()).filter(Boolean);
+      if (q && opts.length >= 2) {
+        send({ type: 'poll_create', poll_id: 'poll_' + Date.now(), question: q, options: opts });
+        $('poll-creator').classList.remove('open');
+        $('poll-q-input').value = '';
+        document.querySelectorAll('.poll-opt-input').forEach(i => i.value = '');
+      } else {
+        addChatMessage('System', 'Please enter a question and at least 2 options.', 'system');
+      }
+    };
+    $('close-poll').onclick = () => {
+      $('poll-overlay').classList.remove('open');
+      if (isHost && activePoll) send({ type: 'poll_end', poll_id: activePoll });
+      activePoll = null;
+    };
   });
-  window.switchTab = function(tab) { activeSidebarTab=tab; document.getElementById('tab-chat').classList.toggle('active',tab==='chat'); document.getElementById('tab-qa').classList.toggle('active',tab==='qa'); document.getElementById('tab-content-chat').classList.toggle('active',tab==='chat'); document.getElementById('tab-content-qa').classList.toggle('active',tab==='qa'); if(tab==='chat') document.getElementById('chat-dot')?.classList.remove('show'); if(tab==='qa') document.getElementById('qa-dot')?.classList.remove('show'); };
-  window.dismissHand = dismissHand; window.markAnswered = markAnswered; window.removePollOption = function(btn) { if(document.getElementById('poll-options-builder').children.length>2) btn.parentElement.remove(); };
+
+  window.addEventListener('beforeunload', () => { leaving = true; });
+  window.dismissHand = dismissHand;
+  window.markAnswered = markAnswered;
+  window.removePollOption = function (btn) {
+    if ($('poll-options-builder').children.length > 2) btn.parentElement.remove();
+  };
 </script>
 </body>
 </html>
